@@ -6,13 +6,18 @@ using System;
 
 namespace FracturedJsonCli
 {
+    /// <summary>
+    /// Class that outputs JSON formatted in a compact user-readable way.  Arrays and objects that are neither
+    /// too complex nor too long are written as single lines.  More complex elements are written to multiple
+    /// lines, indented.
+    /// </summary>
     public class FracturedJson
     {
         /// <summary>
-        /// Maximum length of a complex element on a single line.  This includes only
-        /// the data for the inlined element, not indentation or leading property names.
+        /// Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
+        /// not indentation or leading property names.
         /// </summary>
-        public int MaxInlineLength { get; set; } = 100;
+        public int MaxInlineLength { get; set; } = 80;
 
         /// <summary>
         /// Maximum nesting level that can be displayed on a single line.  A primitive type or an empty
@@ -22,21 +27,39 @@ namespace FracturedJsonCli
         public int MaxInlineComplexity { get; set; } = 2;
 
         /// <summary>
+        /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
+        /// will include spaces inside the outer brackets.
         /// </summary>
+        /// <remarks>
+        /// Example: <br/>
+        /// true: [ [1, 2, 3], [4] ] <br/>
+        /// false: [[1, 2, 3], [4]] <br/>
+        /// </remarks>
         public bool NestedBracketPadding { get; set; } = true;
 
         /// <summary>
+        /// If true, includes a space after property colons.
         /// </summary>
         public bool ColonPadding { get; set; } = true;
 
         /// <summary>
+        /// If true, includes a space after commas separating array items and object properties.
         /// </summary>
         public bool CommaPadding { get; set; } = true;
 
         /// <summary>
+        /// If an array contains only simple elements and MultiInlineSimpleArrays is true, the array can
+        /// span multiple lines with multiple items per line.  Otherwise, arrays that are too long to fit
+        /// on a single line are broken out one item per line.
         /// </summary>
         public bool MultiInlineSimpleArrays { get; set; } = true;
 
+        /// <summary>
+        /// String composed of spaces and/or tabs specifying one unit of indentation.  Default is 4 spaces.
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        /// If the string contains characters other than space, tab, CR, or LF.
+        /// </exception>
         public string IndentString {
             get { return _indentString; }
             set
@@ -47,7 +70,11 @@ namespace FracturedJsonCli
             }
         }
 
-        public string Write(JsonDocument document)
+        /// <summary>
+        /// Returns the JSON documented formatted as a string, with simpler collections written in single
+        /// lines where possible.
+        /// </summary>
+        public string Serialize(JsonDocument document)
         {
             SetPaddingStrings();
             return FormatElement(0, document.RootElement, out _);
@@ -72,7 +99,7 @@ namespace FracturedJsonCli
                 case JsonValueKind.Object:
                     return FormatObject(depth, element, out complexity);
                 default:
-                    return FormatSimple(depth, element, out complexity);
+                    return FormatSimple(element, out complexity);
             }
         }
 
@@ -80,14 +107,16 @@ namespace FracturedJsonCli
         {
             var maxChildComplexity = 0;
 
+            // Format all array items, and pay attention to how complex they are.
             var items = array.EnumerateArray()
                 .Select(je => {
-                    var elemStr = FormatElement(depth+1, je, out int complexity);
-                    maxChildComplexity = Math.Max(maxChildComplexity, complexity);
+                    var elemStr = FormatElement(depth+1, je, out var childComplexity);
+                    maxChildComplexity = Math.Max(maxChildComplexity, childComplexity);
                     return elemStr;
                 })
                 .ToList();
 
+            // Treat an empty array as a primitive: zero complexity.
             if (items.Count==0)
             {
                 complexity = 0;
@@ -96,6 +125,8 @@ namespace FracturedJsonCli
 
             complexity = maxChildComplexity + 1;
 
+            // Try formatting this array as a single line, if none of the children are too complex,
+            // and the total length isn't excessive.
             var lengthEstimate = items.Sum(valStr => valStr.Length+1);
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
@@ -104,14 +135,17 @@ namespace FracturedJsonCli
                     return inlineStr;
             }
 
+            // We couldn't do a single line.  But if all child elements are simple and we're allowed, write 
+            // them on a couple lines, multiple items per line.
             if (maxChildComplexity==0 && MultiInlineSimpleArrays)
             {
-                var multiInlineStr = FormatArrayMultiInlineSimple(depth+1, items);
+                var multiInlineStr = FormatArrayMultiInlineSimple(depth, items);
                 return multiInlineStr;
             }
 
-            // If we've gotten this far, we have to write it as a complex object.
-            var buff = new StringBuilder();
+            // If we've gotten this far, we have to write it as a complex object.  Each child element gets its own
+            // line (or more).
+            var buff = new StringBuilder(lengthEstimate * 3 / 2);
             buff.AppendLine("[");
             var firstElem = true;
             foreach (var item in items)
@@ -132,7 +166,7 @@ namespace FracturedJsonCli
 
         private string FormatArrayInline(IList<string> itemList, int maxChildComplexity)
         {
-            var buff = new StringBuilder();
+            var buff = new StringBuilder(MaxInlineLength);
             buff.Append("[");
 
             if (NestedBracketPadding && maxChildComplexity>0)
@@ -157,9 +191,10 @@ namespace FracturedJsonCli
 
         private string FormatArrayMultiInlineSimple(int depth, IList<string> itemList)
         {
-            var buff = new StringBuilder();
+            var sumItemLengths = itemList.Sum(s => s.Length);
+            var buff = new StringBuilder(sumItemLengths * 3 / 2);
             buff.AppendLine("[");
-            Indent(depth, buff);
+            Indent(depth+1, buff);
 
             var lineLengthSoFar = 0;
             var itemIndex = 0;
@@ -172,7 +207,7 @@ namespace FracturedJsonCli
                 if (lineLengthSoFar + segmentLength > MaxInlineLength && lineLengthSoFar>0)
                 {
                     buff.AppendLine();
-                    Indent(depth, buff);
+                    Indent(depth+1, buff);
                     lineLengthSoFar = 0;
                 }
 
@@ -185,7 +220,7 @@ namespace FracturedJsonCli
             }
 
             buff.AppendLine();
-            Indent(depth-1, buff);
+            Indent(depth, buff);
             buff.Append(']');
 
             return buff.ToString();
@@ -193,22 +228,28 @@ namespace FracturedJsonCli
 
         private string FormatObject(int depth, JsonElement obj, out int complexity)
         {
+            var maxChildComplexity = 0;
+
+            // Format all child property values.
             var keyValPairs = obj.EnumerateObject()
                 .Select( jp => {
                     var valStr = FormatElement(depth+1, jp.Value, out var valComplexity);
-                    return new FormattedProperty(jp.Name, valStr, valComplexity);
+                    maxChildComplexity = Math.Max(maxChildComplexity, valComplexity);
+                    return new FormattedProperty(jp.Name, valStr);
                 })
                 .ToList();
 
+            // Treat an empty array as a primitive: zero complexity.
             if (keyValPairs.Count==0)
             {
                 complexity = 0;
                 return "{}";
             }
 
-            var maxChildComplexity = keyValPairs.Max(kvp => kvp.Complexity);
             complexity = maxChildComplexity + 1;
 
+            // Try formatting this object in a single line, if none of the children are too complicated, and 
+            // the total length isn't too long.
             var lengthEstimate = keyValPairs.Sum(kvp => kvp.Name.Length + kvp.Value.Length + 4);
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
@@ -217,7 +258,8 @@ namespace FracturedJsonCli
                     return inlineStr;
             }
 
-            // If we've gotten this far, we have to write it as a complex object.
+            // If we've gotten this far, we have to write it as a complex object.  Each child property gets its
+            // own line, or more.
             var buff = new StringBuilder();
             buff.AppendLine("{");
             var firstItem = true;
@@ -265,8 +307,10 @@ namespace FracturedJsonCli
             return buff.ToString();
         }
 
-        private string FormatSimple(int depth, JsonElement simpleElem, out int complexity)
+        private string FormatSimple(JsonElement simpleElem, out int complexity)
         {
+            // Return the existing text of the item.  Since it's not an array or object, there won't be any ambiguous
+            // whitespace in it.
             complexity = 0;
             return simpleElem.GetRawText();
         }
@@ -277,23 +321,25 @@ namespace FracturedJsonCli
                 buff.Append(IndentString);
         }
 
+        /// <summary>
+        /// Initialize a couple private fields based on our properties.
+        /// </summary>
         private void SetPaddingStrings()
         {
             _colonPaddingStr = (ColonPadding)? " " : "";
             _commaPaddingStr = (CommaPadding)? " " : "";
         }
 
+        // Tuples are for the weak-minded.
         private class FormattedProperty
         {
             public string Name { get; }
             public string Value { get; }
-            public int Complexity { get; }
 
-            public FormattedProperty(string name, string value, int complexity)
+            public FormattedProperty(string name, string value)
             {
                 Name = name;
                 Value = value;
-                Complexity = complexity;
             }
         }
     }

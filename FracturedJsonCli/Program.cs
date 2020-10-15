@@ -4,6 +4,10 @@ using System.Text.Json;
 
 namespace FracturedJsonCli
 {
+    /// <summary>
+    /// Commandline app to format JSON using FracturedJson.  The first argument should be the path of
+    /// a JSON file.  Output is to standard out.
+    /// </summary>
     static class Program
     {
         static void Main(string[] args)
@@ -29,11 +33,11 @@ namespace FracturedJsonCli
                     MaxInlineComplexity=2,
                     MaxInlineLength=90,
                     NestedBracketPadding=true,
-                    ColonPadding=false,
+                    ColonPadding=true,
                     CommaPadding=true,
                     MultiInlineSimpleArrays=true,
                 };
-                var formattedDoc = formatter.Write(doc);
+                var formattedDoc = formatter.Serialize(doc);
 
                 Console.WriteLine(formattedDoc);
             }
