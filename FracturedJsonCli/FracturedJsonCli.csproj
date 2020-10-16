@@ -7,4 +7,8 @@
         <AssemblyVersion>0.0.1</AssemblyVersion>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Mono.Options" Version="6.6.0.161" />
+    </ItemGroup>
+
 </Project>
