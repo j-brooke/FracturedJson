@@ -6,6 +6,13 @@ using System;
 
 namespace FracturedJsonCli
 {
+    public enum FracturedEolStyle
+    {
+        Default,
+        Crlf,
+        Lf,
+    }
+    
     /// <summary>
     /// Class that outputs JSON formatted in a compact user-readable way.  Arrays and objects that are neither
     /// too complex nor too long are written as single lines.  More complex elements are written to multiple
@@ -13,6 +20,11 @@ namespace FracturedJsonCli
     /// </summary>
     public class FracturedJson
     {
+        /// <summary>
+        /// Dictates what sort of line endings to use.
+        /// </summary>
+        public FracturedEolStyle EolStyle { get; set; } = FracturedEolStyle.Default;
+        
         /// <summary>
         /// Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
         /// not indentation or leading property names.
@@ -80,10 +92,11 @@ namespace FracturedJsonCli
             return FormatElement(0, document.RootElement, out _);
         }
 
-        private string _legalWhitespace = " \r\n\t";
+        private const string _legalWhitespace = " \r\n\t";
         private string _indentString = "    ";
         private string _colonPaddingStr = string.Empty;
         private string _commaPaddingStr = string.Empty;
+        private string _eolStr = string.Empty;
 
         /// <summary>
         /// Return the element as a formatted string, recursively.  The string doesn't have any leading or
@@ -146,12 +159,12 @@ namespace FracturedJsonCli
             // If we've gotten this far, we have to write it as a complex object.  Each child element gets its own
             // line (or more).
             var buff = new StringBuilder(lengthEstimate * 3 / 2);
-            buff.AppendLine("[");
+            buff.Append('[').Append(_eolStr);
             var firstElem = true;
             foreach (var item in items)
             {
                 if (!firstElem)
-                    buff.AppendLine(",");
+                    buff.Append(',').Append(_eolStr);
                 Indent(depth+1, buff);
                 buff.Append(item);
                 firstElem = false;
@@ -193,7 +206,7 @@ namespace FracturedJsonCli
         {
             var sumItemLengths = itemList.Sum(s => s.Length);
             var buff = new StringBuilder(sumItemLengths * 3 / 2);
-            buff.AppendLine("[");
+            buff.Append('[').Append(_eolStr);
             Indent(depth+1, buff);
 
             var lineLengthSoFar = 0;
@@ -261,12 +274,12 @@ namespace FracturedJsonCli
             // If we've gotten this far, we have to write it as a complex object.  Each child property gets its
             // own line, or more.
             var buff = new StringBuilder();
-            buff.AppendLine("{");
+            buff.Append('{').Append(_eolStr);
             var firstItem = true;
             foreach (var prop in keyValPairs)
             {
                 if (!firstItem)
-                    buff.AppendLine(",");
+                    buff.Append(',').Append(_eolStr);
                 Indent(depth+1, buff);
                 buff.Append('"').Append(prop.Name).Append('"').Append(':').Append(_colonPaddingStr);
 
@@ -328,6 +341,13 @@ namespace FracturedJsonCli
         {
             _colonPaddingStr = (ColonPadding)? " " : "";
             _commaPaddingStr = (CommaPadding)? " " : "";
+
+            _eolStr = EolStyle switch
+            {
+                FracturedEolStyle.Crlf => "\r\n",
+                FracturedEolStyle.Lf => "\n",
+                _ => Environment.NewLine,
+            };
         }
 
         // Tuples are for the weak-minded.

@@ -30,6 +30,8 @@ namespace FracturedJsonCli
                     { "l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n },
                     { "t|tab", "use tabs for indentation", v => formatter.IndentString = "\t" },
                     { "s|space=", "use this many spaces", (int n) => formatter.IndentString = new string(' ', n) },
+                    { "w|windows", "use Windows line endings (CRLF)", v => formatter.EolStyle = FracturedEolStyle.Crlf },
+                    { "u|unix", "use Unix line endings (LF)", v => formatter.EolStyle = FracturedEolStyle.Lf },
                 };
                 
                 cliOpts.Parse(args);
