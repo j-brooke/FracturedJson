@@ -16,26 +16,27 @@ namespace FracturedJsonCli
             try
             {
                 var formatter = new FracturedJson();
-                
+
                 bool showHelp = false;
                 string? fileName = null;
                 bool noPadding = false;
-                
+
                 var cliOpts = new OptionSet()
                 {
                     { "h|help", "show this help info and exit", v => showHelp = (v!=null) },
                     { "f|file=", "input from file instead of stdin", s => fileName = s },
                     { "p|no-padding", "don't include padding spaces", v => noPadding = (v!=null) },
                     { "c|complexity=", "maximum inline complexity", (int n) => formatter.MaxInlineComplexity = n },
+                    { "m|multiline=", "maximum multi-line array complexity", (int n) => formatter.MaxCompactArrayComplexity = n },
                     { "l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n },
                     { "t|tab", "use tabs for indentation", v => formatter.IndentString = "\t" },
                     { "s|space=", "use this many spaces", (int n) => formatter.IndentString = new string(' ', n) },
                     { "w|windows", "use Windows line endings (CRLF)", v => formatter.EolStyle = FracturedEolStyle.Crlf },
                     { "u|unix", "use Unix line endings (LF)", v => formatter.EolStyle = FracturedEolStyle.Lf },
                 };
-                
+
                 cliOpts.Parse(args);
-                
+
                 if (showHelp)
                 {
                     ShowHelp(cliOpts);
@@ -48,7 +49,7 @@ namespace FracturedJsonCli
                     formatter.CommaPadding = false;
                     formatter.NestedBracketPadding = false;
                 }
-                
+
                 JsonDocument jsonDocument;
                 var docOpts = new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip };
 
@@ -91,7 +92,7 @@ namespace FracturedJsonCli
 
             foreach (var line in lines)
                 Console.Out.WriteLine(line);
-            
+
             cliOptions.WriteOptionDescriptions(Console.Out);
         }
     }

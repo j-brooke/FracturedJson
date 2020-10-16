@@ -12,7 +12,7 @@ namespace FracturedJsonCli
         Crlf,
         Lf,
     }
-    
+
     /// <summary>
     /// Class that outputs JSON formatted in a compact user-readable way.  Arrays and objects that are neither
     /// too complex nor too long are written as single lines.  More complex elements are written to multiple
@@ -24,7 +24,7 @@ namespace FracturedJsonCli
         /// Dictates what sort of line endings to use.
         /// </summary>
         public FracturedEolStyle EolStyle { get; set; } = FracturedEolStyle.Default;
-        
+
         /// <summary>
         /// Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
         /// not indentation or leading property names.
@@ -37,6 +37,12 @@ namespace FracturedJsonCli
         /// its most complex child.
         /// </summary>
         public int MaxInlineComplexity { get; set; } = 2;
+
+        /// <summary>
+        /// Maximum nesting level that can be arranged spanning multiple lines, with multiple items per line.
+        /// (Use -1 to disable this even for primitive array elements.)
+        /// </summary>
+        public int MaxCompactArrayComplexity { get; set; }
 
         /// <summary>
         /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
@@ -58,13 +64,6 @@ namespace FracturedJsonCli
         /// If true, includes a space after commas separating array items and object properties.
         /// </summary>
         public bool CommaPadding { get; set; } = true;
-
-        /// <summary>
-        /// If an array contains only simple elements and MultiInlineSimpleArrays is true, the array can
-        /// span multiple lines with multiple items per line.  Otherwise, arrays that are too long to fit
-        /// on a single line are broken out one item per line.
-        /// </summary>
-        public bool MultiInlineSimpleArrays { get; set; } = true;
 
         /// <summary>
         /// String composed of spaces and/or tabs specifying one unit of indentation.  Default is 4 spaces.
@@ -148,9 +147,9 @@ namespace FracturedJsonCli
                     return inlineStr;
             }
 
-            // We couldn't do a single line.  But if all child elements are simple and we're allowed, write 
+            // We couldn't do a single line.  But if all child elements are simple and we're allowed, write
             // them on a couple lines, multiple items per line.
-            if (maxChildComplexity==0 && MultiInlineSimpleArrays)
+            if (maxChildComplexity<=MaxCompactArrayComplexity)
             {
                 var multiInlineStr = FormatArrayMultiInlineSimple(depth, items);
                 return multiInlineStr;
@@ -261,7 +260,7 @@ namespace FracturedJsonCli
 
             complexity = maxChildComplexity + 1;
 
-            // Try formatting this object in a single line, if none of the children are too complicated, and 
+            // Try formatting this object in a single line, if none of the children are too complicated, and
             // the total length isn't too long.
             var lengthEstimate = keyValPairs.Sum(kvp => kvp.Name.Length + kvp.Value.Length + 4);
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
