@@ -7,8 +7,8 @@
         <Description>A library for formatting JSON in a user-readable but compact way.</Description>
         <Copyright>2020 Jesse Brooke</Copyright>
         <PackageProjectUrl>https://github.com/j-brooke/FracturedJson</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/j-brooke/FracturedJson/blob/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
         <AssemblyVersion>1.0.0</AssemblyVersion>
         <PackageTags>JSON formatter</PackageTags>

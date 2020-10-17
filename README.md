@@ -1,9 +1,10 @@
 # FracturedJson
 
-FracturedJson is a library for formatting JSON documents in a human-readable but fairly compact way.  There's also a .NET Core 3.1 commandline app.
+FracturedJson is utility that formats JSON data in a user-readable but fairly compact way. Arrays and objects are written on single lines if they're short enough and not too complex; otherwise their contents are presented indented, beginning on lines of their own.
 
-## Example
+It is available as a .NET Core 3.1 library, and as a .NET Core 3.1 commandline app.
 
+Here's a brief, highly contrived example of the output:
 ```json
 {
     "SimpleItem": 77,
@@ -28,94 +29,6 @@ FracturedJson is a library for formatting JSON documents in a human-readable but
 }
 ```
 
-## Discussion
+## More Information
 
-Most JSON libraries give you a choice between two formatting options.  Minified JSON is very efficient, but difficult for a person to read.
-
-```json
-{"AttackPlans":[{"TeamId":1,"Spawns":[{"Time":0.0,"UnitType":"Grunt","SpawnPointIndex":0},{"Time":0.0,"UnitType":"Grunt","SpawnPointIndex":0},{"Time":0.0,"UnitType":"Grunt","SpawnPointIndex":0}]}],"DefensePlans":[{"TeamId":2,"Placements":[{"UnitType":"Archer","Position":[41,7]},{"UnitType":"Pikeman","Position":[40,7]},{"UnitType":"Barricade","Position":[39,7]}]}]}
-```
-
-Most beautified/indented JSON, on the other hand, is too spread out, often making it difficult to read as well.
-
-```json
-{
-    "AttackPlans": [
-        {
-            "TeamId": 1,
-            "Spawns": [
-                {
-                    "Time": 0,
-                    "UnitType": "Grunt",
-                    "SpawnPointIndex": 0
-                },
-                {
-                    "Time": 0,
-                    "UnitType": "Grunt",
-                    "SpawnPointIndex": 0
-                },
-                {
-                    "Time": 0,
-                    "UnitType": "Grunt",
-                    "SpawnPointIndex": 0
-                }
-            ]
-        }
-    ],
-    "DefensePlans": [
-        {
-            "TeamId": 2,
-            "Placements": [
-                {
-                    "UnitType": "Archer",
-                    "Position": [
-                        41,
-                        7
-                    ]
-                },
-                {
-                    "UnitType": "Pikeman",
-                    "Position": [
-                        40,
-                        7
-                    ]
-                },
-                {
-                    "UnitType": "Barricade",
-                    "Position": [
-                        39,
-                        7
-                    ]
-                }
-            ]
-        }
-    ]
-}
-```
-
-FracturedJson tries to format data like a person would.  Complex elements are kept to a single line as long as they're not too complex, and not too long.
-
-```json
-{
-    "AttackPlans": [
-        {
-            "TeamId": 1,
-            "Spawns": [
-                {"Time": 0.0, "UnitType": "Grunt", "SpawnPointIndex": 0},
-                {"Time": 0.0, "UnitType": "Grunt", "SpawnPointIndex": 0},
-                {"Time": 0.0, "UnitType": "Grunt", "SpawnPointIndex": 0}
-            ]
-        }
-    ],
-    "DefensePlans": [
-        {
-            "TeamId": 2,
-            "Placements": [
-                { "UnitType": "Archer", "Position": [41, 7] },
-                { "UnitType": "Pikeman", "Position": [40, 7] },
-                { "UnitType": "Barricade", "Position": [39, 7] }
-            ]
-        }
-    ]
-}
-```
+Please see the [project wiki](https://github.com/j-brooke/FracturedJson/wiki) for more information on what you can do and how to use the tools.
