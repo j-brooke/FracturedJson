@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using Mono.Options;
 
@@ -82,6 +83,7 @@ namespace FracturedJsonCli
         {
             var lines = new[]
             {
+                $"Version {Assembly.GetExecutingAssembly().GetName().Version}",
                 "Usage:",
                 "  FracturedJsonCli [OPTIONS]",
                 "",
