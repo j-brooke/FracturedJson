@@ -1,6 +1,6 @@
 # FracturedJson
 
-FracturedJson is a library for formatting JSON documents in a human-readable but fairly compact way.
+FracturedJson is a library for formatting JSON documents in a human-readable but fairly compact way.  There's also a .NET Core 3.1 commandline app.
 
 ## Example
 

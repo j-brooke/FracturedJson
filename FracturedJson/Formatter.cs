@@ -1,29 +1,65 @@
+/*
+ * FracturedJson
+ * FracturedJson is a library for formatting JSON documents in a human-readable but fairly compact way.
+ *
+ * Copyright (c) 2020 Jesse Brooke
+ * Project site: https://github.com/j-brooke/FracturedJson
+ * License: https://github.com/j-brooke/FracturedJson/blob/main/LICENSE
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System;
 
-namespace FracturedJsonCli
+namespace FracturedJson
 {
-    public enum FracturedEolStyle
+    /// <summary>
+    /// Specifies what sort of line endings to use.
+    /// </summary>
+    public enum EolStyle
     {
+        /// <summary>
+        /// The native environment's line endings will be used.
+        /// </summary>
         Default,
+
+        /// <summary>
+        /// Carriage Return, followed by a line feed.  Windows-style.
+        /// </summary>
         Crlf,
+
+        /// <summary>
+        /// Just a line feed.  Unix-style.
+        /// </summary>
         Lf,
     }
 
     /// <summary>
-    /// Class that outputs JSON formatted in a compact user-readable way.  Arrays and objects that are neither
-    /// too complex nor too long are written as single lines.  More complex elements are written to multiple
-    /// lines, indented.
+    /// Class that outputs JSON formatted in a compact, user-readable way.  Any given container is formatted in one
+    /// of three ways:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <description>Arrays or objects will be written on a single line, if their contents aren't too complex
+    ///     and the resulting line wouldn't be too long.</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Arrays can be written on multiple lines, with multiple items per line, as long as those
+    ///     items aren't too complex.</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Otherwise, each object property or array item is written begining on its own line, indented
+    ///     one step deeper than its parent.</description>
+    ///   </item>
+    /// </list>
     /// </summary>
-    public class FracturedJson
+    public class Formatter
     {
         /// <summary>
         /// Dictates what sort of line endings to use.
         /// </summary>
-        public FracturedEolStyle EolStyle { get; set; } = FracturedEolStyle.Default;
+        public EolStyle JsonEolStyle { get; set; } = EolStyle.Default;
 
         /// <summary>
         /// Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
@@ -341,10 +377,10 @@ namespace FracturedJsonCli
             _colonPaddingStr = (ColonPadding)? " " : "";
             _commaPaddingStr = (CommaPadding)? " " : "";
 
-            _eolStr = EolStyle switch
+            _eolStr = JsonEolStyle switch
             {
-                FracturedEolStyle.Crlf => "\r\n",
-                FracturedEolStyle.Lf => "\n",
+                EolStyle.Crlf => "\r\n",
+                EolStyle.Lf => "\n",
                 _ => Environment.NewLine,
             };
         }

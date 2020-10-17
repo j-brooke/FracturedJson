@@ -3,20 +3,21 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using Mono.Options;
+using FracturedJson;
 
 namespace FracturedJsonCli
 {
     /// <summary>
-    /// Commandline app to format JSON using FracturedJson.  Output is to standard out.  Input
+    /// Commandline app to format JSON using FracturedJson.Formatter.  Output is to standard out.  Input
     /// is expected from standard in, or you can use --file and give it a file name.
     /// </summary>
     internal static class Cli
     {
-        internal static void Main(string[] args)
+        internal static int Main(string[] args)
         {
             try
             {
-                var formatter = new FracturedJson();
+                var formatter = new Formatter();
 
                 bool showHelp = false;
                 string? fileName = null;
@@ -31,9 +32,9 @@ namespace FracturedJsonCli
                     { "m|multiline=", "maximum multi-line array complexity", (int n) => formatter.MaxCompactArrayComplexity = n },
                     { "l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n },
                     { "t|tab", "use tabs for indentation", v => formatter.IndentString = "\t" },
-                    { "s|space=", "use this many spaces", (int n) => formatter.IndentString = new string(' ', n) },
-                    { "w|windows", "use Windows line endings (CRLF)", v => formatter.EolStyle = FracturedEolStyle.Crlf },
-                    { "u|unix", "use Unix line endings (LF)", v => formatter.EolStyle = FracturedEolStyle.Lf },
+                    { "s|space=", "use this many spaces per indent level", (int n) => formatter.IndentString = new string(' ', n) },
+                    { "w|windows", "use Windows line endings (CRLF)", v => formatter.JsonEolStyle = EolStyle.Crlf },
+                    { "u|unix", "use Unix line endings (LF)", v => formatter.JsonEolStyle = EolStyle.Lf },
                 };
 
                 cliOpts.Parse(args);
@@ -41,7 +42,7 @@ namespace FracturedJsonCli
                 if (showHelp)
                 {
                     ShowHelp(cliOpts);
-                    return;
+                    return 0;
                 }
 
                 if (noPadding)
@@ -67,15 +68,17 @@ namespace FracturedJsonCli
                 else
                 {
                     ShowHelp(cliOpts);
-                    return;
+                    return 1;
                 }
 
                 var formattedDoc = formatter.Serialize(jsonDocument);
                 Console.WriteLine(formattedDoc);
+                return 0;
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine(ex.ToString());
+                return 1;
             }
         }
 

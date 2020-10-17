@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <Nullable>enable</Nullable>
+        <Title>FracturedJson</Title>
+        <Description>A library for formatting JSON in a user-readable but compact way.</Description>
+        <Copyright>2020 Jesse Brooke</Copyright>
+        <PackageProjectUrl>https://github.com/j-brooke/FracturedJson</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/j-brooke/FracturedJson/blob/main/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <PackageTags>JSON formatter</PackageTags>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DocumentationFile></DocumentationFile>
+    </PropertyGroup>
+
+</Project>

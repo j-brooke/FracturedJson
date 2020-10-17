@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FracturedJsonCli", "FracturedJsonCli\FracturedJsonCli.csproj", "{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FracturedJson", "FracturedJson\FracturedJson.csproj", "{A9110706-09EB-4DB8-8842-88152A530C5D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,17 @@ Global
 		{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}.Release|x64.Build.0 = Release|Any CPU
 		{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}.Release|x86.ActiveCfg = Release|Any CPU
 		{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}.Release|x86.Build.0 = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|x64.Build.0 = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Debug|x86.Build.0 = Debug|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|x64.ActiveCfg = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|x64.Build.0 = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|x86.ActiveCfg = Release|Any CPU
+		{A9110706-09EB-4DB8-8842-88152A530C5D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

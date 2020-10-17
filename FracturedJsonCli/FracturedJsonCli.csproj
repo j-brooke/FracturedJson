@@ -4,11 +4,16 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
-        <AssemblyVersion>0.0.1</AssemblyVersion>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Mono.Options" Version="6.6.0.161" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FracturedJson\FracturedJson.csproj" />
     </ItemGroup>
 
 </Project>
