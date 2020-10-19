@@ -76,9 +76,8 @@ namespace FracturedJson
 
         /// <summary>
         /// Maximum nesting level that can be arranged spanning multiple lines, with multiple items per line.
-        /// (Use -1 to disable this even for primitive array elements.)
         /// </summary>
-        public int MaxCompactArrayComplexity { get; set; }
+        public int MaxCompactArrayComplexity { get; set; } = 1;
 
         /// <summary>
         /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
@@ -185,7 +184,7 @@ namespace FracturedJson
 
             // We couldn't do a single line.  But if all child elements are simple and we're allowed, write
             // them on a couple lines, multiple items per line.
-            if (maxChildComplexity<=MaxCompactArrayComplexity)
+            if (maxChildComplexity<MaxCompactArrayComplexity)
             {
                 var multiInlineStr = FormatArrayMultiInlineSimple(depth, items);
                 return multiInlineStr;
