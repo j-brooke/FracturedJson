@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>FracturedJson - Browser Formatter </title>
+
+<script>
+class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexity=2;this.MaxCompactArrayComplexity=1;this.NestedBracketPadding=true;this.ColonPadding=true;this.CommaPadding=true;this.IndentString="    ";this._colonPaddingStr="";this._commaPaddingStr="";this._eolStr="\n";this._indentArray=[]}Serialize(document){this._setPaddingStrings();const root=this._formatElement(0,document);return root.value}_formatElement(depth,element){if(Array.isArray(element)){return this._formatArray(depth,element)}else if(element==null){return this._formatSimple(element)}else if(typeof(element)=="object"){return this._formatObject(depth,element)}else{return this._formatSimple(element)}}_formatArray(depth,array){let maxChildComplexity=0;let items=array.map(val=>{let childElem=this._formatElement(depth+1,val);maxChildComplexity=Math.max(maxChildComplexity,childElem.complexity);return childElem});if(items.length==0){return{value:"[]",complexity:0}}let lengthEstimate=items.reduce((acc,newVal)=>acc+newVal.value.length+1,0);if(maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){var inlineStr=this._formatArrayInline(items,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}if(maxChildComplexity<this.MaxCompactArrayComplexity){return this._formatArrayMultiInlineSimple(depth,items)}const buff=[];buff.push("[",this._eolStr);let firstElem=true;for(let item of items){if(!firstElem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push(item.value);firstElem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatArrayInline(itemList,maxChildComplexity){const buff=[];buff.push("[");if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}let firstElem=true;for(let itemStr of itemList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push(itemStr.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatArrayMultiInlineSimple(depth,itemList){const buff=[];buff.push("[",this._eolStr);buff.push(this._indent(depth+1));let lineLengthSoFar=0;let itemIndex=0;while(itemIndex<itemList.length){const notLastItem=itemIndex<itemList.length-1;const segmentLength=itemList[itemIndex].value.length+((notLastItem)?1+this._commaPaddingStr.length:0);if(lineLengthSoFar+segmentLength>this.MaxInlineLength&&lineLengthSoFar>0){buff.push(this._eolStr);buff.push(this._indent(depth+1));lineLengthSoFar=0}buff.push(itemList[itemIndex].value);if(notLastItem){buff.push(",",this._commaPaddingStr)}itemIndex+=1;lineLengthSoFar+=segmentLength}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff)}}_formatObject(depth,obj){let maxChildComplexity=0;let keyValPairs=Object.keys(obj).map(key=>{let formattedProp=this._formatElement(depth+1,obj[key]);formattedProp["name"]=String(key);maxChildComplexity=Math.max(maxChildComplexity,formattedProp.complexity);return formattedProp});if(keyValPairs.length==0){return{value:"{}",complexity:0}}const lengthEstimate=keyValPairs.reduce((acc,kvp)=>kvp.name.length+kvp.value.length+4,0);if(maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){const inlineStr=this._formatObjectInline(keyValPairs,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}const buff=[];buff.push("{",this._eolStr);let firstItem=true;for(let prop of keyValPairs){if(!firstItem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstItem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatObjectInline(propsList,maxChildComplexity){const buff=[];buff.push("{");if(this.NestedBracketPadding&&maxChildComplexity){buff.push(" ")}let firstElem=true;for(let prop of propsList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatSimple(simpleElem){return{value:JSON.stringify(simpleElem),complexity:0}}_indent(depth){let indentStr=this._indentArray[depth];if(indentStr==undefined){indentStr="";for(let i=0;i<depth;i+=1){indentStr+=this.IndentString}this._indentArray[depth]=indentStr}return indentStr}_setPaddingStrings(){this._colonPaddingStr=(this.ColonPadding)?" ":"";this._commaPaddingStr=(this.CommaPadding)?" ":"";this._eolStr="\n";this._indentArray=[]}_combine(strArray){return strArray.join('')}}
+</script>
+
+<script>
+    function doFormat(minify) {
+        const outputElem = document.getElementById("jsonOutput");
+        outputElem.value = "";
+
+        const inputVal = document.getElementById("jsonInput").value;
+
+        let outputVal = "";
+        try {
+            const objFormOfInput = JSON.parse(inputVal);
+
+            if (minify) {
+                outputVal = JSON.stringify(objFormOfInput);
+            }
+            else {
+                const format = new FracturedJson();
+                format.MaxInlineLength = Number(document.getElementById("maxInlineLength").value);
+                format.MaxInlineComplexity = Number(document.getElementById("maxInlineComplexity").value);
+                format.MaxCompactArrayComplexity = Number(document.getElementById("maxCompactArrayComplexity").value);
+                format.NestedBracketPadding = document.getElementById("nestedBracketPadding").checked;
+                format.ColonPadding = document.getElementById("colonPadding").checked;
+                format.CommaPadding = document.getElementById("commaPadding").checked;
+                format.IndentString = document.getElementById("indentString").value;
+
+                outputVal = format.Serialize(objFormOfInput);
+            }
+        }
+        catch (ex) {
+            outputVal = String(ex);
+        }
+
+        outputElem.value = outputVal;
+    }
+
+    function sampleData() {
+        const data = {"SimpleItem":77,"ShortArray":["blue","blue","orange","gray"],"LongArray":[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293],"LongArray2":[[19,2],[3,8],[14,0],[9,9],[9,9],[0,3],[10,1],[9,1],[9,2],[6,13],[18,5],[4,11],[12,2]],"ComplexObject":{"Subthing1":{"X":55,"Y":19,"Z":-4},"Subthing2":{"Q":null,"W":[-2,-1,0,1]},"Distraction":[[],null,null]}};
+        document.getElementById("jsonInput").value = JSON.stringify(data);
+    }
+</script>
+
+<style>
+    body {
+        background-color: lightblue;
+    }
+
+    button {
+        font-size: large;
+    }
+
+    textarea {
+        width: 100%;
+    }
+
+    .json-box {
+        background-color: aliceblue;
+    }
+
+    .option-group {
+        float: left;
+        padding: 0.2em 0.2em 0.5em 0.5em;
+    }
+
+    .buttons {
+        clear: both;
+        padding: 0.2em 0.2em 0.5em 0.5em;
+    }
+
+    .warning-box {
+        background-color: coral;
+        border-style: solid;
+        border-width: medium;
+        padding: 1.2em 1.2em 1.2em 1.2em;
+        font-size: larger;
+    }
+</style>
+</head>
+
+<body>
+    <div>
+        <h1>FracturedJson</h1>
+        <p>A JSON formatter the produces human-readable but fairly compact output.</p>
+        <ul>
+            <li>Arrays and objects are written on single lines, if their contents aren't too complex
+            and the resulting line wouldn't be too long.</li>
+            <li>Arrays can be written on multiple lines, with multiple items per line, as long as those
+            items aren't too complex.</li>
+            <li>Otherwise, each object property or array item is written begining on its own line, indented
+            one step deeper than its parent.</li>
+        </ul>
+    </div>
+
+    <hr />
+    <div>
+        <a href="https://github.com/j-brooke/FracturedJson/wiki">Home</a>
+        &mdash;
+        <a href="https://github.com/j-brooke/FracturedJson/wiki/.NET-Commandline-App">.NET Commandline App</a>
+        &mdash;
+        <a href="https://github.com/j-brooke/FracturedJson/wiki/.NET-Library">.NET Library</a>
+        <a href="https://www.nuget.org/packages/FracturedJson">(NuGet)</a>
+        &mdash;
+        <a href="https://github.com/j-brooke/FracturedJsonJs">Javascript Module</a>
+        <a href="https://www.npmjs.com/package/fracturedjsonjs">(npm)</a>
+    </div>
+    <hr />
+
+    <div>
+        <form>
+            <noscript>
+                <p class="warning-box">Please enabled Javascript to use the formatter.
+                There's nothing shady going on here - honest!</p>
+            </noscript>
+
+            <div>
+                <div><label for="jsonInput">JSON Input:</label></div>
+                <textarea class="json-box" autofocus rows="15" cols="100" id="jsonInput" placeholder="Paste your favorite JSON data here, or press the Sample Data button"></textarea>
+            </div>
+
+            <div>
+                <div class="option-container">
+                    <div class="option-group">
+                        <div><input type="number" min="0" step="10" value="80" id="maxInlineLength">Maximum Inline Length</input></div>
+                        <div><input type="number" min="0" value="2" id="maxInlineComplexity">Maximum Inline Complexity</input></div>
+                        <div><input type="number" min="0" value="1" id="maxCompactArrayComplexity">Maximum Compact Array Complexity</input></div>
+                    </div>
+                    <div class="option-group">
+                        <div><input type="checkbox" checked="true" id="nestedBracketPadding">Nested Bracket Padding</input></div>
+                        <div><input type="checkbox" checked="true" id="colonPadding">Colon Padding</input></div>
+                        <div><input type="checkbox" checked="true" id="commaPadding">Comma Padding</input></div>
+                    </div>
+
+                    <div class="option-group">
+                        <select name="indentString" id="indentString">
+                            <option value="">None</option>
+                            <option value="&#9;">Tab</option>
+                            <option value=" ">1 Space</option>
+                            <option value="  ">2 Spaces</option>
+                            <option value="   ">3 Spaces</option>
+                            <option value="    " selected="true">4 Spaces</option>
+                            <option value="     ">5 Spaces</option>
+                            <option value="      ">6 Spaces</option>
+                            <option value="       ">7 Spaces</option>
+                            <option value="        ">8 Spaces</option>
+                        </select>
+                        <label for="indentString">Indentation</label><br/>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button type="button" onclick="doFormat(false)">Format</button>
+                    <button type="button" onclick="doFormat(true)">Minify</button>
+                    <button type="button" onClick="sampleData()">Sample Data</button>
+                </div>
+            </div>
+
+            <div>
+                <div><label for="jsonOutput">Formatted Output:</label></div>
+                <textarea class="json-box" rows="15" cols="100" id="jsonOutput" placeholder="Formatted JSON will appear here"></textarea>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
