@@ -52,6 +52,39 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         const data = {"SimpleItem":77,"ComplexObject":{"Subthing1":{"X":55,"Y":19,"Z":-4},"Subthing2":{"Q":null,"W":[-2,-1,0,1]},"Distraction":[[],null,null]},"ShortArray":["blue","blue","orange","gray"],"LongArray":[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293],"LongArray2":[[19,2],[3,8],[14,0],[9,9],[9,9],[0,3],[10,1],[9,1],[9,2],[6,13],[18,5],[4,11],[12,2]]};
         document.getElementById("jsonInput").value = JSON.stringify(data);
     }
+
+    function saveOptions() {
+        localStorage["maxInlineLength"] = document.getElementById("maxInlineLength").value;
+        localStorage["maxInlineComplexity"] = document.getElementById("maxInlineComplexity").value;
+        localStorage["maxCompactArrayComplexity"] = document.getElementById("maxCompactArrayComplexity").value;
+        localStorage["nestedBracketPadding"] = document.getElementById("nestedBracketPadding").checked;
+        localStorage["colonPadding"] = document.getElementById("colonPadding").checked;
+        localStorage["commaPadding"] = document.getElementById("commaPadding").checked;
+        localStorage["indentString"] = document.getElementById("indentString").value;
+    }
+
+    function loadOptions() {
+        if (typeof(Storage) == "undefined")
+            return;
+
+        const defaults = new FracturedJson();
+        document.getElementById("maxInlineLength").value = Number(localStorage["maxInlineLength"] || defaults.MaxInlineLength);
+        document.getElementById("maxInlineComplexity").value = Number(localStorage["maxInlineComplexity"] || defaults.MaxInlineComplexity);
+        document.getElementById("maxCompactArrayComplexity").value = Number(localStorage["maxCompactArrayComplexity"] || defaults.MaxCompactArrayComplexity);
+        document.getElementById("nestedBracketPadding").checked = boolOrDefault(localStorage["nestedBracketPadding"], defaults.NestedBracketPadding);
+        document.getElementById("colonPadding").checked = boolOrDefault(localStorage["colonPadding"], defaults.ColonPadding);
+        document.getElementById("commaPadding").checked = boolOrDefault(localStorage["commaPadding"], defaults.CommaPadding);
+        document.getElementById("indentString").value = (localStorage["indentString"]!==undefined)? localStorage["indentString"] : defaults.IndentString;
+    }
+
+    function boolOrDefault(stored, defaultVal) {
+        return (stored===undefined)? defaultVal : (stored==="true");
+    }
+
+    function resetOptions() {
+        localStorage.clear();
+        loadOptions();
+    }
 </script>
 
 <style>
@@ -91,7 +124,7 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
 </style>
 </head>
 
-<body>
+<body onload="loadOptions()">
     <div>
         <h1>FracturedJson</h1>
         <p>A JSON formatter that produces human-readable but fairly compact output.</p>
@@ -124,8 +157,7 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
     <div>
         <form spellcheck="false">
             <noscript>
-                <p class="warning-box">Please enable Javascript to use the formatter.
-                There's nothing shady going on here - honest!</p>
+                <p class="warning-box">Please enable Javascript to use the formatter.  All processing is done client-side; your data isn't sent anywhere.</p>
             </noscript>
 
             <div>
@@ -136,18 +168,18 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
             <div>
                 <div class="option-container">
                     <div class="option-group">
-                        <div><input type="number" min="0" step="10" value="80" id="maxInlineLength">Maximum Inline Length</input></div>
-                        <div><input type="number" min="0" value="2" id="maxInlineComplexity">Maximum Inline Complexity</input></div>
-                        <div><input type="number" min="0" value="1" id="maxCompactArrayComplexity">Maximum Compact Array Complexity</input></div>
+                        <div><input type="number" onchange="saveOptions()" min="0" step="10" value="80" id="maxInlineLength">Maximum Inline Length</input></div>
+                        <div><input type="number" onchange="saveOptions()" min="0" value="2" id="maxInlineComplexity">Maximum Inline Complexity</input></div>
+                        <div><input type="number" onchange="saveOptions()" min="0" value="1" id="maxCompactArrayComplexity">Maximum Compact Array Complexity</input></div>
                     </div>
                     <div class="option-group">
-                        <div><input type="checkbox" checked="true" id="nestedBracketPadding">Nested Bracket Padding</input></div>
-                        <div><input type="checkbox" checked="true" id="colonPadding">Colon Padding</input></div>
-                        <div><input type="checkbox" checked="true" id="commaPadding">Comma Padding</input></div>
+                        <div><input type="checkbox" onchange="saveOptions()" checked="true" id="nestedBracketPadding">Nested Bracket Padding</input></div>
+                        <div><input type="checkbox" onchange="saveOptions()" checked="true" id="colonPadding">Colon Padding</input></div>
+                        <div><input type="checkbox" onchange="saveOptions()" checked="true" id="commaPadding">Comma Padding</input></div>
                     </div>
 
                     <div class="option-group">
-                        <select name="indentString" id="indentString">
+                        <select name="indentString" id="indentString" onchange="saveOptions()">
                             <option value="">None</option>
                             <option value="&#9;">Tab</option>
                             <option value=" ">1 Space</option>
@@ -160,13 +192,17 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
                             <option value="        ">8 Spaces</option>
                         </select>
                         <label for="indentString">Indentation</label><br/>
+                        <a href="https://github.com/j-brooke/FracturedJson/wiki/Options" target="_blank">Option Help</a>
                     </div>
+
+                    <div class="option-group"></div>
                 </div>
 
                 <div class="buttons">
                     <button type="button" onclick="doFormat(false)">Format</button>
                     <button type="button" onclick="doFormat(true)">Minify</button>
                     <button type="button" onClick="sampleData()">Sample Data</button>
+                    <button type="button" onClick="resetOptions()">Reset Options</button>
                 </div>
             </div>
 
