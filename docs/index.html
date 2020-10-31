@@ -100,8 +100,13 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         width: 100%;
     }
 
+    h1 {
+        margin-top: 0em;
+    }
+
     .json-box {
         background-color: aliceblue;
+        font-family: monospace;
     }
 
     .option-group {
@@ -110,7 +115,6 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
     }
 
     .buttons {
-        clear: both;
         padding: 0.2em 0.2em 0.5em 0.5em;
     }
 
@@ -121,11 +125,25 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         padding: 1.2em 1.2em 1.2em 1.2em;
         font-size: larger;
     }
+
+    .icon {
+        float: left;
+        width: 160px;
+    }
+
+    .unfloat {
+        clear:both;
+    }
+
+    .intro-text {
+        float: left;
+    }
 </style>
 </head>
 
 <body onload="loadOptions()">
-    <div>
+    <img src="logo_256.png" class="icon"/>
+    <div class="intro-text">
         <h1>FracturedJson</h1>
         <p>A JSON formatter that produces human-readable but fairly compact output.</p>
         <ul>
@@ -137,6 +155,8 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
             one step deeper than its parent.</li>
         </ul>
     </div>
+
+    <div class="unfloat"></div>
 
     <hr />
     <div>
@@ -197,6 +217,8 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
 
                     <div class="option-group"></div>
                 </div>
+
+                <div class="unfloat"></div>
 
                 <div class="buttons">
                     <button type="button" onclick="doFormat(false)">Format</button>
