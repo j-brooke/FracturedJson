@@ -10,13 +10,17 @@
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>1.0.1</AssemblyVersion>
-        <PackageTags>JSON formatter</PackageTags>
-        <PackageVersion>1.0.1</PackageVersion>
+        <AssemblyVersion>1.0.2</AssemblyVersion>
+        <PackageTags>JSON formatter pretty printer beautifier</PackageTags>
+        <PackageVersion>1.0.2</PackageVersion>
+        <PackageIcon>packageIcon.png</PackageIcon>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DocumentationFile></DocumentationFile>
     </PropertyGroup>
 
+    <ItemGroup>
+        <None Include="packageIcon.png" Pack="true" PackagePath=""/>
+    </ItemGroup>
 </Project>
