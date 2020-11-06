@@ -153,15 +153,17 @@ namespace FracturedJson
         private string FormatArray(int depth, JsonElement array, out int complexity)
         {
             var maxChildComplexity = 0;
+            long lengthEstimate = 0;
+            var items = new List<string>(array.GetArrayLength());
 
             // Format all array items, and pay attention to how complex they are.
-            var items = array.EnumerateArray()
-                .Select(je => {
-                    var elemStr = FormatElement(depth+1, je, out var childComplexity);
-                    maxChildComplexity = Math.Max(maxChildComplexity, childComplexity);
-                    return elemStr;
-                })
-                .ToList();
+            foreach (var arrElem in array.EnumerateArray())
+            {
+                var elemStr = FormatElement(depth + 1, arrElem, out var childComplexity);
+                items.Add(elemStr);
+                maxChildComplexity = Math.Max(maxChildComplexity, childComplexity);
+                lengthEstimate += elemStr.Length + 1;
+            }
 
             // Treat an empty array as a primitive: zero complexity.
             if (items.Count==0)
@@ -170,11 +172,13 @@ namespace FracturedJson
                 return "[]";
             }
 
+            if (lengthEstimate>int.MaxValue)
+                throw new ArgumentException("The JSON document is too large to be formatted");
+
             complexity = maxChildComplexity + 1;
 
             // Try formatting this array as a single line, if none of the children are too complex,
             // and the total length isn't excessive.
-            var lengthEstimate = items.Sum(valStr => valStr.Length+1);
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
                 var inlineStr = FormatArrayInline(items, maxChildComplexity);
@@ -192,7 +196,8 @@ namespace FracturedJson
 
             // If we've gotten this far, we have to write it as a complex object.  Each child element gets its own
             // line (or more).
-            var buff = new StringBuilder(lengthEstimate * 3 / 2);
+            var bufferCapacity = Math.Min(16, (int) Math.Min(lengthEstimate * 3 / 2, int.MaxValue));
+            var buff = new StringBuilder(bufferCapacity);
             buff.Append('[').Append(_eolStr);
             var firstElem = true;
             foreach (var item in items)
@@ -276,15 +281,17 @@ namespace FracturedJson
         private string FormatObject(int depth, JsonElement obj, out int complexity)
         {
             var maxChildComplexity = 0;
+            long lengthEstimate = 0;
+            var keyValPairs = new List<FormattedProperty>();
 
             // Format all child property values.
-            var keyValPairs = obj.EnumerateObject()
-                .Select( jp => {
-                    var valStr = FormatElement(depth+1, jp.Value, out var valComplexity);
-                    maxChildComplexity = Math.Max(maxChildComplexity, valComplexity);
-                    return new FormattedProperty(jp.Name, valStr);
-                })
-                .ToList();
+            foreach (var jsonProp in obj.EnumerateObject())
+            {
+                var valStr = FormatElement(depth + 1, jsonProp.Value, out var valComplexity);
+                maxChildComplexity = Math.Max(maxChildComplexity, valComplexity);
+                lengthEstimate += valStr.Length + jsonProp.Name.Length + 4;
+                keyValPairs.Add(new FormattedProperty(jsonProp.Name, valStr));
+            }
 
             // Treat an empty array as a primitive: zero complexity.
             if (keyValPairs.Count==0)
@@ -293,11 +300,13 @@ namespace FracturedJson
                 return "{}";
             }
 
+            if (lengthEstimate>int.MaxValue)
+                throw new ArgumentException("The JSON document is too large to be formatted");
+
             complexity = maxChildComplexity + 1;
 
             // Try formatting this object in a single line, if none of the children are too complicated, and
             // the total length isn't too long.
-            var lengthEstimate = keyValPairs.Sum(kvp => kvp.Name.Length + kvp.Value.Length + 4);
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
                 var inlineStr = FormatObjectInline(keyValPairs, maxChildComplexity);
@@ -307,7 +316,9 @@ namespace FracturedJson
 
             // If we've gotten this far, we have to write it as a complex object.  Each child property gets its
             // own line, or more.
-            var buff = new StringBuilder();
+            var bufferCapacity = Math.Min(16, (int) Math.Min(lengthEstimate * 3 / 2, int.MaxValue));
+            var buff = new StringBuilder(bufferCapacity);
+
             buff.Append('{').Append(_eolStr);
             var firstItem = true;
             foreach (var prop in keyValPairs)
