@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace FracturedJson
@@ -124,6 +125,28 @@ namespace FracturedJson
         {
             SetPaddingStrings();
             return FormatElement(0, document.RootElement, out _);
+        }
+
+        /// <summary>
+        /// Returns a reformatted version of the given JSON string.
+        /// </summary>
+        public string Serialize(string jsonData)
+        {
+            var parserOpts = new JsonDocumentOptions() {CommentHandling = JsonCommentHandling.Skip};
+            var jsonDoc = JsonDocument.Parse(jsonData, parserOpts);
+            return Serialize(jsonDoc);
+        }
+
+        /// <summary>
+        /// Returns the JSON documented formatted as a string, with simpler collections written in single
+        /// lines where possible.
+        /// </summary>
+        public string Serialize<T>(T obj, JsonSerializerOptions? options = null)
+        {
+            if (options==null)
+                options = new JsonSerializerOptions() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            var doc = JsonSerializer.Serialize<T>(obj, options);
+            return Serialize(doc);
         }
 
         private const string _legalWhitespace = " \r\n\t";
