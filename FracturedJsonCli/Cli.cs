@@ -25,16 +25,25 @@ namespace FracturedJsonCli
 
                 var cliOpts = new OptionSet()
                 {
-                    { "h|help", "show this help info and exit", v => showHelp = (v!=null) },
-                    { "f|file=", "input from file instead of stdin", s => fileName = s },
-                    { "p|no-padding", "don't include padding spaces", v => noPadding = (v!=null) },
-                    { "c|complexity=", "maximum inline complexity", (int n) => formatter.MaxInlineComplexity = n },
-                    { "m|multiline=", "maximum multi-line array complexity", (int n) => formatter.MaxCompactArrayComplexity = n },
-                    { "l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n },
-                    { "t|tab", "use tabs for indentation", v => formatter.IndentString = "\t" },
-                    { "s|space=", "use this many spaces per indent level", (int n) => formatter.IndentString = new string(' ', n) },
-                    { "w|windows", "use Windows line endings (CRLF)", v => formatter.JsonEolStyle = EolStyle.Crlf },
-                    { "u|unix", "use Unix line endings (LF)", v => formatter.JsonEolStyle = EolStyle.Lf },
+                    {"h|help", "show this help info and exit", v => showHelp = (v != null)},
+                    {"f|file=", "input from file instead of stdin", s => fileName = s},
+                    {"p|no-padding", "don't include padding spaces", v => noPadding = (v != null)},
+                    {"c|complexity=", "maximum inline complexity", (int n) => formatter.MaxInlineComplexity = n},
+                    {
+                        "m|multiline=",
+                        "maximum multi-line array complexity",
+                        (int n) => formatter.MaxCompactArrayComplexity = n
+                    },
+                    {"l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n},
+                    {"t|tab", "use tabs for indentation", v => formatter.IndentString = "\t"},
+                    {"j|justify", "justify number lists", v => formatter.JustifyNumberLists = (v != null)},
+                    {
+                        "s|space=",
+                        "use this many spaces per indent level",
+                        (int n) => formatter.IndentString = new string(' ', n)
+                    },
+                    {"w|windows", "use Windows line endings (CRLF)", v => formatter.JsonEolStyle = EolStyle.Crlf},
+                    {"u|unix", "use Unix line endings (LF)", v => formatter.JsonEolStyle = EolStyle.Lf},
                 };
 
                 cliOpts.Parse(args);

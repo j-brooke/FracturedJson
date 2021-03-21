@@ -102,6 +102,11 @@ namespace FracturedJson
         public bool CommaPadding { get; set; } = true;
 
         /// <summary>
+        /// If true, numbers in lists of nothing but numbers are right-justified and padded to the same length.
+        /// </summary>
+        public bool JustifyNumberLists { get; set; }
+
+        /// <summary>
         /// String composed of spaces and/or tabs specifying one unit of indentation.  Default is 4 spaces.
         /// </summary>
         /// <exception cref="ArgumentException">
@@ -124,7 +129,7 @@ namespace FracturedJson
         public string Serialize(JsonDocument document)
         {
             SetPaddingStrings();
-            return FormatElement(0, document.RootElement, out _);
+            return FormatElement(0, document.RootElement).Value;
         }
 
         /// <summary>
@@ -143,9 +148,8 @@ namespace FracturedJson
         /// </summary>
         public string Serialize<T>(T obj, JsonSerializerOptions? options = null)
         {
-            if (options==null)
-                options = new JsonSerializerOptions() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var doc = JsonSerializer.Serialize<T>(obj, options);
+            options ??= new JsonSerializerOptions() {Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping};
+            var doc = JsonSerializer.Serialize(obj, options);
             return Serialize(doc);
         }
 
@@ -155,67 +159,56 @@ namespace FracturedJson
         private string _commaPaddingStr = string.Empty;
         private string _eolStr = string.Empty;
 
-        /// <summary>
-        /// Return the element as a formatted string, recursively.  The string doesn't have any leading or
-        /// trailing whitespace, but if it's an array/object, it might have internal newlines and indentation.
-        /// The assumption is that whatever contains this element will take care of positioning the start.
-        /// </summary>
-        private string FormatElement(int depth, JsonElement element, out int complexity)
+        private FormattedElem FormatElement(int depth, JsonElement element)
         {
-            switch (element.ValueKind)
+            return element.ValueKind switch
             {
-                case JsonValueKind.Array:
-                    return FormatArray(depth, element, out complexity);
-                case JsonValueKind.Object:
-                    return FormatObject(depth, element, out complexity);
-                default:
-                    return FormatSimple(element, out complexity);
-            }
+                JsonValueKind.Array => FormatArray(depth, element),
+                JsonValueKind.Object => FormatObject(depth, element),
+                _ => FormatSimple(element)
+            };
         }
 
-        private string FormatArray(int depth, JsonElement array, out int complexity)
+        private FormattedElem FormatSimple(JsonElement element)
         {
-            var maxChildComplexity = 0;
-            long lengthEstimate = 0;
-            var items = new List<string>(array.GetArrayLength());
+            // Return the existing text of the item.  Since it's not an array or object, there won't be any ambiguous
+            // whitespace in it.
+            return new FormattedElem(element.GetRawText(), 0, element.ValueKind);
+        }
 
-            // Format all array items, and pay attention to how complex they are.
-            foreach (var arrElem in array.EnumerateArray())
-            {
-                var elemStr = FormatElement(depth + 1, arrElem, out var childComplexity);
-                items.Add(elemStr);
-                maxChildComplexity = Math.Max(maxChildComplexity, childComplexity);
-                lengthEstimate += elemStr.Length + 1;
-            }
+        private FormattedElem FormatArray(int depth, JsonElement array)
+        {
+            var items = array.EnumerateArray()
+                .Select(child => FormatElement(depth + 1, child))
+                .ToArray();
 
             // Treat an empty array as a primitive: zero complexity.
-            if (items.Count==0)
-            {
-                complexity = 0;
-                return "[]";
-            }
+            if (items.Length == 0)
+                return new FormattedElem("[]", 0, JsonValueKind.Array);
 
+            var lengthEstimate = items.Sum(child => (long) child.Value.Length);
             if (lengthEstimate>int.MaxValue)
                 throw new ArgumentException("The JSON document is too large to be formatted");
 
-            complexity = maxChildComplexity + 1;
+            var maxChildComplexity = items.Max(child => child.Complexity);
+            var justifyLength = (JustifyNumberLists && items.All(child => child.Kind == JsonValueKind.Number))
+                ? items.Max(child => child.Value.Length)
+                : 0;
 
             // Try formatting this array as a single line, if none of the children are too complex,
             // and the total length isn't excessive.
-            if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
+            if (maxChildComplexity < MaxInlineComplexity && lengthEstimate <= MaxInlineLength)
             {
-                var inlineStr = FormatArrayInline(items, maxChildComplexity);
-                if (inlineStr.Length<=MaxInlineLength)
-                    return inlineStr;
+                var inlineElem = FormatArrayInline(items, maxChildComplexity, justifyLength);
+                if (inlineElem.Value.Length <= MaxInlineLength)
+                    return inlineElem;
             }
 
             // We couldn't do a single line.  But if all child elements are simple and we're allowed, write
             // them on a couple lines, multiple items per line.
-            if (maxChildComplexity<MaxCompactArrayComplexity)
-            {
-                var multiInlineStr = FormatArrayMultiInlineSimple(depth, items);
-                return multiInlineStr;
-            }
+            if (maxChildComplexity < MaxCompactArrayComplexity)
+                return FormatArrayMultiInlineSimple(depth, items, maxChildComplexity, justifyLength);
+
 
             // If we've gotten this far, we have to write it as a complex object.  Each child element gets its own
             // line (or more).
@@ -228,7 +221,9 @@ namespace FracturedJson
                 if (!firstElem)
                     buff.Append(',').Append(_eolStr);
                 Indent(depth+1, buff);
-                buff.Append(item);
+                if (justifyLength>0)
+                    buff.Append(' ', justifyLength-item.Value.Length);
+                buff.Append(item.Value);
                 firstElem = false;
             }
 
@@ -236,10 +231,10 @@ namespace FracturedJson
             Indent(depth, buff);
             buff.Append("]");
 
-            return buff.ToString();
+            return new FormattedElem(buff.ToString(), maxChildComplexity + 1, JsonValueKind.Array);
         }
 
-        private string FormatArrayInline(IList<string> itemList, int maxChildComplexity)
+        private FormattedElem FormatArrayInline(IList<FormattedElem> items, int maxChildComplexity, int justifyLength)
         {
             var buff = new StringBuilder(MaxInlineLength);
             buff.Append("[");
@@ -248,11 +243,13 @@ namespace FracturedJson
                 buff.Append(' ');
 
             var firstElem = true;
-            foreach (var itemStr in itemList)
+            foreach (var elem in items)
             {
                 if (!firstElem)
                     buff.Append(",").Append(_commaPaddingStr);
-                buff.Append(itemStr);
+                if (justifyLength>0)
+                    buff.Append(' ', justifyLength-elem.Value.Length);
+                buff.Append(elem.Value);
                 firstElem = false;
             }
 
@@ -260,25 +257,25 @@ namespace FracturedJson
                 buff.Append(' ');
 
             buff.Append("]");
-
-            return buff.ToString();
+            return new FormattedElem(buff.ToString(), maxChildComplexity + 1, JsonValueKind.Array);
         }
 
-        private string FormatArrayMultiInlineSimple(int depth, IList<string> itemList)
+        private FormattedElem FormatArrayMultiInlineSimple(int depth, IList<FormattedElem> items,
+            int maxChildComplexity, int justifyLength)
         {
-            var sumItemLengths = itemList.Sum(s => s.Length);
+            var sumItemLengths = items.Sum(elem => elem.Value.Length);
             var buff = new StringBuilder(sumItemLengths * 3 / 2);
             buff.Append('[').Append(_eolStr);
             Indent(depth+1, buff);
 
             var lineLengthSoFar = 0;
             var itemIndex = 0;
-            while (itemIndex<itemList.Count)
+            while (itemIndex<items.Count)
             {
-                bool notLastItem = itemIndex <itemList.Count-1;
+                bool notLastItem = itemIndex < items.Count - 1;
 
-                var segmentLength = itemList[itemIndex].Length
-                    + ((notLastItem)? 1 + _commaPaddingStr.Length : 0);
+                var itemLength = Math.Max(justifyLength, items[itemIndex].Value.Length);
+                var segmentLength = itemLength + ((notLastItem)? 1 + _commaPaddingStr.Length : 0);
                 if (lineLengthSoFar + segmentLength > MaxInlineLength && lineLengthSoFar>0)
                 {
                     buff.AppendLine();
@@ -286,7 +283,9 @@ namespace FracturedJson
                     lineLengthSoFar = 0;
                 }
 
-                buff.Append(itemList[itemIndex]);
+                if (justifyLength>0)
+                    buff.Append(' ', justifyLength-items[itemIndex].Value.Length);
+                buff.Append(items[itemIndex].Value);
                 if (notLastItem)
                     buff.Append(',').Append(_commaPaddingStr);
 
@@ -298,42 +297,38 @@ namespace FracturedJson
             Indent(depth, buff);
             buff.Append(']');
 
-            return buff.ToString();
+            return new FormattedElem(buff.ToString(), maxChildComplexity + 1, JsonValueKind.Array);
         }
 
-        private string FormatObject(int depth, JsonElement obj, out int complexity)
+        private FormattedElem FormatObject(int depth, JsonElement obj)
         {
             var maxChildComplexity = 0;
             long lengthEstimate = 0;
-            var keyValPairs = new List<FormattedProperty>();
+            var properties = new List<FormattedElem>();
 
             // Format all child property values.
             foreach (var jsonProp in obj.EnumerateObject())
             {
-                var valStr = FormatElement(depth + 1, jsonProp.Value, out var valComplexity);
-                maxChildComplexity = Math.Max(maxChildComplexity, valComplexity);
-                lengthEstimate += valStr.Length + jsonProp.Name.Length + 4;
-                keyValPairs.Add(new FormattedProperty(jsonProp.Name, valStr));
+                var item = FormatElement(depth + 1, jsonProp.Value);
+                item.Name = jsonProp.Name;
+                properties.Add(item);
+                maxChildComplexity = Math.Max(maxChildComplexity, item.Complexity);
+                lengthEstimate += item.Value.Length + jsonProp.Name.Length + 4;
             }
 
             // Treat an empty array as a primitive: zero complexity.
-            if (keyValPairs.Count==0)
-            {
-                complexity = 0;
-                return "{}";
-            }
+            if (properties.Count == 0)
+                return new FormattedElem("{}", 0, JsonValueKind.Object);
 
             if (lengthEstimate>int.MaxValue)
                 throw new ArgumentException("The JSON document is too large to be formatted");
-
-            complexity = maxChildComplexity + 1;
 
             // Try formatting this object in a single line, if none of the children are too complicated, and
             // the total length isn't too long.
             if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
-                var inlineStr = FormatObjectInline(keyValPairs, maxChildComplexity);
-                if (inlineStr.Length<=MaxInlineLength)
+                var inlineStr = FormatObjectInline(properties, maxChildComplexity);
+                if (inlineStr.Value.Length<=MaxInlineLength)
                     return inlineStr;
             }
 
@@ -344,7 +339,7 @@ namespace FracturedJson
 
             buff.Append('{').Append(_eolStr);
             var firstItem = true;
-            foreach (var prop in keyValPairs)
+            foreach (var prop in properties)
             {
                 if (!firstItem)
                     buff.Append(',').Append(_eolStr);
@@ -359,10 +354,10 @@ namespace FracturedJson
             Indent(depth, buff);
             buff.Append("}");
 
-            return buff.ToString();
+            return new FormattedElem(buff.ToString(), maxChildComplexity + 1, JsonValueKind.Object);
         }
 
-        private string FormatObjectInline(IList<FormattedProperty> propsList, int maxChildComplexity)
+        private FormattedElem FormatObjectInline(IList<FormattedElem> items, int maxChildComplexity)
         {
             var buff = new StringBuilder();
             buff.Append("{");
@@ -371,7 +366,7 @@ namespace FracturedJson
                 buff.Append(' ');
 
             var firstElem = true;
-            foreach (var prop in propsList)
+            foreach (var prop in items)
             {
                 if (!firstElem)
                     buff.Append(",").Append(_commaPaddingStr);
@@ -385,15 +380,7 @@ namespace FracturedJson
                 buff.Append(' ');
 
             buff.Append('}');
-            return buff.ToString();
-        }
-
-        private string FormatSimple(JsonElement simpleElem, out int complexity)
-        {
-            // Return the existing text of the item.  Since it's not an array or object, there won't be any ambiguous
-            // whitespace in it.
-            complexity = 0;
-            return simpleElem.GetRawText();
+            return new FormattedElem(buff.ToString(), maxChildComplexity + 1, JsonValueKind.Object);
         }
 
         private void Indent(int depth, StringBuilder buff)
@@ -418,16 +405,18 @@ namespace FracturedJson
             };
         }
 
-        // Tuples are for the weak-minded.
-        private class FormattedProperty
+        private class FormattedElem
         {
-            public string Name { get; }
+            public string Name { get; set; } = String.Empty;
             public string Value { get; }
+            public int Complexity { get; }
+            public JsonValueKind Kind { get; }
 
-            public FormattedProperty(string name, string value)
+            public FormattedElem(string value, int complexity, JsonValueKind kind)
             {
-                Name = name;
                 Value = value;
+                Complexity = complexity;
+                Kind = kind;
             }
         }
     }
