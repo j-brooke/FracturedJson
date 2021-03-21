@@ -107,6 +107,12 @@ namespace FracturedJson
         public bool JustifyNumberLists { get; set; }
 
         /// <summary>
+        /// Depth at which lists/objects are always fully expanded, regardless of other settings.
+        /// -1 = none; 0 = root node only; 1 = root node and its children.
+        /// </summary>
+        public int AlwaysExpandDepth { get; set; } = -1;
+
+        /// <summary>
         /// String composed of spaces and/or tabs specifying one unit of indentation.  Default is 4 spaces.
         /// </summary>
         /// <exception cref="ArgumentException">
@@ -195,9 +201,11 @@ namespace FracturedJson
                 ? items.Max(child => child.Value.Length)
                 : 0;
 
+            var alwaysExpandThis = depth <= AlwaysExpandDepth;
+
             // Try formatting this array as a single line, if none of the children are too complex,
             // and the total length isn't excessive.
-            if (maxChildComplexity < MaxInlineComplexity && lengthEstimate <= MaxInlineLength)
+            if (!alwaysExpandThis && maxChildComplexity < MaxInlineComplexity && lengthEstimate <= MaxInlineLength)
             {
                 var inlineElem = FormatArrayInline(items, maxChildComplexity, justifyLength);
                 if (inlineElem.Value.Length <= MaxInlineLength)
@@ -206,7 +214,7 @@ namespace FracturedJson
 
             // We couldn't do a single line.  But if all child elements are simple and we're allowed, write
             // them on a couple lines, multiple items per line.
-            if (maxChildComplexity < MaxCompactArrayComplexity)
+            if (!alwaysExpandThis && maxChildComplexity < MaxCompactArrayComplexity)
                 return FormatArrayMultiInlineSimple(depth, items, maxChildComplexity, justifyLength);
 
 
@@ -323,9 +331,11 @@ namespace FracturedJson
             if (lengthEstimate>int.MaxValue)
                 throw new ArgumentException("The JSON document is too large to be formatted");
 
+            var alwaysExpandThis = depth <= AlwaysExpandDepth;
+
             // Try formatting this object in a single line, if none of the children are too complicated, and
             // the total length isn't too long.
-            if (maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
+            if (!alwaysExpandThis && maxChildComplexity<MaxInlineComplexity && lengthEstimate<=MaxInlineLength)
             {
                 var inlineStr = FormatObjectInline(properties, maxChildComplexity);
                 if (inlineStr.Value.Length<=MaxInlineLength)
