@@ -7,15 +7,15 @@
 <script>
 /*
  * FracturedJsonJs
- * Copyright 2020 Jesse Brooke
+ * Copyright 2021 Jesse Brooke
  * License: https://github.com/j-brooke/FracturedJsonJs/blob/main/LICENSE
  * Project Site: https://github.com/j-brooke/FracturedJsonJs
  */
-class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexity=2;this.MaxCompactArrayComplexity=1;this.NestedBracketPadding=true;this.ColonPadding=true;this.CommaPadding=true;this.IndentString="    ";this._colonPaddingStr="";this._commaPaddingStr="";this._eolStr="\n";this._indentArray=[]}Serialize(document){this._setPaddingStrings();const root=this._formatElement(0,document);return root.value}_formatElement(depth,element){if(Array.isArray(element)){return this._formatArray(depth,element)}else if(element==null){return this._formatSimple(element)}else if(typeof(element)=="object"){return this._formatObject(depth,element)}else{return this._formatSimple(element)}}_formatArray(depth,array){let maxChildComplexity=0;let items=array.map(val=>{let childElem=this._formatElement(depth+1,val);maxChildComplexity=Math.max(maxChildComplexity,childElem.complexity);return childElem});if(items.length==0){return{value:"[]",complexity:0}}let lengthEstimate=items.reduce((acc,newVal)=>acc+newVal.value.length+1,0);if(maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){var inlineStr=this._formatArrayInline(items,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}if(maxChildComplexity<this.MaxCompactArrayComplexity){return this._formatArrayMultiInlineSimple(depth,items)}const buff=[];buff.push("[",this._eolStr);let firstElem=true;for(let item of items){if(!firstElem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push(item.value);firstElem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatArrayInline(itemList,maxChildComplexity){const buff=[];buff.push("[");if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}let firstElem=true;for(let itemStr of itemList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push(itemStr.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatArrayMultiInlineSimple(depth,itemList){const buff=[];buff.push("[",this._eolStr);buff.push(this._indent(depth+1));let lineLengthSoFar=0;let itemIndex=0;while(itemIndex<itemList.length){const notLastItem=itemIndex<itemList.length-1;const segmentLength=itemList[itemIndex].value.length+((notLastItem)?1+this._commaPaddingStr.length:0);if(lineLengthSoFar+segmentLength>this.MaxInlineLength&&lineLengthSoFar>0){buff.push(this._eolStr);buff.push(this._indent(depth+1));lineLengthSoFar=0}buff.push(itemList[itemIndex].value);if(notLastItem){buff.push(",",this._commaPaddingStr)}itemIndex+=1;lineLengthSoFar+=segmentLength}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff)}}_formatObject(depth,obj){let maxChildComplexity=0;let keyValPairs=Object.keys(obj).map(key=>{let formattedProp=this._formatElement(depth+1,obj[key]);formattedProp["name"]=String(key);maxChildComplexity=Math.max(maxChildComplexity,formattedProp.complexity);return formattedProp});if(keyValPairs.length==0){return{value:"{}",complexity:0}}const lengthEstimate=keyValPairs.reduce((acc,kvp)=>kvp.name.length+kvp.value.length+4,0);if(maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){const inlineStr=this._formatObjectInline(keyValPairs,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}const buff=[];buff.push("{",this._eolStr);let firstItem=true;for(let prop of keyValPairs){if(!firstItem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstItem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatObjectInline(propsList,maxChildComplexity){const buff=[];buff.push("{");if(this.NestedBracketPadding&&maxChildComplexity){buff.push(" ")}let firstElem=true;for(let prop of propsList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1}}_formatSimple(simpleElem){return{value:JSON.stringify(simpleElem),complexity:0}}_indent(depth){let indentStr=this._indentArray[depth];if(indentStr==undefined){indentStr="";for(let i=0;i<depth;i+=1){indentStr+=this.IndentString}this._indentArray[depth]=indentStr}return indentStr}_setPaddingStrings(){this._colonPaddingStr=(this.ColonPadding)?" ":"";this._commaPaddingStr=(this.CommaPadding)?" ":"";this._eolStr="\n";this._indentArray=[]}_combine(strArray){return strArray.join('')}}
+class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexity=2;this.MaxCompactArrayComplexity=1;this.NestedBracketPadding=true;this.ColonPadding=true;this.CommaPadding=true;this.JustifyNumberLists=false;this.AlwaysExpandDepth=-1;this.IndentString="    ";this.PrefixString="";this._colonPaddingStr="";this._commaPaddingStr="";this._eolStr="\n";this._indentArray=[]}Serialize(document){this._setPaddingStrings();const root=this._formatElement(0,document);return this.PrefixString+root.value}_formatElement(depth,element){if(Array.isArray(element)){return this._formatArray(depth,element)}else if(element==null){return this._formatSimple(element)}else if(typeof(element)=="object"){return this._formatObject(depth,element)}else{return this._formatSimple(element)}}_formatArray(depth,array){let maxChildComplexity=0;let items=array.map(val=>{let childElem=this._formatElement(depth+1,val);maxChildComplexity=Math.max(maxChildComplexity,childElem.complexity);return childElem});if(items.length==0){return{value:"[]",complexity:0,isNumber:false}}const justifyLength=(this.JustifyNumberLists&&items.every(child=>child.isNumber))?Math.max(...items.map(item=>item.value.length)):0;const alwaysExpandThis=depth<=this.AlwaysExpandDepth;let lengthEstimate=items.reduce((acc,newVal)=>acc+newVal.value.length+1,0);if(!alwaysExpandThis&&maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){var inlineStr=this._formatArrayInline(items,maxChildComplexity,justifyLength);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}if(!alwaysExpandThis&&maxChildComplexity<this.MaxCompactArrayComplexity){return this._formatArrayMultiInlineSimple(depth,items,maxChildComplexity,justifyLength)}const buff=[];buff.push("[",this._eolStr);let firstElem=true;for(let item of items){if(!firstElem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push(item.value.padStart(Math.max(justifyLength,item.value.length)));firstElem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatArrayInline(itemList,maxChildComplexity,justifyLength){const buff=[];buff.push("[");if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}let firstElem=true;for(let item of itemList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push(item.value.padStart(Math.max(justifyLength,item.value.length)));firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatArrayMultiInlineSimple(depth,itemList,maxChildComplexity,justifyLength){const buff=[];buff.push("[",this._eolStr);buff.push(this._indent(depth+1));let lineLengthSoFar=0;let itemIndex=0;while(itemIndex<itemList.length){const notLastItem=itemIndex<itemList.length-1;const item=itemList[itemIndex];const justifiedItemStr=item.value.padStart(Math.max(justifyLength,item.value.length));const segmentLength=justifiedItemStr.length+((notLastItem)?1+this._commaPaddingStr.length:0);if(lineLengthSoFar+segmentLength>this.MaxInlineLength&&lineLengthSoFar>0){buff.push(this._eolStr);buff.push(this._indent(depth+1));lineLengthSoFar=0}buff.push(justifiedItemStr);if(notLastItem){buff.push(",",this._commaPaddingStr)}itemIndex+=1;lineLengthSoFar+=segmentLength}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatObject(depth,obj){let maxChildComplexity=0;let keyValPairs=Object.keys(obj).map(key=>{let formattedProp=this._formatElement(depth+1,obj[key]);formattedProp["name"]=String(key);maxChildComplexity=Math.max(maxChildComplexity,formattedProp.complexity);return formattedProp});if(keyValPairs.length==0){return{value:"{}",complexity:0,isNumber:false}}const alwaysExpandThis=depth<=this.AlwaysExpandDepth;const lengthEstimate=keyValPairs.reduce((acc,kvp)=>kvp.name.length+kvp.value.length+4,0);if(!alwaysExpandThis&&maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){const inlineStr=this._formatObjectInline(keyValPairs,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}const buff=[];buff.push("{",this._eolStr);let firstItem=true;for(let prop of keyValPairs){if(!firstItem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstItem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatObjectInline(propsList,maxChildComplexity){const buff=[];buff.push("{");if(this.NestedBracketPadding&&maxChildComplexity){buff.push(" ")}let firstElem=true;for(let prop of propsList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatSimple(simpleElem){return{value:JSON.stringify(simpleElem),complexity:0,isNumber:typeof(simpleElem)=="number"}}_indent(depth){let indentStr=this._indentArray[depth];if(indentStr==undefined){indentStr=this.PrefixString;for(let i=0;i<depth;i+=1){indentStr+=this.IndentString}this._indentArray[depth]=indentStr}return indentStr}_setPaddingStrings(){this._colonPaddingStr=(this.ColonPadding)?" ":"";this._commaPaddingStr=(this.CommaPadding)?" ":"";this._eolStr="\n";this._indentArray=[];this.PrefixString||=""}_combine(strArray){return strArray.join('')}}
 </script>
 
 <script>
-    function doFormat(minify) {
+    function doFormat(formatType) {
         const outputElem = document.getElementById("jsonOutput");
         outputElem.value = "";
 
@@ -25,17 +25,33 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         try {
             const objFormOfInput = JSON.parse(inputVal);
 
-            if (minify) {
+            if (formatType=="minify") {
                 outputVal = JSON.stringify(objFormOfInput);
+            }
+            else if (formatType=="near") {
+                const format = new FracturedJson();
+                format.MaxInlineLength = 1000000000;
+                format.MaxInlineComplexity = 1000000000;
+                format.MaxCompactArrayComplexity = 1000000000;
+                format.AlwaysExpandDepth = 0;
+                format.NestedBracketPadding = false;
+                format.ColonPadding = false;
+                format.CommaPadding = false;
+                format.JustifyNumberLists = false;
+                format.IndentString = "";
+
+                outputVal = format.Serialize(objFormOfInput);
             }
             else {
                 const format = new FracturedJson();
                 format.MaxInlineLength = Number(document.getElementById("maxInlineLength").value);
                 format.MaxInlineComplexity = Number(document.getElementById("maxInlineComplexity").value);
                 format.MaxCompactArrayComplexity = Number(document.getElementById("maxCompactArrayComplexity").value);
+                format.AlwaysExpandDepth = Number(document.getElementById("alwaysExpandDepth").value);
                 format.NestedBracketPadding = document.getElementById("nestedBracketPadding").checked;
                 format.ColonPadding = document.getElementById("colonPadding").checked;
                 format.CommaPadding = document.getElementById("commaPadding").checked;
+                format.JustifyNumberLists = document.getElementById("justifyNumberLists").checked;
                 format.IndentString = document.getElementById("indentString").value;
 
                 outputVal = format.Serialize(objFormOfInput);
@@ -57,9 +73,11 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         localStorage["maxInlineLength"] = document.getElementById("maxInlineLength").value;
         localStorage["maxInlineComplexity"] = document.getElementById("maxInlineComplexity").value;
         localStorage["maxCompactArrayComplexity"] = document.getElementById("maxCompactArrayComplexity").value;
+        localStorage["alwaysExpandDepth"] = document.getElementById("alwaysExpandDepth").value;
         localStorage["nestedBracketPadding"] = document.getElementById("nestedBracketPadding").checked;
         localStorage["colonPadding"] = document.getElementById("colonPadding").checked;
         localStorage["commaPadding"] = document.getElementById("commaPadding").checked;
+        localStorage["justifyNumberLists"] = document.getElementById("justifyNumberLists").checked;
         localStorage["indentString"] = document.getElementById("indentString").value;
     }
 
@@ -71,9 +89,11 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         document.getElementById("maxInlineLength").value = Number(localStorage["maxInlineLength"] || defaults.MaxInlineLength);
         document.getElementById("maxInlineComplexity").value = Number(localStorage["maxInlineComplexity"] || defaults.MaxInlineComplexity);
         document.getElementById("maxCompactArrayComplexity").value = Number(localStorage["maxCompactArrayComplexity"] || defaults.MaxCompactArrayComplexity);
+        document.getElementById("alwaysExpandDepth").value = Number(localStorage["alwaysExpandDepth"] || defaults.AlwaysExpandDepth);
         document.getElementById("nestedBracketPadding").checked = boolOrDefault(localStorage["nestedBracketPadding"], defaults.NestedBracketPadding);
         document.getElementById("colonPadding").checked = boolOrDefault(localStorage["colonPadding"], defaults.ColonPadding);
         document.getElementById("commaPadding").checked = boolOrDefault(localStorage["commaPadding"], defaults.CommaPadding);
+        document.getElementById("justifyNumberLists").checked = boolOrDefault(localStorage["justifyNumberLists"], defaults.JustifyNumberLists);
         document.getElementById("indentString").value = (localStorage["indentString"]!==undefined)? localStorage["indentString"] : defaults.IndentString;
     }
 
@@ -191,11 +211,13 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
                         <div><input type="number" onchange="saveOptions()" min="0" step="10" value="80" id="maxInlineLength">Maximum Inline Length</input></div>
                         <div><input type="number" onchange="saveOptions()" min="0" value="2" id="maxInlineComplexity">Maximum Inline Complexity</input></div>
                         <div><input type="number" onchange="saveOptions()" min="0" value="1" id="maxCompactArrayComplexity">Maximum Compact Array Complexity</input></div>
+                        <div><input type="number" onchange="saveOptions()" value="-1" id="alwaysExpandDepth">Always-Expand Depth</input></div>
                     </div>
                     <div class="option-group">
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="nestedBracketPadding">Nested Bracket Padding</input></div>
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="colonPadding">Colon Padding</input></div>
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="commaPadding">Comma Padding</input></div>
+                        <div><input type="checkbox" onchange="saveOptions()" checked="false" id="justifyNumberLists">Justify Number Lists</input></div>
                     </div>
 
                     <div class="option-group">
@@ -221,8 +243,9 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
                 <div class="unfloat"></div>
 
                 <div class="buttons">
-                    <button type="button" onclick="doFormat(false)">Format</button>
-                    <button type="button" onclick="doFormat(true)">Minify</button>
+                    <button type="button" onclick="doFormat('format')">Format</button>
+                    <button type="button" onclick="doFormat('minify')">Minify</button>
+                    <button type="button" onclick="doFormat('near')">Near-Minify</button>
                     <button type="button" onClick="sampleData()">Sample Data</button>
                     <button type="button" onClick="resetOptions()">Reset Options</button>
                 </div>
