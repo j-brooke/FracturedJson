@@ -2,7 +2,7 @@
 
 FracturedJson is utility that formats JSON data in a user-readable but fairly compact way. Arrays and objects are written on single lines if they're short enough and not too complex; otherwise their contents are presented indented, beginning on lines of their own.
 
-It is available as a browser form, a commandline app, a .NET Core 3.1 library, and as a Javascript package.
+It is available as a browser form, a commandline app, a .NET Core 3.1 library, a Javascript package, and a Visual Studio Code extension.
 
 Here's a brief, highly contrived example of the output:
 ```json
