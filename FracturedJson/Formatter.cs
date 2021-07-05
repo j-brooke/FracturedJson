@@ -82,6 +82,11 @@ namespace FracturedJson
         /// </summary>
         public int AlwaysExpandDepth { get; set; } = -1;
 
+        public double TableObjectMinimumSimliarity { get; set; } = 75.0;
+        public double TableArrayMinimumSimilarity { get; set; } = 75.0;
+
+        public bool JustifyExpandedPropertyNames { get; set; } = false;
+
         public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions()
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -117,12 +122,18 @@ namespace FracturedJson
             return Serialize(doc);
         }
 
+        // We reuse this same StringBuilder throughout all levels of recursion.  It's important, therefore,
+        // not to recurse while we're actually using it.
         private readonly StringBuilder _buff = new StringBuilder();
+
         private string _eolStr = string.Empty;
         private string _indentStr = string.Empty;
         private string _paddedCommaStr = string.Empty;
-        private string _paddedColonStr = String.Empty;
+        private string _paddedColonStr = string.Empty;
 
+        /// <summary>
+        /// Set up some intermediate fields for efficiency.
+        /// </summary>
         private void InitInternals()
         {
             _eolStr = JsonEolStyle switch
@@ -137,6 +148,9 @@ namespace FracturedJson
             _paddedColonStr = (ColonPadding) ? ": " : ":";
         }
 
+        /// <summary>
+        /// Base of recursion.  Nearly everything comes through here.
+        /// </summary>
         private FormattedNode FormatElement(int depth, JsonElement element)
         {
             var formattedItem = element.ValueKind switch
@@ -146,6 +160,7 @@ namespace FracturedJson
                 _ => FormatSimple(depth, element)
             };
 
+            // Get rid of nested data that we don't need any more.
             Cleanup(formattedItem);
             return formattedItem;
         }
@@ -189,6 +204,12 @@ namespace FracturedJson
                     return thisItem;
             }
 
+            if (FormatTableArrayObject(thisItem))
+                return thisItem;
+
+            if (FormatTableArrayArray(thisItem))
+                return thisItem;
+
             FormatArrayExpanded(thisItem);
             return thisItem;
         }
@@ -216,7 +237,13 @@ namespace FracturedJson
                     return thisItem;
             }
 
-            FormatObjectExpanded(thisItem);
+            if (FormatTableObjectObject(thisItem))
+                return thisItem;
+
+            if (FormatTableObjectArray(thisItem))
+                return thisItem;
+
+            FormatObjectExpanded(thisItem, false);
             return thisItem;
         }
 
@@ -232,6 +259,9 @@ namespace FracturedJson
             };
         }
 
+        /// <summary>
+        /// Try to format this array in a single line, if possible.
+        /// </summary>
         private bool FormatArrayInline(FormattedNode thisItem)
         {
             if (thisItem.Complexity > MaxInlineComplexity)
@@ -271,6 +301,9 @@ namespace FracturedJson
             return true;
         }
 
+        /// <summary>
+        /// Try to format this array, spanning multiple lines, but with several items per line, if possible.
+        /// </summary>
         private bool FormatArrayMultilineCompact(FormattedNode thisItem)
         {
             if (thisItem.Complexity > MaxCompactArrayComplexity)
@@ -312,6 +345,76 @@ namespace FracturedJson
             return true;
         }
 
+        /// <summary>
+        /// Format this array with one child object per line, and those objects padded to line up nicely.
+        /// </summary>
+        private bool FormatTableArrayObject(FormattedNode thisItem)
+        {
+            // Gather stats about our children's property order and width, if they're eligible objects.
+            var propStats = GetPropertyStats(thisItem);
+            if (propStats == null)
+                return false;
+
+            // Reformat our immediate children using the width info we've computed.  Their children aren't
+            // recomputed, so this part isn't recursive.
+            foreach (var child in thisItem.Children)
+                FormatObjectTableRow(child, propStats);
+
+            return FormatArrayExpanded(thisItem);
+        }
+
+        /// <summary>
+        /// Format this array with one child array per line, and those arrays padded to line up nicely.
+        /// </summary>
+        private bool FormatTableArrayArray(FormattedNode thisItem)
+        {
+            // Gather stats about our children's item widths, if they're eligible arrays.
+            var columnWidths = GetArrayStats(thisItem);
+            if (columnWidths == null)
+                return false;
+
+            // Reformat our immediate children using the width info we've computed.  Their children aren't
+            // recomputed, so this part isn't recursive.
+            foreach (var child in thisItem.Children)
+                FormatArrayTableRow(child, columnWidths);
+
+            return FormatArrayExpanded(thisItem);
+        }
+
+        /// <summary>
+        /// Format this array in a single line, with padding to line up with siblings.
+        /// </summary>
+        private void FormatArrayTableRow(FormattedNode thisItem, int[] columnSizes)
+        {
+            _buff.Clear();
+            _buff.Append("[ ");
+
+            // Write the elements that actually exist in this array.
+            for (var index = 0; index < thisItem.Children.Count; ++index)
+            {
+                if (index != 0)
+                    _buff.Append(_paddedCommaStr);
+                var padSize = columnSizes[index] - thisItem.Children[index].Value.Length;
+                _buff.Append(thisItem.Children[index].Value).Append(' ', padSize);
+            }
+
+            // Write padding for the others, to line up with siblings.
+            for (var index = thisItem.Children.Count; index < columnSizes.Length; ++index)
+            {
+                var padSize = columnSizes[index]
+                              + ((index == 0) ? 0 : _paddedCommaStr.Length);
+                _buff.Append(' ', padSize);
+            }
+
+            _buff.Append(" ]");
+
+            thisItem.Value = _buff.ToString();
+            thisItem.Format = Format.InlineTabular;
+        }
+
+        /// <summary>
+        /// Write this array with each element starting on its own line.  (They might be multiple lines themselves.)
+        /// </summary>
         private bool FormatArrayExpanded(FormattedNode thisItem)
         {
             _buff.Clear();
@@ -345,6 +448,9 @@ namespace FracturedJson
             };
         }
 
+        /// <summary>
+        /// Format this object as a single line, if possible.
+        /// </summary>
         private bool FormatObjectInline(FormattedNode thisItem)
         {
             if (thisItem.Complexity > MaxInlineComplexity)
@@ -389,8 +495,104 @@ namespace FracturedJson
             return true;
         }
 
-        private bool FormatObjectExpanded(FormattedNode thisItem)
+        /// <summary>
+        /// Format this object with one child object per line, and those objects padded to line up nicely.
+        /// </summary>
+        private bool FormatTableObjectObject(FormattedNode thisItem)
         {
+            // Gather stats about our children's property order and width, if they're eligible objects.
+            var propStats = GetPropertyStats(thisItem);
+            if (propStats == null)
+                return false;
+
+            // Reformat our immediate children using the width info we've computed.  Their children aren't
+            // recomputed, so this part isn't recursive.
+            foreach (var child in thisItem.Children)
+                FormatObjectTableRow(child, propStats);
+
+            return FormatObjectExpanded(thisItem, true);
+        }
+
+        /// <summary>
+        /// Format this object with one child array per line, and those arrays padded to line up nicely.
+        /// </summary>
+        private bool FormatTableObjectArray(FormattedNode thisItem)
+        {
+            // Gather stats about our children's widths, if they're eligible arrays.
+            var columnWidths = GetArrayStats(thisItem);
+            if (columnWidths == null)
+                return false;
+
+            // Reformat our immediate children using the width info we've computed.  Their children aren't
+            // recomputed, so this part isn't recursive.
+            foreach (var child in thisItem.Children)
+                FormatArrayTableRow(child, columnWidths);
+
+            return FormatObjectExpanded(thisItem, true);
+        }
+
+        /// <summary>
+        /// Format this object in a single line, with padding to line up with siblings.
+        /// </summary>
+        private void FormatObjectTableRow(FormattedNode thisItem, PropertyStats[] propLengths)
+        {
+            // Bundle up each property name, value, quotes, colons, etc., or equivalent empty space.
+            var highestNonBlankIndex = -1;
+            var propSegmentStrings = new string?[propLengths.Length];
+            for (var propIndex = 0; propIndex < propLengths.Length; ++propIndex)
+            {
+                _buff.Clear();
+                var propStat = propLengths[propIndex];
+                var propNode = thisItem.Children.FirstOrDefault(pn => pn.Name == propStat.Name);
+                if (propNode == null)
+                {
+                    var skipLength = 2
+                                     + propStat.Name.Length
+                                     + _paddedColonStr.Length
+                                     + propStat.MaxValueSize;
+                    _buff.Append(' ', skipLength);
+                }
+                else
+                {
+                    var valuePadLength = propStat.MaxValueSize - propNode.Value.Length;
+                    _buff.Append('"').Append(propStat.Name).Append('"')
+                        .Append(_paddedColonStr).Append(propNode.Value).Append(' ', valuePadLength);
+                    highestNonBlankIndex = propIndex;
+                }
+
+                propSegmentStrings[propIndex] = _buff.ToString();
+            }
+
+            _buff.Clear();
+            _buff.Append("{ ");
+
+            // Put them all together with commas in the right places.
+            var firstElem = true;
+            var needsComma = false;
+            for (var segmentIndex = 0; segmentIndex<propSegmentStrings.Length; ++segmentIndex)
+            {
+                if (needsComma && segmentIndex<=highestNonBlankIndex)
+                    _buff.Append(_paddedCommaStr);
+                else if (!firstElem)
+                    _buff.Append(' ', _paddedCommaStr.Length);
+                _buff.Append(propSegmentStrings[segmentIndex]);
+                needsComma = !string.IsNullOrWhiteSpace(propSegmentStrings[segmentIndex]);
+                firstElem = false;
+            }
+
+            _buff.Append(" }");
+
+            thisItem.Value = _buff.ToString();
+            thisItem.Format = Format.InlineTabular;
+        }
+
+        /// <summary>
+        /// Write this object with each element starting on its own line.  (They might be multiple lines
+        /// themselves.)
+        /// </summary>
+        private bool FormatObjectExpanded(FormattedNode thisItem, bool forceExpandPropNames)
+        {
+            var maxPropNameLength = thisItem.Children.Max(fn => fn.Name.Length);
             _buff.Clear();
 
             _buff.Append('{').Append(_eolStr);
@@ -400,8 +602,12 @@ namespace FracturedJson
             {
                 if (!firstItem)
                     _buff.Append(',').Append(_eolStr);
-                Indent(_buff, prop.Depth).Append('"').Append(prop.Name).Append('"')
-                    .Append(_paddedColonStr).Append(prop.Value);
+                Indent(_buff, prop.Depth).Append('"').Append(prop.Name).Append('"');
+
+                if (JustifyExpandedPropertyNames || forceExpandPropNames)
+                    _buff.Append(' ', maxPropNameLength - prop.Name.Length);
+
+                _buff.Append(_paddedColonStr).Append(prop.Value);
                 firstItem = false;
             }
 
@@ -420,15 +626,113 @@ namespace FracturedJson
             return buff;
         }
 
+        /// <summary>
+        /// Deleted data we don't need any more, to possibly ease memory pressure.
+        /// </summary>
         private void Cleanup(FormattedNode thisItem)
         {
+            // We need to keep the children of inlined nodes, in case we decide to reformat them as a table.
+            // Everything else can go.
+            if (thisItem.Format != Format.Inline)
+                thisItem.Children = Array.Empty<FormattedNode>();
             foreach (var child in thisItem.Children)
                 child.Children = Array.Empty<FormattedNode>();
+        }
+
+        /// <summary>
+        /// Check if this node's object children can be formatted as a table, and if so, return stats about
+        /// their properties.  Returns null if they're not eligible.
+        /// </summary>
+        private PropertyStats[]? GetPropertyStats(FormattedNode thisItem)
+        {
+            // Record every property across all objects, count them, tabulate their order, and find the longest.
+            var props = new Dictionary<string, PropertyStats>();
+            foreach (var child in thisItem.Children)
+            {
+                if (child.Kind != JsonValueKind.Object || child.Format != Format.Inline)
+                    return null;
+
+                for (var index=0; index<child.Children.Count; ++index)
+                {
+                    var propNode = child.Children[index];
+                    props.TryGetValue(propNode.Name, out var propStats);
+                    if (propStats == null)
+                    {
+                        propStats = new PropertyStats() {Name = propNode.Name};
+                        props.Add(propStats.Name, propStats);
+                    }
+
+                    propStats.OrderSum += index;
+                    propStats.Count += 1;
+                    propStats.MaxValueSize = Math.Max(propStats.MaxValueSize, propNode.Value.Length);
+                }
+            }
+
+            // Decide the order of the properties by sorting by the average index.  It's a crude metric,
+            // but it should handle the occasional missing property well enough.
+            var orderedProps = props.Values
+                .OrderBy(ps => (ps.OrderSum / (double) ps.Count))
+                .ToArray();
+
+            // Calculate a score based on how many of all possible properties are present.  If the score is too
+            // low, these objects are too different to try to line up as a table.
+            var score = 100.0 * orderedProps.Sum(ps => ps.Count)
+                        / (orderedProps.Length * thisItem.Children.Count);
+            if (score < TableObjectMinimumSimliarity)
+                return null;
+
+            // If the formatted lines would be too long, bail out.
+            var lineLength = 4                                                        // outer brackets & spaces
+                             + 2 * orderedProps.Length                                   // property quotes
+                             + orderedProps.Sum(ps => ps.Name.Length)  // prop names
+                             + _paddedColonStr.Length * orderedProps.Length              // colons
+                             + orderedProps.Sum(ps => ps.MaxValueSize) // values
+                             + _paddedCommaStr.Length * (orderedProps.Length - 1);       // commas
+            if (lineLength > MaxInlineLength)
+                return null;
+
+            return orderedProps;
+        }
+
+        /// <summary>
+        /// Check if this node's array children can be formatted as a table, and if so, the max length of each.
+        /// Returns null if they're not eligible.
+        /// </summary>
+        private int[]? GetArrayStats(FormattedNode thisItem)
+        {
+            var valid = thisItem.Children.All(fn => fn.Kind == JsonValueKind.Array && fn.Format == Format.Inline);
+            if (!valid)
+                return null;
+
+            var numberOfColumns = thisItem.Children.Max(fn => fn.Children.Count);
+            var columnWidths = new int[numberOfColumns];
+            foreach (var child in thisItem.Children)
+            {
+                for (var index = 0; index < child.Children.Count; ++index)
+                    columnWidths[index] = Math.Max(columnWidths[index], child.Children[index].Value.Length);
+            }
+
+            // Calculate a score based on how rectangular the arrays are.  If they differ too much in length,
+            // it probably doesn't make sense to format them together.
+            var similarity = 100.0 * thisItem.Children.Sum(fn => fn.Children.Count)
+                             / (thisItem.Children.Count * numberOfColumns);
+            if (similarity < TableArrayMinimumSimilarity)
+                return null;
+
+            // If the formatted lines would be too long, bail out.
+            var lineLength = 4                                    // outer brackets
+                + columnWidths.Sum()                                 // values
+                + columnWidths.Length - 1 * _paddedCommaStr.Length;  // commas
+            if (lineLength > MaxInlineLength)
+                return null;
+
+            return columnWidths;
         }
 
         private enum Format
         {
             Inline,
+            InlineTabular,
             MultilineCompact,
             Expanded,
         }
@@ -448,6 +752,17 @@ namespace FracturedJson
                 Name = name;
                 return this;
             }
+        }
+
+        /// <summary>
+        /// Used in figuring out how to format objects as table rows.
+        /// </summary>
+        private class PropertyStats
+        {
+            public string Name { get; set; } = string.Empty;
+            public int OrderSum { get; set; }
+            public int Count { get; set; }
+            public int MaxValueSize { get; set; }
         }
     }
 }
