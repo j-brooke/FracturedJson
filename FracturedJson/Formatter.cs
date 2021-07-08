@@ -146,6 +146,11 @@ namespace FracturedJson
         public bool DontJustifyNumbers { get; set; } = false;
 
         /// <summary>
+        /// String attached to the beginning of every line, before regular indentation.
+        /// </summary>
+        public string PrefixString { get; set; } = string.Empty;
+
+        /// <summary>
         /// Options to pass on to the underlying system parser.
         /// </summary>
         public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions()
@@ -160,7 +165,7 @@ namespace FracturedJson
         public string Serialize(JsonDocument document)
         {
             InitInternals();
-            return FormatElement(0, document.RootElement).Value;
+            return PrefixString + FormatElement(0, document.RootElement).Value;
         }
 
         /// <summary>
@@ -419,6 +424,9 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableArrayObject(FormattedNode thisItem)
         {
+            if (TableObjectMinimumSimliarity > 100.5)
+                return false;
+
             // Gather stats about our children's property order and width, if they're eligible objects.
             var columnStats = GetPropertyStats(thisItem);
             if (columnStats == null)
@@ -437,6 +445,9 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableArrayArray(FormattedNode thisItem)
         {
+            if (TableArrayMinimumSimilarity > 100.5)
+                return false;
+
             // Gather stats about our children's item widths, if they're eligible arrays.
             var columnStats = GetArrayStats(thisItem);
             if (columnStats == null)
@@ -575,6 +586,9 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableObjectObject(FormattedNode thisItem)
         {
+            if (TableObjectMinimumSimliarity > 100.5)
+                return false;
+
             // Gather stats about our children's property order and width, if they're eligible objects.
             var propStats = GetPropertyStats(thisItem);
             if (propStats == null)
@@ -593,6 +607,9 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableObjectArray(FormattedNode thisItem)
         {
+            if (TableArrayMinimumSimilarity > 100.5)
+                return false;
+
             // Gather stats about our children's widths, if they're eligible arrays.
             var columnStats = GetArrayStats(thisItem);
             if (columnStats == null)
@@ -726,6 +743,7 @@ namespace FracturedJson
         /// </summary>
         private StringBuilder Indent(StringBuilder buff, int depth)
         {
+            _buff.Append(PrefixString);
             for (var i = 0; i < depth; ++i)
                 buff.Append(_indentStr);
             return buff;
