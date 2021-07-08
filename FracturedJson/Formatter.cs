@@ -40,7 +40,22 @@ namespace FracturedJson
 
 
     /// <summary>
-    /// Reformats JSON documents that produces human-readable but fairly compact output.
+    /// Class that outputs JSON formatted in a compact, user-readable way.  Any given container is formatted in one
+    /// of three ways:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <description>Arrays or objects will be written on a single line, if their contents aren't too complex
+    ///     and the resulting line wouldn't be too long.</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Arrays can be written on multiple lines, with multiple items per line, as long as those
+    ///     items aren't too complex.</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Otherwise, each object property or array item is written begining on its own line, indented
+    ///     one step deeper than its parent.</description>
+    ///   </item>
+    /// </list>
     /// </summary>
     public class Formatter
     {
@@ -67,6 +82,15 @@ namespace FracturedJson
         /// </summary>
         public int MaxCompactArrayComplexity { get; set; } = 1;
 
+        /// <summary>
+        /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
+        /// will include spaces inside the outer brackets.
+        /// </summary>
+        /// <remarks>
+        /// Example: <br/>
+        /// true: [ [1, 2, 3], [4] ] <br/>
+        /// false: [[1, 2, 3], [4]] <br/>
+        /// </remarks>
         public bool NestedBracketPadding { get; set; } = true;
 
         /// <summary>
@@ -79,20 +103,51 @@ namespace FracturedJson
         /// </summary>
         public bool CommaPadding { get; set; } = true;
 
-        public int IndentSpaces { get; set; } = 4;
-        public bool UseTabToIndent { get; set; } = false;
-
         /// <summary>
         /// Depth at which lists/objects are always fully expanded, regardless of other settings.
         /// -1 = none; 0 = root node only; 1 = root node and its children.
         /// </summary>
         public int AlwaysExpandDepth { get; set; } = -1;
 
+        /// <summary>
+        /// Number of spaces to use per indent level (unless UseTabToIndent is true)
+        /// </summary>
+        public int IndentSpaces { get; set; } = 4;
+
+        /// <summary>
+        /// Uses a single tab per indent level, instead of spaces.
+        /// </summary>
+        public bool UseTabToIndent { get; set; } = false;
+
+        /// <summary>
+        /// Value from 0 to 100 indicating how similar collections of inline objects need to be to be formatted as
+        /// a table.  A group of objects that don't have any property names in common has a similarity of zero.  A
+        /// group of objects that all contain the exact same property names has a similarity of 100.  Setting this
+        /// to a value &gt;100 disables table formatting with objects as rows.
+        /// </summary>
         public double TableObjectMinimumSimliarity { get; set; } = 75.0;
+
+        /// <summary>
+        /// Value from 0 to 100 indicating how similar collections of inline arrays need to be to be formatted as
+        /// a table.  Similarity for arrays refers to how similar they are in length; if they all have the same
+        /// length their similarity is 100.  Setting this to a value &gt;100 disables table formatting with arrays as
+        /// rows.
+        /// </summary>
         public double TableArrayMinimumSimilarity { get; set; } = 75.0;
 
+        /// <summary>
+        /// If true, property names of expanded objects are padded to the same size.
+        /// </summary>
         public bool AlignExpandedPropertyNames { get; set; } = false;
 
+        /// <summary>
+        /// If true, numbers won't be right-aligned with matching precision.
+        /// </summary>
+        public bool DontJustifyNumbers { get; set; } = false;
+
+        /// <summary>
+        /// Options to pass on to the underlying system parser.
+        /// </summary>
         public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions()
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -119,8 +174,8 @@ namespace FracturedJson
         }
 
         /// <summary>
-        /// Returns the JSON documented formatted as a string, with simpler collections written in single
-        /// lines where possible.
+        /// Returns the given object serialized to JSON and then formatted with simpler collections written in
+        /// single lines where possible.
         /// </summary>
         public string Serialize<T>(T obj)
         {
@@ -410,7 +465,7 @@ namespace FracturedJson
                     _buff.Append(_paddedCommaStr);
 
                 var columnStats = columnStatsArray[index];
-                if (columnStats.NumericFormatStr != null)
+                if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
                 {
                     _buff.Append(string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
                         double.Parse(thisItem.Children[index].Value)));
@@ -578,7 +633,7 @@ namespace FracturedJson
                     var valuePadLength = columnStats.MaxValueSize - propNode.Value.Length;
                     _buff.Append('"').Append(columnStats.PropName).Append('"').Append(_paddedColonStr);
 
-                    if (columnStats.NumericFormatStr != null)
+                    if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
                         _buff.Append(string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
                             double.Parse(propNode.Value)));
                     else
@@ -650,7 +705,7 @@ namespace FracturedJson
         /// </summary>
         private void JustifyParallelNumbers(IList<FormattedNode> itemList)
         {
-            if (itemList.Count < 2)
+            if (itemList.Count < 2 || DontJustifyNumbers)
                 return;
 
             var columnStats = new ColumnStats();
@@ -800,7 +855,7 @@ namespace FracturedJson
         MultilineCompact,
         Expanded,
     }
-    
+
     /// <summary>
     /// Used in figuring out how to format properties/array items as columns in a table format.
     /// </summary>

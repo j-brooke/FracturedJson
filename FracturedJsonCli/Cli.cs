@@ -25,15 +25,26 @@ namespace FracturedJsonCli
 
                 var cliOpts = new OptionSet()
                 {
+                    {
+                        "a|array=",
+                        "table array minimum similarity",
+                        (double d) => formatter.TableArrayMinimumSimilarity = d
+                    },
                     {"c|complexity=", "maximum inline complexity", (int n) => formatter.MaxInlineComplexity = n},
-                    {"f|file=", "input from file instead of stdin", s => fileName = s},
                     {"e|expand=", "always-expand depth", (int n) => formatter.AlwaysExpandDepth = n},
+                    {"f|file=", "input from file instead of stdin", s => fileName = s},
                     {"h|help", "show this help info and exit", v => showHelp = (v != null)},
+                    {"j|no-justify", "don't justify parallel numbers", v => formatter.DontJustifyNumbers = true},
                     {"l|length=", "maximum inline length", (int n) => formatter.MaxInlineLength = n},
                     {
                         "m|multiline=",
                         "maximum multi-line array complexity",
                         (int n) => formatter.MaxCompactArrayComplexity = n
+                    },
+                    {
+                        "o|object=",
+                        "table object minimum similarity",
+                        (double d) => formatter.TableObjectMinimumSimliarity = d
                     },
                     {"p|no-padding", "don't include padding spaces", v => noPadding = (v != null)},
                     {
