@@ -33,7 +33,7 @@ namespace FracturedJson
         Crlf,
 
         /// <summary>
-        /// Just a line feed.  Unix-style.
+        /// Just a line feed.  Unix-style (including Mac).
         /// </summary>
         Lf,
     }
@@ -52,10 +52,13 @@ namespace FracturedJson
     ///     items aren't too complex.</description>
     ///   </item>
     ///   <item>
-    ///     <description>Otherwise, each object property or array item is written begining on its own line, indented
+    ///     <description>Otherwise, each object property or array item is written beginning on its own line, indented
     ///     one step deeper than its parent.</description>
     ///   </item>
     /// </list>
+    /// "Complexity" here refers to the nesting level, measured from the leaf nodes.  A simple type has a complexity
+    /// of 0, as do empty arrays and objects.  A non-empty array or object has a complexity 1 greater than its most
+    /// complex child.
     /// </summary>
     public class Formatter
     {
@@ -125,7 +128,7 @@ namespace FracturedJson
         /// group of objects that all contain the exact same property names has a similarity of 100.  Setting this
         /// to a value &gt;100 disables table formatting with objects as rows.
         /// </summary>
-        public double TableObjectMinimumSimliarity { get; set; } = 75.0;
+        public double TableObjectMinimumSimilarity { get; set; } = 75.0;
 
         /// <summary>
         /// Value from 0 to 100 indicating how similar collections of inline arrays need to be to be formatted as
@@ -424,7 +427,7 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableArrayObject(FormattedNode thisItem)
         {
-            if (TableObjectMinimumSimliarity > 100.5)
+            if (TableObjectMinimumSimilarity > 100.5)
                 return false;
 
             // Gather stats about our children's property order and width, if they're eligible objects.
@@ -548,11 +551,11 @@ namespace FracturedJson
 
             var useNestedBracketPadding = (NestedBracketPadding && thisItem.Complexity >= 2);
 
-            var lineLength = 2 + (useNestedBracketPadding ? 2 : 0) // outer brackets
-                               + thisItem.Children.Count * _paddedColonStr.Length // colons
-                               + (thisItem.Children.Count - 1) * _paddedCommaStr.Length // commas
-                               + thisItem.Children.Count * 2 // prop quotes
-                               + thisItem.Children.Sum(fn => fn.Name.Length) // propnames
+            var lineLength = 2 + (useNestedBracketPadding ? 2 : 0)                             // outer brackets
+                               + thisItem.Children.Count * _paddedColonStr.Length                 // colons
+                               + (thisItem.Children.Count - 1) * _paddedCommaStr.Length           // commas
+                               + thisItem.Children.Count * 2                                      // prop quotes
+                               + thisItem.Children.Sum(fn => fn.Name.Length)   // prop names
                                + thisItem.Children.Sum(fn => fn.Value.Length); // values
             if (lineLength > MaxInlineLength)
                 return false;
@@ -586,7 +589,7 @@ namespace FracturedJson
         /// </summary>
         private bool FormatTableObjectObject(FormattedNode thisItem)
         {
-            if (TableObjectMinimumSimliarity > 100.5)
+            if (TableObjectMinimumSimilarity > 100.5)
                 return false;
 
             // Gather stats about our children's property order and width, if they're eligible objects.
@@ -802,7 +805,7 @@ namespace FracturedJson
             // low, these objects are too different to try to line up as a table.
             var score = 100.0 * orderedProps.Sum(cs => cs.Count)
                         / (orderedProps.Length * thisItem.Children.Count);
-            if (score < TableObjectMinimumSimliarity)
+            if (score < TableObjectMinimumSimilarity)
                 return null;
 
             foreach (var propStats in orderedProps.Where(cs => cs.IsQualifiedNumeric))

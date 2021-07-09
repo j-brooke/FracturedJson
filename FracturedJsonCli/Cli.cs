@@ -44,7 +44,7 @@ namespace FracturedJsonCli
                     {
                         "o|object=",
                         "table object minimum similarity",
-                        (double d) => formatter.TableObjectMinimumSimliarity = d
+                        (double d) => formatter.TableObjectMinimumSimilarity = d
                     },
                     {"p|no-padding", "don't include padding spaces", v => noPadding = (v != null)},
                     {
