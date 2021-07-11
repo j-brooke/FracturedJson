@@ -4,15 +4,15 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
-        <Description>A library for formatting JSON in a user-readable but compact way.</Description>
+        <Description>A library for formatting JSON, producing user-readable but compact output.</Description>
         <Copyright>2021 Jesse Brooke</Copyright>
         <PackageProjectUrl>https://j-brooke.github.io/FracturedJson/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>1.2.0</AssemblyVersion>
+        <AssemblyVersion>2.0.0</AssemblyVersion>
         <PackageTags>JSON formatter pretty printer beautifier</PackageTags>
-        <PackageVersion>1.2.0</PackageVersion>
+        <PackageVersion>2.0.0</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
     </PropertyGroup>
 
