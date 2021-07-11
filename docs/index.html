@@ -2,14 +2,13 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>FracturedJson - Browser Formatter </title>
+<title>FracturedJson - Browser Formatter</title>
 
 <script>
 
-
 "use strict";
 /*
- * FracturedJsonJs
+ * FracturedJsonJs 2.0.0
  * FracturedJsonJs is a library for formatting JSON documents in a human-readable but fairly compact way.
  *
  * Copyright (c) 2021 Jesse Brooke
@@ -642,8 +641,6 @@ class FormattedNode {
     }
 }
 
-
-
 </script>
 
 <script>
@@ -672,6 +669,8 @@ class FormattedNode {
                 format.commaPadding = false;
                 format.indentSpaces = 0;
                 format.useTabToIndent = false;
+                format.tableObjectMinimumSimilarity = 101;
+                format.tableArrayMinimumSimilarity = 101;
 
                 outputVal = format.serialize(objFormOfInput);
             }
