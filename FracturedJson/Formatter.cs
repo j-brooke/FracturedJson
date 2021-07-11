@@ -486,7 +486,7 @@ namespace FracturedJson
                 }
                 else
                 {
-                    var padSize = columnStatsArray[index].MaxValueSize - thisItem.Children[index].Value.Length;
+                    var padSize = columnStats.MaxValueSize - thisItem.Children[index].Value.Length;
                     _buff.Append(thisItem.Children[index].Value).Append(' ', padSize);
                 }
             }
@@ -798,7 +798,7 @@ namespace FracturedJson
             // Decide the order of the properties by sorting by the average index.  It's a crude metric,
             // but it should handle the occasional missing property well enough.
             var orderedProps = props.Values
-                .OrderBy(ps => (ps.OrderSum / (double) ps.Count))
+                .OrderBy(cs => (cs.OrderSum / (double) cs.Count))
                 .ToArray();
 
             // Calculate a score based on how many of all possible properties are present.  If the score is too
@@ -814,9 +814,9 @@ namespace FracturedJson
             // If the formatted lines would be too long, bail out.
             var lineLength = 4                                                          // outer brackets & spaces
                              + 2 * orderedProps.Length                                     // property quotes
-                             + orderedProps.Sum(ps => ps.PropName.Length) // prop names
+                             + orderedProps.Sum(cs => cs.PropName.Length) // prop names
                              + _paddedColonStr.Length * orderedProps.Length                // colons
-                             + orderedProps.Sum(ps => ps.MaxValueSize)    // values
+                             + orderedProps.Sum(cs => cs.MaxValueSize)    // values
                              + _paddedCommaStr.Length * (orderedProps.Length - 1);         // commas
             if (lineLength > MaxInlineLength)
                 return null;
@@ -860,8 +860,8 @@ namespace FracturedJson
 
             // If the formatted lines would be too long, bail out.
             var lineLength = 4                                            // outer brackets
-                + colStatsArray.Sum(ps => ps.MaxValueSize)  // values
-                + colStatsArray.Length - 1 * _paddedCommaStr.Length;         // commas
+                + colStatsArray.Sum(cs => cs.MaxValueSize)  // values
+                + (colStatsArray.Length - 1) * _paddedCommaStr.Length;       // commas
             if (lineLength > MaxInlineLength)
                 return null;
 
