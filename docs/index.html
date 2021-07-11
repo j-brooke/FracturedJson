@@ -5,13 +5,645 @@
 <title>FracturedJson - Browser Formatter </title>
 
 <script>
+
+
+"use strict";
 /*
  * FracturedJsonJs
- * Copyright 2021 Jesse Brooke
+ * FracturedJsonJs is a library for formatting JSON documents in a human-readable but fairly compact way.
+ *
+ * Copyright (c) 2021 Jesse Brooke
+ * Project site: https://github.com/j-brooke/FracturedJsonJs
  * License: https://github.com/j-brooke/FracturedJsonJs/blob/main/LICENSE
- * Project Site: https://github.com/j-brooke/FracturedJsonJs
  */
-class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexity=2;this.MaxCompactArrayComplexity=1;this.NestedBracketPadding=true;this.ColonPadding=true;this.CommaPadding=true;this.JustifyNumberLists=false;this.AlwaysExpandDepth=-1;this.IndentString="    ";this.PrefixString="";this._colonPaddingStr="";this._commaPaddingStr="";this._eolStr="\n";this._indentArray=[]}Serialize(document){this._setPaddingStrings();const root=this._formatElement(0,document);return this.PrefixString+root.value}_formatElement(depth,element){if(Array.isArray(element)){return this._formatArray(depth,element)}else if(element==null){return this._formatSimple(element)}else if(typeof(element)=="object"){return this._formatObject(depth,element)}else{return this._formatSimple(element)}}_formatArray(depth,array){let maxChildComplexity=0;let items=array.map(val=>{let childElem=this._formatElement(depth+1,val);maxChildComplexity=Math.max(maxChildComplexity,childElem.complexity);return childElem});if(items.length==0){return{value:"[]",complexity:0,isNumber:false}}const justifyLength=(this.JustifyNumberLists&&items.every(child=>child.isNumber))?Math.max(...items.map(item=>item.value.length)):0;const alwaysExpandThis=depth<=this.AlwaysExpandDepth;let lengthEstimate=items.reduce((acc,newVal)=>acc+newVal.value.length+1,0);if(!alwaysExpandThis&&maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){var inlineStr=this._formatArrayInline(items,maxChildComplexity,justifyLength);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}if(!alwaysExpandThis&&maxChildComplexity<this.MaxCompactArrayComplexity){return this._formatArrayMultiInlineSimple(depth,items,maxChildComplexity,justifyLength)}const buff=[];buff.push("[",this._eolStr);let firstElem=true;for(let item of items){if(!firstElem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push(item.value.padStart(Math.max(justifyLength,item.value.length)));firstElem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatArrayInline(itemList,maxChildComplexity,justifyLength){const buff=[];buff.push("[");if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}let firstElem=true;for(let item of itemList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push(item.value.padStart(Math.max(justifyLength,item.value.length)));firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatArrayMultiInlineSimple(depth,itemList,maxChildComplexity,justifyLength){const buff=[];buff.push("[",this._eolStr);buff.push(this._indent(depth+1));let lineLengthSoFar=0;let itemIndex=0;while(itemIndex<itemList.length){const notLastItem=itemIndex<itemList.length-1;const item=itemList[itemIndex];const justifiedItemStr=item.value.padStart(Math.max(justifyLength,item.value.length));const segmentLength=justifiedItemStr.length+((notLastItem)?1+this._commaPaddingStr.length:0);if(lineLengthSoFar+segmentLength>this.MaxInlineLength&&lineLengthSoFar>0){buff.push(this._eolStr);buff.push(this._indent(depth+1));lineLengthSoFar=0}buff.push(justifiedItemStr);if(notLastItem){buff.push(",",this._commaPaddingStr)}itemIndex+=1;lineLengthSoFar+=segmentLength}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("]");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatObject(depth,obj){let maxChildComplexity=0;let keyValPairs=Object.keys(obj).map(key=>{let formattedProp=this._formatElement(depth+1,obj[key]);formattedProp["name"]=String(key);maxChildComplexity=Math.max(maxChildComplexity,formattedProp.complexity);return formattedProp});if(keyValPairs.length==0){return{value:"{}",complexity:0,isNumber:false}}const alwaysExpandThis=depth<=this.AlwaysExpandDepth;const lengthEstimate=keyValPairs.reduce((acc,kvp)=>kvp.name.length+kvp.value.length+4,0);if(!alwaysExpandThis&&maxChildComplexity<this.MaxInlineComplexity&&lengthEstimate<=this.MaxInlineLength){const inlineStr=this._formatObjectInline(keyValPairs,maxChildComplexity);if(inlineStr.value.length<=this.MaxInlineLength){return inlineStr}}const buff=[];buff.push("{",this._eolStr);let firstItem=true;for(let prop of keyValPairs){if(!firstItem){buff.push(",",this._eolStr)}buff.push(this._indent(depth+1));buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstItem=false}buff.push(this._eolStr);buff.push(this._indent(depth));buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatObjectInline(propsList,maxChildComplexity){const buff=[];buff.push("{");if(this.NestedBracketPadding&&maxChildComplexity){buff.push(" ")}let firstElem=true;for(let prop of propsList){if(!firstElem){buff.push(",",this._commaPaddingStr)}buff.push('"',prop.name,'":',this._colonPaddingStr);buff.push(prop.value);firstElem=false}if(this.NestedBracketPadding&&maxChildComplexity>0){buff.push(" ")}buff.push("}");return{value:this._combine(buff),complexity:maxChildComplexity+1,isNumber:false}}_formatSimple(simpleElem){return{value:JSON.stringify(simpleElem),complexity:0,isNumber:typeof(simpleElem)=="number"}}_indent(depth){let indentStr=this._indentArray[depth];if(indentStr==undefined){indentStr=this.PrefixString;for(let i=0;i<depth;i+=1){indentStr+=this.IndentString}this._indentArray[depth]=indentStr}return indentStr}_setPaddingStrings(){this._colonPaddingStr=(this.ColonPadding)?" ":"";this._commaPaddingStr=(this.CommaPadding)?" ":"";this._eolStr="\n";this._indentArray=[];this.PrefixString||=""}_combine(strArray){return strArray.join('')}}
+let exports = {};
+/*
+ * Class that outputs JSON formatted in a compact, user-readable way.  Any given container is formatted in one
+ * of three ways:
+ *   * Arrays or objects will be written on a single line, if their contents aren't too complex and the
+ *     resulting line wouldn't be too long.
+ *   * Arrays can be written on multiple lines, with multiple items per line, as long as those items aren't
+ *     too complex.
+ *   * Otherwise, each object property or array item is written beginning on its own line, indented one step
+ *     deeper than its parent.
+ */
+class Formatter {
+    constructor() {
+        this._jsonEolStyle = EolStyle.lf;
+        this._maxInlineLength = 80;
+        this._maxInlineComplexity = 2;
+        this._maxCompactArrayComplexity = 1;
+        this._nestedBracketPadding = true;
+        this._colonPadding = true;
+        this._commaPadding = true;
+        this._alwaysExpandDepth = -1;
+        this._indentSpaces = 4;
+        this._useTabToIndent = false;
+        this._tableObjectMinimumSimilarity = 75;
+        this._tableArrayMinimumSimilarity = 75;
+        this._alignExpandedPropertyNames = false;
+        this._dontJustifyNumbers = false;
+        this._prefixString = "";
+        this._eolStr = "";
+        this._indentStr = "";
+        this._paddedCommaStr = "";
+        this._paddedColonStr = "";
+        this._indentCache = [];
+    }
+    get jsonEolStyle() {
+        return this._jsonEolStyle;
+    }
+    set jsonEolStyle(value) {
+        this._jsonEolStyle = value;
+    }
+    get maxInlineLength() {
+        return this._maxInlineLength;
+    }
+    set maxInlineLength(value) {
+        this._maxInlineLength = value;
+    }
+    get maxInlineComplexity() {
+        return this._maxInlineComplexity;
+    }
+    set maxInlineComplexity(value) {
+        this._maxInlineComplexity = value;
+    }
+    get maxCompactArrayComplexity() {
+        return this._maxCompactArrayComplexity;
+    }
+    set maxCompactArrayComplexity(value) {
+        this._maxCompactArrayComplexity = value;
+    }
+    get nestedBracketPadding() {
+        return this._nestedBracketPadding;
+    }
+    set nestedBracketPadding(value) {
+        this._nestedBracketPadding = value;
+    }
+    get colonPadding() {
+        return this._colonPadding;
+    }
+    set colonPadding(value) {
+        this._colonPadding = value;
+    }
+    get commaPadding() {
+        return this._commaPadding;
+    }
+    set commaPadding(value) {
+        this._commaPadding = value;
+    }
+    get alwaysExpandDepth() {
+        return this._alwaysExpandDepth;
+    }
+    set alwaysExpandDepth(value) {
+        this._alwaysExpandDepth = value;
+    }
+    get indentSpaces() {
+        return this._indentSpaces;
+    }
+    set indentSpaces(value) {
+        this._indentSpaces = value;
+    }
+    get useTabToIndent() {
+        return this._useTabToIndent;
+    }
+    set useTabToIndent(value) {
+        this._useTabToIndent = value;
+    }
+    get tableObjectMinimumSimilarity() {
+        return this._tableObjectMinimumSimilarity;
+    }
+    set tableObjectMinimumSimilarity(value) {
+        this._tableObjectMinimumSimilarity = value;
+    }
+    get tableArrayMinimumSimilarity() {
+        return this._tableArrayMinimumSimilarity;
+    }
+    set tableArrayMinimumSimilarity(value) {
+        this._tableArrayMinimumSimilarity = value;
+    }
+    get alignExpandedPropertyNames() {
+        return this._alignExpandedPropertyNames;
+    }
+    set alignExpandedPropertyNames(value) {
+        this._alignExpandedPropertyNames = value;
+    }
+    get dontJustifyNumbers() {
+        return this._dontJustifyNumbers;
+    }
+    set dontJustifyNumbers(value) {
+        this._dontJustifyNumbers = value;
+    }
+    get prefixString() {
+        return this._prefixString;
+    }
+    set prefixString(value) {
+        this._prefixString = value;
+    }
+    serialize(jsValue) {
+        this.initInternals();
+        return this._prefixString + this.formatElement(0, jsValue).Value;
+    }
+    initInternals() {
+        this._eolStr = (this._jsonEolStyle === EolStyle.Crlf) ? "\r\n" : "\n";
+        this._indentStr = (this._useTabToIndent) ? "\t" : " ".repeat(this._indentSpaces);
+        this._paddedCommaStr = (this._commaPadding) ? ", " : ",";
+        this._paddedColonStr = (this._colonPadding) ? ": " : ":";
+    }
+    indent(buff, depth) {
+        if (!this._indentCache[depth])
+            this._indentCache[depth] = this._indentStr.repeat(depth);
+        buff.push(this._prefixString, this._indentCache[depth]);
+        return buff;
+    }
+    combine(buff) {
+        return buff.join('');
+    }
+    formatElement(depth, element) {
+        let formattedItem;
+        if (Array.isArray(element))
+            formattedItem = this.formatArray(depth, element);
+        else if (element === null)
+            formattedItem = this.formatSimple(depth, element);
+        else if (typeof (element) === "object")
+            formattedItem = this.formatObject(depth, element);
+        else
+            formattedItem = this.formatSimple(depth, element);
+        formattedItem.cleanup();
+        return formattedItem;
+    }
+    formatSimple(depth, element) {
+        const simpleNode = new FormattedNode();
+        simpleNode.Value = JSON.stringify(element);
+        simpleNode.Complexity = 0;
+        simpleNode.Depth = depth;
+        simpleNode.Kind = JsonValueKind.Array;
+        simpleNode.Format = Format.Inline;
+        if (element === null) {
+            simpleNode.Kind = JsonValueKind.Null;
+            return simpleNode;
+        }
+        switch (typeof (element)) {
+            case "boolean":
+                simpleNode.Kind = JsonValueKind.Boolean;
+                break;
+            case "number":
+                simpleNode.Kind = JsonValueKind.Number;
+                break;
+            case "undefined":
+                simpleNode.Kind = JsonValueKind.Null;
+                break;
+            default:
+            case "string":
+                simpleNode.Kind = JsonValueKind.String;
+                break;
+        }
+        return simpleNode;
+    }
+    formatArray(depth, element) {
+        const items = element.map(child => this.formatElement(depth + 1, child));
+        if (items.length === 0)
+            return this.emptyArray(depth);
+        const thisItem = new FormattedNode();
+        thisItem.Kind = JsonValueKind.Array;
+        thisItem.Complexity = Math.max(...items.map(fn => fn.Complexity)) + 1;
+        thisItem.Depth = depth;
+        thisItem.Children = items;
+        if (thisItem.Depth > this._alwaysExpandDepth) {
+            if (this.formatArrayInline(thisItem)) {
+                return thisItem;
+            }
+        }
+        this.justifyParallelNumbers(thisItem.Children);
+        if (thisItem.Depth > this._alwaysExpandDepth) {
+            if (this.formatArrayMultilineCompact(thisItem)) {
+                return thisItem;
+            }
+        }
+        if (this.formatTableArrayObject(thisItem))
+            return thisItem;
+        if (this.formatTableArrayArray(thisItem))
+            return thisItem;
+        this.formatArrayExpanded(thisItem);
+        return thisItem;
+    }
+    formatObject(depth, element) {
+        const items = Object.entries(element)
+            .map(kvp => this.formatElement(depth + 1, kvp[1]).withName(kvp[0]));
+        if (items.length === 0)
+            return this.emptyObject(depth);
+        const thisItem = new FormattedNode();
+        thisItem.Kind = JsonValueKind.Object;
+        thisItem.Complexity = Math.max(...items.map(fn => fn.Complexity)) + 1;
+        thisItem.Depth = depth;
+        thisItem.Children = items;
+        if (thisItem.Depth > this._alwaysExpandDepth) {
+            if (this.formatObjectInline(thisItem)) {
+                return thisItem;
+            }
+        }
+        if (this.formatTableObjectObject(thisItem))
+            return thisItem;
+        if (this.formatTableObjectArray(thisItem))
+            return thisItem;
+        this.formatObjectExpanded(thisItem, false);
+        return thisItem;
+    }
+    emptyArray(depth) {
+        const arr = new FormattedNode();
+        arr.Value = "[]";
+        arr.Complexity = 0;
+        arr.Depth = depth;
+        arr.Kind = JsonValueKind.Array;
+        arr.Format = Format.Inline;
+        return arr;
+    }
+    formatArrayInline(thisItem) {
+        if (thisItem.Complexity > this._maxInlineComplexity)
+            return false;
+        const useNestedBracketPadding = (this._nestedBracketPadding && thisItem.Complexity >= 2);
+        const lineLength = 2 + (useNestedBracketPadding ? 2 : 0)
+            + (thisItem.Children.length - 1) * this._paddedCommaStr.length
+            + thisItem.Children.map(fn => fn.Value.length).reduce((acc, item) => acc + item);
+        if (lineLength > this._maxInlineLength)
+            return false;
+        const buff = [];
+        buff.push('[');
+        if (useNestedBracketPadding)
+            buff.push(' ');
+        let firstElem = true;
+        for (const child of thisItem.Children) {
+            if (!firstElem)
+                buff.push(this._paddedCommaStr);
+            buff.push(child.Value);
+            firstElem = false;
+        }
+        if (useNestedBracketPadding)
+            buff.push(' ');
+        buff.push(']');
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.Inline;
+        return true;
+    }
+    formatArrayMultilineCompact(thisItem) {
+        if (thisItem.Complexity > this._maxCompactArrayComplexity)
+            return false;
+        const buff = [];
+        buff.push('[', this._eolStr);
+        this.indent(buff, thisItem.Depth + 1);
+        let lineLengthSoFar = 0;
+        let childIndex = 0;
+        while (childIndex < thisItem.Children.length) {
+            const notLastItem = childIndex < thisItem.Children.length - 1;
+            const itemLength = thisItem.Children[childIndex].Value.length;
+            const segmentLength = itemLength + ((notLastItem) ? this._paddedCommaStr.length : 0);
+            if (lineLengthSoFar + segmentLength > this._maxInlineLength && lineLengthSoFar > 0) {
+                buff.push(this._eolStr);
+                this.indent(buff, thisItem.Depth + 1);
+                lineLengthSoFar = 0;
+            }
+            buff.push(thisItem.Children[childIndex].Value);
+            if (notLastItem)
+                buff.push(this._paddedCommaStr);
+            childIndex += 1;
+            lineLengthSoFar += segmentLength;
+        }
+        buff.push(this._eolStr);
+        this.indent(buff, thisItem.Depth);
+        buff.push(']');
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.MultilineCompact;
+        return true;
+    }
+    formatTableArrayObject(thisItem) {
+        if (this._tableObjectMinimumSimilarity > 100.5)
+            return false;
+        const colStats = this.getPropertyStats(thisItem);
+        if (!colStats)
+            return false;
+        for (const child of thisItem.Children)
+            this.formatObjectTableRow(child, colStats);
+        return this.formatArrayExpanded(thisItem);
+    }
+    formatTableArrayArray(thisItem) {
+        if (this._tableArrayMinimumSimilarity > 100.5)
+            return false;
+        const columnStats = this.getArrayStats(thisItem);
+        if (!columnStats)
+            return false;
+        for (const child of thisItem.Children)
+            this.formatArrayTableRow(child, columnStats);
+        return this.formatArrayExpanded(thisItem);
+    }
+    formatArrayTableRow(thisItem, columnStatsArray) {
+        const buff = [];
+        buff.push("[ ");
+        for (let index = 0; index < thisItem.Children.length; ++index) {
+            if (index)
+                buff.push(this._paddedCommaStr);
+            const columnStats = columnStatsArray[index];
+            buff.push(columnStats.formatValue(thisItem.Children[index].Value, this._dontJustifyNumbers));
+        }
+        for (let index = thisItem.Children.length; index < columnStatsArray.length; ++index) {
+            const padSize = columnStatsArray[index].MaxValueSize
+                + ((index === 0) ? 0 : this._paddedCommaStr.length);
+            buff.push(' '.repeat(padSize));
+        }
+        buff.push(" ]");
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.InlineTabular;
+    }
+    formatArrayExpanded(thisItem) {
+        const buff = [];
+        buff.push('[', this._eolStr);
+        let firstElem = true;
+        for (const child of thisItem.Children) {
+            if (!firstElem)
+                buff.push(',', this._eolStr);
+            this.indent(buff, child.Depth).push(child.Value);
+            firstElem = false;
+        }
+        buff.push(this._eolStr);
+        this.indent(buff, thisItem.Depth).push(']');
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.Expanded;
+        return true;
+    }
+    emptyObject(depth) {
+        const obj = new FormattedNode();
+        obj.Value = "{}";
+        obj.Complexity = 0;
+        obj.Depth = depth;
+        obj.Kind = JsonValueKind.Object;
+        obj.Format = Format.Inline;
+        return obj;
+    }
+    formatObjectInline(thisItem) {
+        if (thisItem.Complexity > this._maxInlineComplexity)
+            return false;
+        const useNestedBracketPadding = (this._nestedBracketPadding && thisItem.Complexity >= 2);
+        const lineLength = 2 + (useNestedBracketPadding ? 2 : 0)
+            + thisItem.Children.length * this._paddedColonStr.length
+            + (thisItem.Children.length - 1) * this._paddedCommaStr.length
+            + thisItem.Children.length * 2
+            + thisItem.Children.map(fn => fn.Name.length).reduce((acc, item) => acc + item)
+            + thisItem.Children.map(fn => fn.Value.length).reduce((acc, item) => acc + item);
+        if (lineLength > this._maxInlineLength)
+            return false;
+        const buff = [];
+        buff.push('{');
+        if (useNestedBracketPadding)
+            buff.push(' ');
+        let firstElem = true;
+        for (const prop of thisItem.Children) {
+            if (!firstElem)
+                buff.push(this._paddedCommaStr);
+            buff.push('"', prop.Name, '"', this._paddedColonStr, prop.Value);
+            firstElem = false;
+        }
+        if (useNestedBracketPadding)
+            buff.push(' ');
+        buff.push('}');
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.Inline;
+        return true;
+    }
+    formatTableObjectObject(thisItem) {
+        if (this._tableObjectMinimumSimilarity > 100.5)
+            return false;
+        const propStats = this.getPropertyStats(thisItem);
+        if (!propStats)
+            return false;
+        for (const child of thisItem.Children)
+            this.formatObjectTableRow(child, propStats);
+        return this.formatObjectExpanded(thisItem, true);
+    }
+    formatTableObjectArray(thisItem) {
+        if (this._tableArrayMinimumSimilarity > 100.5)
+            return false;
+        const columnStats = this.getArrayStats(thisItem);
+        if (!columnStats)
+            return false;
+        for (const child of thisItem.Children)
+            this.formatArrayTableRow(child, columnStats);
+        return this.formatObjectExpanded(thisItem, true);
+    }
+    formatObjectTableRow(thisItem, columnStatsArray) {
+        let highestNonBlankIndex = -1;
+        const propSegmentStrings = [];
+        for (let colIndex = 0; colIndex < columnStatsArray.length; ++colIndex) {
+            const buff = [];
+            const columnStats = columnStatsArray[colIndex];
+            const filteredPropNodes = thisItem.Children.filter(fn => fn.Name === columnStats.PropName);
+            if (filteredPropNodes.length === 0) {
+                const skipLength = 2
+                    + columnStats.PropName.length
+                    + this._paddedColonStr.length
+                    + columnStats.MaxValueSize;
+                buff.push(' '.repeat(skipLength));
+            }
+            else {
+                const propNode = filteredPropNodes[0];
+                buff.push('"', columnStats.PropName, '"', this._paddedColonStr);
+                buff.push(columnStats.formatValue(propNode.Value, this._dontJustifyNumbers));
+                highestNonBlankIndex = colIndex;
+            }
+            propSegmentStrings[colIndex] = this.combine(buff);
+        }
+        const buff = [];
+        buff.push("{ ");
+        let firstElem = true;
+        let needsComma = false;
+        for (let segmentIndex = 0; segmentIndex < propSegmentStrings.length; ++segmentIndex) {
+            if (needsComma && segmentIndex <= highestNonBlankIndex)
+                buff.push(this._paddedCommaStr);
+            else if (!firstElem)
+                buff.push(' '.repeat(this._paddedCommaStr.length));
+            buff.push(propSegmentStrings[segmentIndex]);
+            needsComma = (propSegmentStrings[segmentIndex].trim().length !== 0);
+            firstElem = false;
+        }
+        buff.push(" }");
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.InlineTabular;
+    }
+    formatObjectExpanded(thisItem, forceExpandPropNames) {
+        const maxPropNameLength = Math.max(...thisItem.Children.map(fn => fn.Name.length));
+        const buff = [];
+        buff.push('{', this._eolStr);
+        let firstItem = true;
+        for (const prop of thisItem.Children) {
+            if (!firstItem)
+                buff.push(',', this._eolStr);
+            this.indent(buff, prop.Depth).push('"', prop.Name, '"');
+            if (this._alignExpandedPropertyNames || forceExpandPropNames)
+                buff.push(' '.repeat(maxPropNameLength - prop.Name.length));
+            buff.push(this._paddedColonStr, prop.Value);
+            firstItem = false;
+        }
+        buff.push(this._eolStr);
+        this.indent(buff, thisItem.Depth).push('}');
+        thisItem.Value = this.combine(buff);
+        thisItem.Format = Format.Expanded;
+        return true;
+    }
+    justifyParallelNumbers(itemList) {
+        if (itemList.length < 2 || this._dontJustifyNumbers)
+            return;
+        const columnStats = new ColumnStats();
+        for (const propNode of itemList)
+            columnStats.update(propNode, 0);
+        if (!columnStats.IsQualifiedNumeric)
+            return;
+        for (const propNode of itemList)
+            propNode.Value = columnStats.formatValue(propNode.Value, this._dontJustifyNumbers);
+    }
+    getPropertyStats(thisItem) {
+        if (thisItem.Children.length < 2)
+            return null;
+        const props = {};
+        for (const child of thisItem.Children) {
+            if (child.Kind !== JsonValueKind.Object || child.Format !== Format.Inline)
+                return null;
+            for (let index = 0; index < child.Children.length; ++index) {
+                const propNode = child.Children[index];
+                let propStats = props[propNode.Name];
+                if (!propStats) {
+                    propStats = new ColumnStats();
+                    propStats.PropName = propNode.Name;
+                    props[propStats.PropName] = propStats;
+                }
+                propStats.update(propNode, index);
+            }
+        }
+        const orderedProps = Object.values(props)
+            .sort((a, b) => (a.OrderSum / a.Count) - (b.OrderSum / b.Count));
+        const totalPropCount = orderedProps.map(cs => cs.Count).reduce((acc, item) => acc + item);
+        const score = 100 * totalPropCount / (orderedProps.length * thisItem.Children.length);
+        if (score < this._tableObjectMinimumSimilarity)
+            return null;
+        const lineLength = 4
+            + 2 * orderedProps.length
+            + orderedProps.map(cs => cs.PropName.length).reduce((acc, item) => acc + item)
+            + this._paddedColonStr.length * orderedProps.length
+            + orderedProps.map(cs => cs.MaxValueSize).reduce((acc, item) => acc + item)
+            + this._paddedCommaStr.length * (orderedProps.length - 1);
+        if (lineLength > this._maxInlineLength)
+            return null;
+        return orderedProps;
+    }
+    getArrayStats(thisItem) {
+        if (thisItem.Children.length < 2)
+            return null;
+        const valid = thisItem.Children.every(fn => fn.Kind === JsonValueKind.Array && fn.Format === Format.Inline);
+        if (!valid)
+            return null;
+        const numberOfColumns = Math.max(...thisItem.Children.map(fn => fn.Children.length));
+        const colStatsArray = [];
+        for (let i = 0; i < numberOfColumns; ++i)
+            colStatsArray[i] = new ColumnStats();
+        for (const rowNode of thisItem.Children) {
+            for (let index = 0; index < rowNode.Children.length; ++index)
+                colStatsArray[index].update(rowNode.Children[index], index);
+        }
+        const totalElemCount = thisItem.Children.map(fn => fn.Children.length).reduce((acc, item) => acc + item);
+        const similarity = 100 * totalElemCount / (thisItem.Children.length * numberOfColumns);
+        if (similarity < this._tableArrayMinimumSimilarity)
+            return null;
+        const lineLength = 4
+            + colStatsArray.map(cs => cs.MaxValueSize).reduce((acc, item) => acc + item)
+            + (colStatsArray.length - 1) * this._paddedCommaStr.length;
+        if (lineLength > this._maxInlineLength)
+            return null;
+        return colStatsArray;
+    }
+}
+exports.Formatter = Formatter;
+var EolStyle;
+(function (EolStyle) {
+    EolStyle[EolStyle["Crlf"] = 0] = "Crlf";
+    EolStyle[EolStyle["lf"] = 1] = "lf";
+})(EolStyle = exports.EolStyle || (exports.EolStyle = {}));
+var JsonValueKind;
+(function (JsonValueKind) {
+    JsonValueKind[JsonValueKind["Undefined"] = 0] = "Undefined";
+    JsonValueKind[JsonValueKind["Object"] = 1] = "Object";
+    JsonValueKind[JsonValueKind["Array"] = 2] = "Array";
+    JsonValueKind[JsonValueKind["String"] = 3] = "String";
+    JsonValueKind[JsonValueKind["Number"] = 4] = "Number";
+    JsonValueKind[JsonValueKind["Boolean"] = 5] = "Boolean";
+    JsonValueKind[JsonValueKind["Null"] = 6] = "Null";
+})(JsonValueKind || (JsonValueKind = {}));
+class ColumnStats {
+    constructor() {
+        this.PropName = "";
+        this.OrderSum = 0;
+        this.Count = 0;
+        this.MaxValueSize = 0;
+        this.IsQualifiedNumeric = true;
+        this.CharsBeforeDec = 0;
+        this.CharsAfterDec = 0;
+    }
+    update(propNode, index) {
+        this.OrderSum += index;
+        this.Count += 1;
+        this.MaxValueSize = Math.max(this.MaxValueSize, propNode.Value.length);
+        this.IsQualifiedNumeric = this.IsQualifiedNumeric && (propNode.Kind === JsonValueKind.Number);
+        if (!this.IsQualifiedNumeric)
+            return;
+        const normalizedNum = Number(propNode.Value).toString();
+        this.IsQualifiedNumeric = this.IsQualifiedNumeric && !(normalizedNum.includes("e") || normalizedNum.includes("E"));
+        if (!this.IsQualifiedNumeric)
+            return;
+        const decIndex = normalizedNum.indexOf(".");
+        if (decIndex < 0) {
+            this.CharsBeforeDec = Math.max(this.CharsBeforeDec, normalizedNum.length);
+        }
+        else {
+            this.CharsBeforeDec = Math.max(this.CharsBeforeDec, decIndex);
+            this.CharsAfterDec = Math.max(this.CharsAfterDec, normalizedNum.length - decIndex - 1);
+        }
+    }
+    formatValue(value, dontJustify) {
+        if (this.IsQualifiedNumeric && !dontJustify) {
+            const adjustedVal = Number(value).toFixed(this.CharsAfterDec);
+            const totalLength = this.CharsBeforeDec + this.CharsAfterDec + ((this.CharsAfterDec > 0) ? 1 : 0);
+            return adjustedVal.padStart(totalLength);
+        }
+        return value.padEnd(this.MaxValueSize);
+    }
+}
+var Format;
+(function (Format) {
+    Format[Format["Inline"] = 0] = "Inline";
+    Format[Format["InlineTabular"] = 1] = "InlineTabular";
+    Format[Format["MultilineCompact"] = 2] = "MultilineCompact";
+    Format[Format["Expanded"] = 3] = "Expanded";
+})(Format || (Format = {}));
+class FormattedNode {
+    constructor() {
+        this.Name = "";
+        this.Value = "";
+        this.Complexity = 0;
+        this.Depth = 0;
+        this.Kind = JsonValueKind.Undefined;
+        this.Format = Format.Inline;
+        this.Children = [];
+    }
+    withName(name) {
+        this.Name = name;
+        return this;
+    }
+    cleanup() {
+        if (this.Format !== Format.Inline)
+            this.Children = [];
+        for (const child of this.Children)
+            child.Children = [];
+    }
+}
+
+
+
 </script>
 
 <script>
@@ -29,32 +661,43 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
                 outputVal = JSON.stringify(objFormOfInput);
             }
             else if (formatType=="near") {
-                const format = new FracturedJson();
-                format.MaxInlineLength = 1000000000;
-                format.MaxInlineComplexity = 1000000000;
-                format.MaxCompactArrayComplexity = 1000000000;
-                format.AlwaysExpandDepth = 0;
-                format.NestedBracketPadding = false;
-                format.ColonPadding = false;
-                format.CommaPadding = false;
-                format.JustifyNumberLists = false;
-                format.IndentString = "";
+                const format = new Formatter();
+                format.maxInlineLength = 1000000000;
+                format.maxInlineComplexity = 1000000000;
+                format.maxCompactArrayComplexity = 1000000000;
+                format.alwaysExpandDepth = 0;
+                format.alignExpandedPropertyNames = false;
+                format.nestedBracketPadding = false;
+                format.colonPadding = false;
+                format.commaPadding = false;
+                format.indentSpaces = 0;
+                format.useTabToIndent = false;
 
-                outputVal = format.Serialize(objFormOfInput);
+                outputVal = format.serialize(objFormOfInput);
             }
             else {
-                const format = new FracturedJson();
-                format.MaxInlineLength = Number(document.getElementById("maxInlineLength").value);
-                format.MaxInlineComplexity = Number(document.getElementById("maxInlineComplexity").value);
-                format.MaxCompactArrayComplexity = Number(document.getElementById("maxCompactArrayComplexity").value);
-                format.AlwaysExpandDepth = Number(document.getElementById("alwaysExpandDepth").value);
-                format.NestedBracketPadding = document.getElementById("nestedBracketPadding").checked;
-                format.ColonPadding = document.getElementById("colonPadding").checked;
-                format.CommaPadding = document.getElementById("commaPadding").checked;
-                format.JustifyNumberLists = document.getElementById("justifyNumberLists").checked;
-                format.IndentString = document.getElementById("indentString").value;
+                const format = new Formatter();
+                format.maxInlineLength = Number(document.getElementById("maxInlineLength").value);
+                format.maxInlineComplexity = Number(document.getElementById("maxInlineComplexity").value);
+                format.maxCompactArrayComplexity = Number(document.getElementById("maxCompactArrayComplexity").value);
+                format.alwaysExpandDepth = Number(document.getElementById("alwaysExpandDepth").value);
+                format.alignExpandedPropertyNames = document.getElementById("alignExpandedPropertyNames").checked;
+                format.nestedBracketPadding = document.getElementById("nestedBracketPadding").checked;
+                format.colonPadding = document.getElementById("colonPadding").checked;
+                format.commaPadding = document.getElementById("commaPadding").checked;
+                format.dontJustifyNumbers = document.getElementById("dontJustifyNumbers").checked;
+                format.tableObjectMinimumSimilarity = Number(document.getElementById("tableObjectMinimumSimilarity").value);
+                format.tableArrayMinimumSimilarity = Number(document.getElementById("tableArrayMinimumSimilarity").value);
 
-                outputVal = format.Serialize(objFormOfInput);
+                const indentCode = document.getElementById("indentCode").value;
+                if (indentCode==="tab"){
+                    format.useTabToIndent = true;
+                } else {
+                    format.useTabToIndent = false;
+                    format.indentSpaces = Number(indentCode);
+                }
+
+                outputVal = format.serialize(objFormOfInput);
             }
         }
         catch (ex) {
@@ -65,7 +708,7 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
     }
 
     function sampleData() {
-        const data = {"SimpleItem":77,"ComplexObject":{"Subthing1":{"X":55,"Y":19,"Z":-4},"Subthing2":{"Q":null,"W":[-2,-1,0,1]},"Distraction":[[],null,null]},"ShortArray":["blue","blue","orange","gray"],"LongArray":[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293],"LongArray2":[[19,2],[3,8],[14,0],[9,9],[9,9],[0,3],[10,1],[9,1],[9,2],[6,13],[18,5],[4,11],[12,2]]};
+        const data = {"SimpleArray":[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113],"ObjectColumnsArrayRows":{"Katherine":["blue","lightblue","black"],"Logan":["yellow","blue","black","red"],"Erik":["red","purple"],"Jean":["lightgreen","yellow","black"]},"ArrayColumnsObjectRows":[{"hp":400,"type":"turret","loc":{"x":47,"y":-4},"flags":"S"},{"type":"assassin","hp":80,"loc":{"x":12,"y":6},"flags":"Q"},{"type":"berserker","hp":150,"loc":{"x":0,"y":0}},{"loc":{"x":10,"y":-14},"type":"pittrap","flags":"S,I"}],"ComplexArray":[[19,2],[3,8],[14,0],[9,9],[9,9],[0,3],[10,1],[9,1],[9,2],[6,13],[18,5],[4,11],[12,2]]};
         document.getElementById("jsonInput").value = JSON.stringify(data);
     }
 
@@ -74,27 +717,33 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         localStorage["maxInlineComplexity"] = document.getElementById("maxInlineComplexity").value;
         localStorage["maxCompactArrayComplexity"] = document.getElementById("maxCompactArrayComplexity").value;
         localStorage["alwaysExpandDepth"] = document.getElementById("alwaysExpandDepth").value;
+        localStorage["alignExpandedPropertyNames"] = document.getElementById("alignExpandedPropertyNames").checked;
         localStorage["nestedBracketPadding"] = document.getElementById("nestedBracketPadding").checked;
         localStorage["colonPadding"] = document.getElementById("colonPadding").checked;
         localStorage["commaPadding"] = document.getElementById("commaPadding").checked;
-        localStorage["justifyNumberLists"] = document.getElementById("justifyNumberLists").checked;
-        localStorage["indentString"] = document.getElementById("indentString").value;
+        localStorage["dontJustifyNumbers"] = document.getElementById("dontJustifyNumbers").checked;
+        localStorage["tableObjectMinimumSimilarity"] = document.getElementById("tableObjectMinimumSimilarity").value;
+        localStorage["tableArrayMinimumSimilarity"] = document.getElementById("tableArrayMinimumSimilarity").value;
+        localStorage["indentCode"] = document.getElementById("indentCode").value;
     }
 
     function loadOptions() {
         if (typeof(Storage) == "undefined")
             return;
 
-        const defaults = new FracturedJson();
-        document.getElementById("maxInlineLength").value = Number(localStorage["maxInlineLength"] || defaults.MaxInlineLength);
-        document.getElementById("maxInlineComplexity").value = Number(localStorage["maxInlineComplexity"] || defaults.MaxInlineComplexity);
-        document.getElementById("maxCompactArrayComplexity").value = Number(localStorage["maxCompactArrayComplexity"] || defaults.MaxCompactArrayComplexity);
-        document.getElementById("alwaysExpandDepth").value = Number(localStorage["alwaysExpandDepth"] || defaults.AlwaysExpandDepth);
-        document.getElementById("nestedBracketPadding").checked = boolOrDefault(localStorage["nestedBracketPadding"], defaults.NestedBracketPadding);
-        document.getElementById("colonPadding").checked = boolOrDefault(localStorage["colonPadding"], defaults.ColonPadding);
-        document.getElementById("commaPadding").checked = boolOrDefault(localStorage["commaPadding"], defaults.CommaPadding);
-        document.getElementById("justifyNumberLists").checked = boolOrDefault(localStorage["justifyNumberLists"], defaults.JustifyNumberLists);
-        document.getElementById("indentString").value = (localStorage["indentString"]!==undefined)? localStorage["indentString"] : defaults.IndentString;
+        const defaults = new Formatter();
+        document.getElementById("maxInlineLength").value = Number(localStorage["maxInlineLength"] || defaults.maxInlineLength);
+        document.getElementById("maxInlineComplexity").value = Number(localStorage["maxInlineComplexity"] || defaults.maxInlineComplexity);
+        document.getElementById("maxCompactArrayComplexity").value = Number(localStorage["maxCompactArrayComplexity"] || defaults.maxCompactArrayComplexity);
+        document.getElementById("alwaysExpandDepth").value = Number(localStorage["alwaysExpandDepth"] || defaults.alwaysExpandDepth);
+        document.getElementById("alignExpandedPropertyNames").checked = boolOrDefault(localStorage["alignExpandedPropertyNames"], defaults.alignExpandedPropertyNames);
+        document.getElementById("nestedBracketPadding").checked = boolOrDefault(localStorage["nestedBracketPadding"], defaults.nestedBracketPadding);
+        document.getElementById("colonPadding").checked = boolOrDefault(localStorage["colonPadding"], defaults.colonPadding);
+        document.getElementById("commaPadding").checked = boolOrDefault(localStorage["commaPadding"], defaults.commaPadding);
+        document.getElementById("dontJustifyNumbers").checked = boolOrDefault(localStorage["dontJustifyNumbers"], defaults.dontJustifyNumbers);
+        document.getElementById("tableObjectMinimumSimilarity").value = Number(localStorage["tableObjectMinimumSimilarity"] || defaults.tableObjectMinimumSimilarity);
+        document.getElementById("tableArrayMinimumSimilarity").value = Number(localStorage["tableArrayMinimumSimilarity"] || defaults.tableArrayMinimumSimilarity);
+        document.getElementById("indentCode").value = (localStorage["indentCode"]!==undefined)? localStorage["indentCode"] : defaults.indentSpaces.toString();
     }
 
     function boolOrDefault(stored, defaultVal) {
@@ -184,8 +833,6 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
         &mdash;
         <a href="https://j-brooke.github.io/FracturedJson/">Browser</a>
         &mdash;
-        <a href="https://github.com/j-brooke/FracturedJson/wiki/.NET-Commandline-App">.NET Commandline App</a>
-        &mdash;
         <a href="https://github.com/j-brooke/FracturedJson/wiki/.NET-Library">.NET Library</a>
         <a href="https://www.nuget.org/packages/FracturedJson">(NuGet)</a>
         &mdash;
@@ -216,26 +863,29 @@ class FracturedJson{constructor(){this.MaxInlineLength=80;this.MaxInlineComplexi
                         <div><input type="number" onchange="saveOptions()" value="-1" id="alwaysExpandDepth">Always-Expand Depth</input></div>
                     </div>
                     <div class="option-group">
+                        <div><input type="checkbox" onchange="saveOptions()" checked="false" id="alignExpandedPropertyNames">Align Property Names</input></div>
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="nestedBracketPadding">Nested Bracket Padding</input></div>
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="colonPadding">Colon Padding</input></div>
                         <div><input type="checkbox" onchange="saveOptions()" checked="true" id="commaPadding">Comma Padding</input></div>
-                        <div><input type="checkbox" onchange="saveOptions()" checked="false" id="justifyNumberLists">Justify Number Lists</input></div>
+                        <div><input type="checkbox" onchange="saveOptions()" checked="false" id="dontJustifyNumbers">Don't Justify Numbers</input></div>
                     </div>
 
                     <div class="option-group">
-                        <select name="indentString" id="indentString" onchange="saveOptions()">
-                            <option value="">None</option>
-                            <option value="&#9;">Tab</option>
-                            <option value=" ">1 Space</option>
-                            <option value="  ">2 Spaces</option>
-                            <option value="   ">3 Spaces</option>
-                            <option value="    " selected="true">4 Spaces</option>
-                            <option value="     ">5 Spaces</option>
-                            <option value="      ">6 Spaces</option>
-                            <option value="       ">7 Spaces</option>
-                            <option value="        ">8 Spaces</option>
+                        <div><input type="number" onchange="saveOptions()" min="0" step="12.5" value="75" id="tableObjectMinimumSimilarity">Table Object Minimum Similarity</input></div>
+                        <div><input type="number" onchange="saveOptions()" min="0" step="12.5" value="75" id="tableArrayMinimumSimilarity">Table Array Minimum Similarity</input></div>
+                        <select name="indentCode" id="indentCode" onchange="saveOptions()">
+                            <option value="0">None</option>
+                            <option value="tab">Tab</option>
+                            <option value="1">1 Space</option>
+                            <option value="2">2 Spaces</option>
+                            <option value="3">3 Spaces</option>
+                            <option value="4" selected="true">4 Spaces</option>
+                            <option value="5">5 Spaces</option>
+                            <option value="6">6 Spaces</option>
+                            <option value="7">7 Spaces</option>
+                            <option value="8">8 Spaces</option>
                         </select>
-                        <label for="indentString">Indentation</label><br/>
+                        <label for="indentCode">Indentation</label><br/>
                         <a href="https://github.com/j-brooke/FracturedJson/wiki/Options" target="_blank">Option Help</a>
                     </div>
 
