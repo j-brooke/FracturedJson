@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 2.0.1
+
+### Bug Fixes
+
+* Escape sequences in property names are not preserved (#3)
+
 ## 2.0.0
 
 Re-written to support table-formatting.  When an expanded array or object is composed of highly similar inline arrays or objects, FracturedJson tries to format them in a tabular format, sorting properties and justifying values to make everything line up neatly.

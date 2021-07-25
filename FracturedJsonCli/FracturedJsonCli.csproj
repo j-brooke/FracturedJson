@@ -4,9 +4,9 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
-        <AssemblyVersion>1.2.0</AssemblyVersion>
+        <AssemblyVersion>2.0.1</AssemblyVersion>
         <IsPackable>false</IsPackable>
-        <PackageVersion>1.2.0</PackageVersion>
+        <PackageVersion>2.0.1</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
