@@ -297,7 +297,8 @@ namespace FracturedJson
         {
             // Recursively format all of this object's property values.
             var items = element.EnumerateObject()
-                .Select(child => FormatElement(depth + 1, child.Value).WithName(child.Name))
+                .Select(child => FormatElement(depth + 1, child.Value)
+                    .WithName(JsonSerializer.Serialize(child.Name, JsonSerializerOptions)))
                 .ToArray();
 
             if (!items.Any())
@@ -554,7 +555,6 @@ namespace FracturedJson
             var lineLength = 2 + (useNestedBracketPadding ? 2 : 0)                             // outer brackets
                                + thisItem.Children.Count * _paddedColonStr.Length                 // colons
                                + (thisItem.Children.Count - 1) * _paddedCommaStr.Length           // commas
-                               + thisItem.Children.Count * 2                                      // prop quotes
                                + thisItem.Children.Sum(fn => fn.Name.Length)   // prop names
                                + thisItem.Children.Sum(fn => fn.Value.Length); // values
             if (lineLength > MaxInlineLength)
@@ -571,7 +571,7 @@ namespace FracturedJson
             {
                 if (!firstElem)
                     _buff.Append(_paddedCommaStr);
-                _buff.Append('"').Append(prop.Name).Append('"').Append(_paddedColonStr).Append(prop.Value);
+                _buff.Append(prop.Name).Append(_paddedColonStr).Append(prop.Value);
                 firstElem = false;
             }
 
@@ -642,8 +642,7 @@ namespace FracturedJson
                 if (propNode == null)
                 {
                     // This object doesn't have this particular property.  Pad it out.
-                    var skipLength = 2
-                                     + columnStats.PropName.Length
+                    var skipLength = columnStats.PropName.Length
                                      + _paddedColonStr.Length
                                      + columnStats.MaxValueSize;
                     _buff.Append(' ', skipLength);
@@ -651,7 +650,7 @@ namespace FracturedJson
                 else
                 {
                     var valuePadLength = columnStats.MaxValueSize - propNode.Value.Length;
-                    _buff.Append('"').Append(columnStats.PropName).Append('"').Append(_paddedColonStr);
+                    _buff.Append(columnStats.PropName).Append(_paddedColonStr);
 
                     if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
                         _buff.Append(string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
@@ -703,7 +702,7 @@ namespace FracturedJson
             {
                 if (!firstItem)
                     _buff.Append(',').Append(_eolStr);
-                Indent(_buff, prop.Depth).Append('"').Append(prop.Name).Append('"');
+                Indent(_buff, prop.Depth).Append(prop.Name);
 
                 if (AlignExpandedPropertyNames || forceExpandPropNames)
                     _buff.Append(' ', maxPropNameLength - prop.Name.Length);
@@ -813,7 +812,6 @@ namespace FracturedJson
 
             // If the formatted lines would be too long, bail out.
             var lineLength = 4                                                          // outer brackets & spaces
-                             + 2 * orderedProps.Length                                     // property quotes
                              + orderedProps.Sum(cs => cs.PropName.Length) // prop names
                              + _paddedColonStr.Length * orderedProps.Length                // colons
                              + orderedProps.Sum(cs => cs.MaxValueSize)    // values
