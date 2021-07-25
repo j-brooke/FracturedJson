@@ -8,7 +8,7 @@
 
 "use strict";
 /*
- * FracturedJsonJs 2.0.0
+ * FracturedJsonJs 2.0.1
  * FracturedJsonJs is a library for formatting JSON documents in a human-readable but fairly compact way.
  *
  * Copyright (c) 2021 Jesse Brooke
@@ -49,100 +49,164 @@ class Formatter {
         this._paddedColonStr = "";
         this._indentCache = [];
     }
+    /**
+     * Dictates what sort of line endings to use.
+     */
     get jsonEolStyle() {
         return this._jsonEolStyle;
     }
     set jsonEolStyle(value) {
         this._jsonEolStyle = value;
     }
+    /**
+     * Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
+     * not indentation or leading property names.
+     */
     get maxInlineLength() {
         return this._maxInlineLength;
     }
     set maxInlineLength(value) {
         this._maxInlineLength = value;
     }
+    /**
+     * Maximum nesting level that can be displayed on a single line.  A primitive type or an empty
+     * array or object has a complexity of 0.  An object or array has a complexity of 1 greater than
+     * its most complex child.
+     */
     get maxInlineComplexity() {
         return this._maxInlineComplexity;
     }
     set maxInlineComplexity(value) {
         this._maxInlineComplexity = value;
     }
+    /**
+     * Maximum nesting level that can be arranged spanning multiple lines, with multiple items per line.
+     */
     get maxCompactArrayComplexity() {
         return this._maxCompactArrayComplexity;
     }
     set maxCompactArrayComplexity(value) {
         this._maxCompactArrayComplexity = value;
     }
+    /**
+     * If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
+     * will include spaces inside the outer brackets.
+     */
     get nestedBracketPadding() {
         return this._nestedBracketPadding;
     }
     set nestedBracketPadding(value) {
         this._nestedBracketPadding = value;
     }
+    /**
+     * If true, includes a space after property colons.
+     */
     get colonPadding() {
         return this._colonPadding;
     }
     set colonPadding(value) {
         this._colonPadding = value;
     }
+    /**
+     * If true, includes a space after commas separating array items and object properties.
+     */
     get commaPadding() {
         return this._commaPadding;
     }
     set commaPadding(value) {
         this._commaPadding = value;
     }
+    /**
+     * Depth at which lists/objects are always fully expanded, regardless of other settings.
+     * -1 = none; 0 = root node only; 1 = root node and its children.
+     */
     get alwaysExpandDepth() {
         return this._alwaysExpandDepth;
     }
     set alwaysExpandDepth(value) {
         this._alwaysExpandDepth = value;
     }
+    /**
+     * Number of spaces to use per indent level (unless UseTabToIndent is true)
+     */
     get indentSpaces() {
         return this._indentSpaces;
     }
     set indentSpaces(value) {
         this._indentSpaces = value;
     }
+    /**
+     * Uses a single tab per indent level, instead of spaces.
+     */
     get useTabToIndent() {
         return this._useTabToIndent;
     }
     set useTabToIndent(value) {
         this._useTabToIndent = value;
     }
+    /**
+     * Value from 0 to 100 indicating how similar collections of inline objects need to be to be formatted as
+     * a table.  A group of objects that don't have any property names in common has a similarity of zero.  A
+     * group of objects that all contain the exact same property names has a similarity of 100.  Setting this
+     * to a value &gt;100 disables table formatting with objects as rows.
+     */
     get tableObjectMinimumSimilarity() {
         return this._tableObjectMinimumSimilarity;
     }
     set tableObjectMinimumSimilarity(value) {
         this._tableObjectMinimumSimilarity = value;
     }
+    /**
+     * Value from 0 to 100 indicating how similar collections of inline arrays need to be to be formatted as
+     * a table.  Similarity for arrays refers to how similar they are in length; if they all have the same
+     * length their similarity is 100.  Setting this to a value &gt;100 disables table formatting with arrays as
+     * rows.
+     */
     get tableArrayMinimumSimilarity() {
         return this._tableArrayMinimumSimilarity;
     }
     set tableArrayMinimumSimilarity(value) {
         this._tableArrayMinimumSimilarity = value;
     }
+    /**
+     * If true, property names of expanded objects are padded to the same size.
+     */
     get alignExpandedPropertyNames() {
         return this._alignExpandedPropertyNames;
     }
     set alignExpandedPropertyNames(value) {
         this._alignExpandedPropertyNames = value;
     }
+    /**
+     * If true, numbers won't be right-aligned with matching precision.
+     */
     get dontJustifyNumbers() {
         return this._dontJustifyNumbers;
     }
     set dontJustifyNumbers(value) {
         this._dontJustifyNumbers = value;
     }
+    /**
+     * String attached to the beginning of every line, before regular indentation.
+     */
     get prefixString() {
         return this._prefixString;
     }
     set prefixString(value) {
         this._prefixString = value;
     }
+    /**
+     * Returns a JSON-formatted string that represents the given JavaScript value.
+     * @param jsValue
+     */
     serialize(jsValue) {
         this.initInternals();
         return this._prefixString + this.formatElement(0, jsValue).Value;
     }
+    /**
+     * Set up some intermediate fields for efficiency.
+     * @private
+     */
     initInternals() {
         this._eolStr = (this._jsonEolStyle === EolStyle.Crlf) ? "\r\n" : "\n";
         this._indentStr = (this._useTabToIndent) ? "\t" : " ".repeat(this._indentSpaces);
@@ -158,6 +222,12 @@ class Formatter {
     combine(buff) {
         return buff.join('');
     }
+    /**
+     * Base of recursion.  Nearly everything comes through here.
+     * @param depth
+     * @param element
+     * @private
+     */
     formatElement(depth, element) {
         let formattedItem;
         if (Array.isArray(element))
@@ -171,6 +241,12 @@ class Formatter {
         formattedItem.cleanup();
         return formattedItem;
     }
+    /**
+     * Formats a JSON element other than an array or object.
+     * @param depth
+     * @param element
+     * @private
+     */
     formatSimple(depth, element) {
         const simpleNode = new FormattedNode();
         simpleNode.Value = JSON.stringify(element);
@@ -200,6 +276,7 @@ class Formatter {
         return simpleNode;
     }
     formatArray(depth, element) {
+        // Recursively format all of this array's elements.
         const items = element.map(child => this.formatElement(depth + 1, child));
         if (items.length === 0)
             return this.emptyArray(depth);
@@ -227,8 +304,9 @@ class Formatter {
         return thisItem;
     }
     formatObject(depth, element) {
+        // Recursively format all of this object's property values.
         const items = Object.entries(element)
-            .map(kvp => this.formatElement(depth + 1, kvp[1]).withName(kvp[0]));
+            .map(kvp => this.formatElement(depth + 1, kvp[1]).withName(JSON.stringify(kvp[0])));
         if (items.length === 0)
             return this.emptyObject(depth);
         const thisItem = new FormattedNode();
@@ -257,6 +335,11 @@ class Formatter {
         arr.Format = Format.Inline;
         return arr;
     }
+    /**
+     * Try to format this array in a single line, if possible.
+     * @param thisItem
+     * @private
+     */
     formatArrayInline(thisItem) {
         if (thisItem.Complexity > this._maxInlineComplexity)
             return false;
@@ -284,6 +367,11 @@ class Formatter {
         thisItem.Format = Format.Inline;
         return true;
     }
+    /**
+     * Try to format this array, spanning multiple lines, but with several items per line, if possible.
+     * @param thisItem
+     * @private
+     */
     formatArrayMultilineCompact(thisItem) {
         if (thisItem.Complexity > this._maxCompactArrayComplexity)
             return false;
@@ -314,35 +402,59 @@ class Formatter {
         thisItem.Format = Format.MultilineCompact;
         return true;
     }
+    /**
+     * Format this array with one child object per line, and those objects padded to line up nicely.
+     * @param thisItem
+     * @private
+     */
     formatTableArrayObject(thisItem) {
         if (this._tableObjectMinimumSimilarity > 100.5)
             return false;
+        // Gather stats about our children's property order and width, if they're eligible objects.
         const colStats = this.getPropertyStats(thisItem);
         if (!colStats)
             return false;
+        // Reformat our immediate children using the width info we've computed.  Their children aren't
+        // recomputed, so this part isn't recursive.
         for (const child of thisItem.Children)
             this.formatObjectTableRow(child, colStats);
         return this.formatArrayExpanded(thisItem);
     }
+    /**
+     * Format this array with one child array per line, and those arrays padded to line up nicely.
+     * @param thisItem
+     * @private
+     */
     formatTableArrayArray(thisItem) {
         if (this._tableArrayMinimumSimilarity > 100.5)
             return false;
+        // Gather stats about our children's item widths, if they're eligible arrays.
         const columnStats = this.getArrayStats(thisItem);
         if (!columnStats)
             return false;
+        // Reformat our immediate children using the width info we've computed.  Their children aren't
+        // recomputed, so this part isn't recursive.
         for (const child of thisItem.Children)
             this.formatArrayTableRow(child, columnStats);
         return this.formatArrayExpanded(thisItem);
     }
+    /**
+     * Format this array in a single line, with padding to line up with siblings.
+     * @param thisItem
+     * @param columnStatsArray
+     * @private
+     */
     formatArrayTableRow(thisItem, columnStatsArray) {
         const buff = [];
         buff.push("[ ");
+        // Write the elements that actually exist in this array.
         for (let index = 0; index < thisItem.Children.length; ++index) {
             if (index)
                 buff.push(this._paddedCommaStr);
             const columnStats = columnStatsArray[index];
             buff.push(columnStats.formatValue(thisItem.Children[index].Value, this._dontJustifyNumbers));
         }
+        // Write padding for elements that exist in siblings but not this array.
         for (let index = thisItem.Children.length; index < columnStatsArray.length; ++index) {
             const padSize = columnStatsArray[index].MaxValueSize
                 + ((index === 0) ? 0 : this._paddedCommaStr.length);
@@ -352,6 +464,11 @@ class Formatter {
         thisItem.Value = this.combine(buff);
         thisItem.Format = Format.InlineTabular;
     }
+    /**
+     * Write this array with each element starting on its own line.  (They might be multiple lines themselves.)
+     * @param thisItem
+     * @private
+     */
     formatArrayExpanded(thisItem) {
         const buff = [];
         buff.push('[', this._eolStr);
@@ -377,6 +494,11 @@ class Formatter {
         obj.Format = Format.Inline;
         return obj;
     }
+    /**
+     * Format this object as a single line, if possible.
+     * @param thisItem
+     * @private
+     */
     formatObjectInline(thisItem) {
         if (thisItem.Complexity > this._maxInlineComplexity)
             return false;
@@ -384,7 +506,6 @@ class Formatter {
         const lineLength = 2 + (useNestedBracketPadding ? 2 : 0)
             + thisItem.Children.length * this._paddedColonStr.length
             + (thisItem.Children.length - 1) * this._paddedCommaStr.length
-            + thisItem.Children.length * 2
             + thisItem.Children.map(fn => fn.Name.length).reduce((acc, item) => acc + item)
             + thisItem.Children.map(fn => fn.Value.length).reduce((acc, item) => acc + item);
         if (lineLength > this._maxInlineLength)
@@ -397,7 +518,7 @@ class Formatter {
         for (const prop of thisItem.Children) {
             if (!firstElem)
                 buff.push(this._paddedCommaStr);
-            buff.push('"', prop.Name, '"', this._paddedColonStr, prop.Value);
+            buff.push(prop.Name, this._paddedColonStr, prop.Value);
             firstElem = false;
         }
         if (useNestedBracketPadding)
@@ -407,27 +528,50 @@ class Formatter {
         thisItem.Format = Format.Inline;
         return true;
     }
+    /**
+     * Format this object with one child object per line, and those objects padded to line up nicely.
+     * @param thisItem
+     * @private
+     */
     formatTableObjectObject(thisItem) {
         if (this._tableObjectMinimumSimilarity > 100.5)
             return false;
+        // Gather stats about our children's property order and width, if they're eligible objects.
         const propStats = this.getPropertyStats(thisItem);
         if (!propStats)
             return false;
+        // Reformat our immediate children using the width info we've computed.  Their children aren't
+        // recomputed, so this part isn't recursive.
         for (const child of thisItem.Children)
             this.formatObjectTableRow(child, propStats);
         return this.formatObjectExpanded(thisItem, true);
     }
+    /**
+     * Format this object with one child array per line, and those arrays padded to line up nicely.
+     * @param thisItem
+     * @private
+     */
     formatTableObjectArray(thisItem) {
         if (this._tableArrayMinimumSimilarity > 100.5)
             return false;
+        // Gather stats about our children's widths, if they're eligible arrays.
         const columnStats = this.getArrayStats(thisItem);
         if (!columnStats)
             return false;
+        // Reformat our immediate children using the width info we've computed.  Their children aren't
+        // recomputed, so this part isn't recursive.
         for (const child of thisItem.Children)
             this.formatArrayTableRow(child, columnStats);
         return this.formatObjectExpanded(thisItem, true);
     }
+    /**
+     * Format this object in a single line, with padding to line up with siblings.
+     * @param thisItem
+     * @param columnStatsArray
+     * @private
+     */
     formatObjectTableRow(thisItem, columnStatsArray) {
+        // Bundle up each property name, value, quotes, colons, etc., or equivalent empty space.
         let highestNonBlankIndex = -1;
         const propSegmentStrings = [];
         for (let colIndex = 0; colIndex < columnStatsArray.length; ++colIndex) {
@@ -435,15 +579,15 @@ class Formatter {
             const columnStats = columnStatsArray[colIndex];
             const filteredPropNodes = thisItem.Children.filter(fn => fn.Name === columnStats.PropName);
             if (filteredPropNodes.length === 0) {
-                const skipLength = 2
-                    + columnStats.PropName.length
+                // This object doesn't have this particular property.  Pad it out.
+                const skipLength = columnStats.PropName.length
                     + this._paddedColonStr.length
                     + columnStats.MaxValueSize;
                 buff.push(' '.repeat(skipLength));
             }
             else {
                 const propNode = filteredPropNodes[0];
-                buff.push('"', columnStats.PropName, '"', this._paddedColonStr);
+                buff.push(columnStats.PropName, this._paddedColonStr);
                 buff.push(columnStats.formatValue(propNode.Value, this._dontJustifyNumbers));
                 highestNonBlankIndex = colIndex;
             }
@@ -451,6 +595,7 @@ class Formatter {
         }
         const buff = [];
         buff.push("{ ");
+        // Put them all together with commas in the right places.
         let firstElem = true;
         let needsComma = false;
         for (let segmentIndex = 0; segmentIndex < propSegmentStrings.length; ++segmentIndex) {
@@ -466,6 +611,13 @@ class Formatter {
         thisItem.Value = this.combine(buff);
         thisItem.Format = Format.InlineTabular;
     }
+    /**
+     * Write this object with each element starting on its own line.  (They might be multiple lines
+     * themselves.)
+     * @param thisItem
+     * @param forceExpandPropNames
+     * @private
+     */
     formatObjectExpanded(thisItem, forceExpandPropNames) {
         const maxPropNameLength = Math.max(...thisItem.Children.map(fn => fn.Name.length));
         const buff = [];
@@ -474,7 +626,7 @@ class Formatter {
         for (const prop of thisItem.Children) {
             if (!firstItem)
                 buff.push(',', this._eolStr);
-            this.indent(buff, prop.Depth).push('"', prop.Name, '"');
+            this.indent(buff, prop.Depth).push(prop.Name);
             if (this._alignExpandedPropertyNames || forceExpandPropNames)
                 buff.push(' '.repeat(maxPropNameLength - prop.Name.length));
             buff.push(this._paddedColonStr, prop.Value);
@@ -486,6 +638,11 @@ class Formatter {
         thisItem.Format = Format.Expanded;
         return true;
     }
+    /**
+     * If the given nodes are all numbers and not too big or small, format them to the same precision and width.
+     * @param itemList
+     * @private
+     */
     justifyParallelNumbers(itemList) {
         if (itemList.length < 2 || this._dontJustifyNumbers)
             return;
@@ -497,9 +654,16 @@ class Formatter {
         for (const propNode of itemList)
             propNode.Value = columnStats.formatValue(propNode.Value, this._dontJustifyNumbers);
     }
+    /**
+     * Check if this node's object children can be formatted as a table, and if so, return stats about
+     * their properties, such as max width.  Returns null if they're not eligible.
+     * @param thisItem
+     * @private
+     */
     getPropertyStats(thisItem) {
         if (thisItem.Children.length < 2)
             return null;
+        // Record every property across all objects, count them, tabulate their order, and find the longest.
         const props = {};
         for (const child of thisItem.Children) {
             if (child.Kind !== JsonValueKind.Object || child.Format !== Format.Inline)
@@ -515,22 +679,32 @@ class Formatter {
                 propStats.update(propNode, index);
             }
         }
+        // Decide the order of the properties by sorting by the average index.  It's a crude metric,
+        // but it should handle the occasional missing property well enough.
         const orderedProps = Object.values(props)
             .sort((a, b) => (a.OrderSum / a.Count) - (b.OrderSum / b.Count));
         const totalPropCount = orderedProps.map(cs => cs.Count).reduce((acc, item) => acc + item);
+        // Calculate a score based on how many of all possible properties are present.  If the score is too
+        // low, these objects are too different to try to line up as a table.
         const score = 100 * totalPropCount / (orderedProps.length * thisItem.Children.length);
         if (score < this._tableObjectMinimumSimilarity)
             return null;
-        const lineLength = 4
-            + 2 * orderedProps.length
-            + orderedProps.map(cs => cs.PropName.length).reduce((acc, item) => acc + item)
-            + this._paddedColonStr.length * orderedProps.length
-            + orderedProps.map(cs => cs.MaxValueSize).reduce((acc, item) => acc + item)
-            + this._paddedCommaStr.length * (orderedProps.length - 1);
+        // If the formatted lines would be too long, bail out.
+        const lineLength = 4 // outer brackets & spaces
+            + orderedProps.map(cs => cs.PropName.length).reduce((acc, item) => acc + item) // prop names
+            + this._paddedColonStr.length * orderedProps.length // colons
+            + orderedProps.map(cs => cs.MaxValueSize).reduce((acc, item) => acc + item) // values
+            + this._paddedCommaStr.length * (orderedProps.length - 1); // commas
         if (lineLength > this._maxInlineLength)
             return null;
         return orderedProps;
     }
+    /**
+     * Check if this node's array children can be formatted as a table, and if so, gather stats like max width.
+     * Returns null if they're not eligible.
+     * @param thisItem
+     * @private
+     */
     getArrayStats(thisItem) {
         if (thisItem.Children.length < 2)
             return null;
@@ -545,10 +719,13 @@ class Formatter {
             for (let index = 0; index < rowNode.Children.length; ++index)
                 colStatsArray[index].update(rowNode.Children[index], index);
         }
+        // Calculate a score based on how rectangular the arrays are.  If they differ too much in length,
+        // it probably doesn't make sense to format them together.
         const totalElemCount = thisItem.Children.map(fn => fn.Children.length).reduce((acc, item) => acc + item);
         const similarity = 100 * totalElemCount / (thisItem.Children.length * numberOfColumns);
         if (similarity < this._tableArrayMinimumSimilarity)
             return null;
+        // If the formatted lines would be too long, bail out.
         const lineLength = 4
             + colStatsArray.map(cs => cs.MaxValueSize).reduce((acc, item) => acc + item)
             + (colStatsArray.length - 1) * this._paddedCommaStr.length;
@@ -573,6 +750,9 @@ var JsonValueKind;
     JsonValueKind[JsonValueKind["Boolean"] = 5] = "Boolean";
     JsonValueKind[JsonValueKind["Null"] = 6] = "Null";
 })(JsonValueKind || (JsonValueKind = {}));
+/**
+ * Used in figuring out how to format properties/array items as columns in a table format.
+ */
 class ColumnStats {
     constructor() {
         this.PropName = "";
@@ -583,6 +763,11 @@ class ColumnStats {
         this.CharsBeforeDec = 0;
         this.CharsAfterDec = 0;
     }
+    /**
+     * Add stats about this FormattedNode to this PropertyStats.
+     * @param propNode
+     * @param index
+     */
     update(propNode, index) {
         this.OrderSum += index;
         this.Count += 1;
@@ -619,6 +804,9 @@ var Format;
     Format[Format["MultilineCompact"] = 2] = "MultilineCompact";
     Format[Format["Expanded"] = 3] = "Expanded";
 })(Format || (Format = {}));
+/**
+ *  Data about a JSON element and how we've formatted it.
+ */
 class FormattedNode {
     constructor() {
         this.Name = "";
@@ -642,6 +830,7 @@ class FormattedNode {
 }
 
 </script>
+<!-- -------------------------------------------------- -->
 
 <script>
     function doFormat(formatType) {
