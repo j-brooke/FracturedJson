@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Wcwidth;
 
 namespace FracturedJson
 {
@@ -37,7 +38,6 @@ namespace FracturedJson
         /// </summary>
         Lf,
     }
-
 
     /// <summary>
     /// Class that outputs JSON formatted in a compact, user-readable way.  Any given container is formatted in one
@@ -160,6 +160,18 @@ namespace FracturedJson
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
+        
+        /// <summary>
+        /// Function that returns the visual width of strings measured in characters.  This is used to line
+        /// columns up when formatting objects/arrays as tables.  You can use the static methods
+        /// <see cref="StringWidthByCharacterCount"/>, <see cref="StringWidthWithEastAsian"/>, or supply your own.
+        /// </summary>
+        /// <remarks>
+        /// For most Western symbols, a monospaced font will render them all with the same width.  But Unicode
+        /// "fullwidth" characters are rendered as being twice as wide as others
+        /// </remarks>
+        public Func<string, int> StringWidthFunc { get; set; } = StringWidthWithEastAsian;
+
 
         /// <summary>
         /// Returns the JSON documented formatted as a string, with simpler collections written in single
@@ -189,6 +201,24 @@ namespace FracturedJson
         {
             var doc = JsonSerializer.Serialize(obj, JsonSerializerOptions);
             return Serialize(doc);
+        }
+
+        /// <summary>
+        /// Returns the character count of the string (just like the String.length property).
+        /// <seealso cref="StringWidthFunc"/>
+        /// </summary>
+        public static int StringWidthByCharacterCount(string str)
+        {
+            return str.Length;
+        }
+
+        /// <summary>
+        /// Returns a width, where some East Asian symbols are treated as twice as wide as Latin symbols.
+        /// <seealso cref="StringWidthFunc"/>
+        /// </summary>
+        public static int StringWidthWithEastAsian(string str)
+        {
+            return str.EnumerateRunes().Sum(rune => UnicodeCalculator.GetWidth(rune.Value));
         }
 
         // We reuse this same StringBuilder throughout all levels of recursion.  It's important, therefore,
@@ -244,6 +274,7 @@ namespace FracturedJson
             return new FormattedNode()
             {
                 Value = element.GetRawText(),
+                ValueLength = StringWidthFunc(element.GetRawText()),
                 Depth = depth,
                 Format = Format.Inline,
                 Kind = element.ValueKind
@@ -263,7 +294,7 @@ namespace FracturedJson
             var thisItem = new FormattedNode()
             {
                 Kind = JsonValueKind.Array,
-                Complexity = items.Select(fn => fn.Complexity).Max() + 1,
+                Complexity = items.Max(fn => fn.Complexity) + 1,
                 Depth = depth,
                 Children = items,
             };
@@ -296,10 +327,14 @@ namespace FracturedJson
         private FormattedNode FormatObject(int depth, JsonElement element)
         {
             // Recursively format all of this object's property values.
-            var items = element.EnumerateObject()
-                .Select(child => FormatElement(depth + 1, child.Value)
-                    .WithName(JsonSerializer.Serialize(child.Name, JsonSerializerOptions)))
-                .ToArray();
+            var items = new List<FormattedNode>();
+            foreach (var child in element.EnumerateObject())
+            {
+                var elem = FormatElement(depth + 1, child.Value);
+                elem.Name = JsonSerializer.Serialize(child.Name, JsonSerializerOptions);
+                elem.NameLength = StringWidthFunc(elem.Name);
+                items.Add(elem);
+            }
 
             if (!items.Any())
                 return EmptyObject(depth);
@@ -307,7 +342,7 @@ namespace FracturedJson
             var thisItem = new FormattedNode()
             {
                 Kind = JsonValueKind.Object,
-                Complexity = items.Select(fn => fn.Complexity).Max() + 1,
+                Complexity = items.Max(fn => fn.Complexity) + 1,
                 Depth = depth,
                 Children = items,
             };
@@ -333,6 +368,7 @@ namespace FracturedJson
             return new FormattedNode()
             {
                 Value = "[]",
+                ValueLength = 2,
                 Complexity = 0,
                 Depth = depth,
                 Kind = JsonValueKind.Array,
@@ -348,10 +384,13 @@ namespace FracturedJson
             if (thisItem.Complexity > MaxInlineComplexity)
                 return false;
 
+            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
+                return false;
+
             var useNestedBracketPadding = (NestedBracketPadding && thisItem.Complexity >= 2);
             var lineLength = 2 + (useNestedBracketPadding ? 2 : 0) +                       // outer brackets
                              (thisItem.Children.Count - 1) * _paddedCommaStr.Length +         // commas
-                             thisItem.Children.Sum(fn => fn.Value.Length); // values
+                             thisItem.Children.Sum(fn => fn.ValueLength);  // values
             if (lineLength > MaxInlineLength)
                 return false;
 
@@ -375,6 +414,7 @@ namespace FracturedJson
             _buff.Append(']');
 
             thisItem.Value = _buff.ToString();
+            thisItem.ValueLength = lineLength;
             thisItem.Format = Format.Inline;
             return true;
         }
@@ -387,6 +427,9 @@ namespace FracturedJson
             if (thisItem.Complexity > MaxCompactArrayComplexity)
                 return false;
 
+            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
+                return false;
+            
             _buff.Clear();
             _buff.Append('[').Append(_eolStr);
             Indent(_buff, thisItem.Depth + 1);
@@ -397,7 +440,7 @@ namespace FracturedJson
             {
                 var notLastItem = childIndex < thisItem.Children.Count - 1;
 
-                var itemLength = thisItem.Children[childIndex].Value.Length;
+                var itemLength = thisItem.Children[childIndex].ValueLength;
                 var segmentLength = itemLength + ((notLastItem) ? _paddedCommaStr.Length : 0);
                 if (lineLengthSoFar + segmentLength > MaxInlineLength && lineLengthSoFar > 0)
                 {
@@ -487,7 +530,7 @@ namespace FracturedJson
                 }
                 else
                 {
-                    var padSize = columnStats.MaxValueSize - thisItem.Children[index].Value.Length;
+                    var padSize = columnStats.MaxValueSize - thisItem.Children[index].ValueLength;
                     _buff.Append(thisItem.Children[index].Value).Append(' ', padSize);
                 }
             }
@@ -535,6 +578,7 @@ namespace FracturedJson
             return new FormattedNode()
             {
                 Value = "{}",
+                ValueLength = 2,
                 Complexity = 0,
                 Depth = depth,
                 Kind = JsonValueKind.Object,
@@ -550,13 +594,16 @@ namespace FracturedJson
             if (thisItem.Complexity > MaxInlineComplexity)
                 return false;
 
+            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
+                return false;
+            
             var useNestedBracketPadding = (NestedBracketPadding && thisItem.Complexity >= 2);
 
             var lineLength = 2 + (useNestedBracketPadding ? 2 : 0)                             // outer brackets
                                + thisItem.Children.Count * _paddedColonStr.Length                 // colons
                                + (thisItem.Children.Count - 1) * _paddedCommaStr.Length           // commas
-                               + thisItem.Children.Sum(fn => fn.Name.Length)   // prop names
-                               + thisItem.Children.Sum(fn => fn.Value.Length); // values
+                               + thisItem.Children.Sum(fn => fn.NameLength)    // prop names
+                               + thisItem.Children.Sum(fn => fn.ValueLength);  // values
             if (lineLength > MaxInlineLength)
                 return false;
 
@@ -580,6 +627,7 @@ namespace FracturedJson
             _buff.Append('}');
 
             thisItem.Value = _buff.ToString();
+            thisItem.ValueLength = lineLength;
             thisItem.Format = Format.Inline;
             return true;
         }
@@ -642,14 +690,14 @@ namespace FracturedJson
                 if (propNode == null)
                 {
                     // This object doesn't have this particular property.  Pad it out.
-                    var skipLength = columnStats.PropName.Length
+                    var skipLength = columnStats.PropNameLength
                                      + _paddedColonStr.Length
                                      + columnStats.MaxValueSize;
                     _buff.Append(' ', skipLength);
                 }
                 else
                 {
-                    var valuePadLength = columnStats.MaxValueSize - propNode.Value.Length;
+                    var valuePadLength = columnStats.MaxValueSize - propNode.ValueLength;
                     _buff.Append(columnStats.PropName).Append(_paddedColonStr);
 
                     if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
@@ -692,7 +740,7 @@ namespace FracturedJson
         /// </summary>
         private bool FormatObjectExpanded(FormattedNode thisItem, bool forceExpandPropNames)
         {
-            var maxPropNameLength = thisItem.Children.Max(fn => fn.Name.Length);
+            var maxPropNameLength = thisItem.Children.Max(fn => fn.NameLength);
             _buff.Clear();
 
             _buff.Append('{').Append(_eolStr);
@@ -705,7 +753,7 @@ namespace FracturedJson
                 Indent(_buff, prop.Depth).Append(prop.Name);
 
                 if (AlignExpandedPropertyNames || forceExpandPropNames)
-                    _buff.Append(' ', maxPropNameLength - prop.Name.Length);
+                    _buff.Append(' ', maxPropNameLength - prop.NameLength);
 
                 _buff.Append(_paddedColonStr).Append(prop.Value);
                 firstItem = false;
@@ -736,8 +784,11 @@ namespace FracturedJson
                 return;
 
             foreach (var propNode in itemList)
+            {
                 propNode.Value = string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
                     double.Parse(propNode.Value));
+                propNode.ValueLength = columnStats.MaxValueSize;
+            }
         }
 
         /// <summary>
@@ -786,7 +837,11 @@ namespace FracturedJson
                     props.TryGetValue(propNode.Name, out var propStats);
                     if (propStats == null)
                     {
-                        propStats = new ColumnStats() {PropName = propNode.Name};
+                        propStats = new ColumnStats()
+                        {
+                            PropName = propNode.Name,
+                            PropNameLength = propNode.NameLength,
+                        };
                         props.Add(propStats.PropName, propStats);
                     }
 
@@ -812,7 +867,7 @@ namespace FracturedJson
 
             // If the formatted lines would be too long, bail out.
             var lineLength = 4                                                          // outer brackets & spaces
-                             + orderedProps.Sum(cs => cs.PropName.Length) // prop names
+                             + orderedProps.Sum(cs => cs.PropNameLength)  // prop names
                              + _paddedColonStr.Length * orderedProps.Length                // colons
                              + orderedProps.Sum(cs => cs.MaxValueSize)    // values
                              + _paddedCommaStr.Length * (orderedProps.Length - 1);         // commas
@@ -857,9 +912,9 @@ namespace FracturedJson
                 colStats.MakeNumericFormatString();
 
             // If the formatted lines would be too long, bail out.
-            var lineLength = 4                                            // outer brackets
-                + colStatsArray.Sum(cs => cs.MaxValueSize)  // values
-                + (colStatsArray.Length - 1) * _paddedCommaStr.Length;       // commas
+            var lineLength = 4                                                        // outer brackets
+                             + colStatsArray.Sum(cs => cs.MaxValueSize) // values
+                             + (colStatsArray.Length - 1) * _paddedCommaStr.Length;      // commas
             if (lineLength > MaxInlineLength)
                 return null;
 
@@ -881,6 +936,7 @@ namespace FracturedJson
     internal class ColumnStats
     {
         public string PropName { get; set; } = string.Empty;
+        public int PropNameLength { get; set; }
         public int OrderSum { get; set; }
         public int Count { get; set; }
         public int MaxValueSize { get; set; }
@@ -896,7 +952,7 @@ namespace FracturedJson
         {
             OrderSum += index;
             Count += 1;
-            MaxValueSize = Math.Max(MaxValueSize, propNode.Value.Length);
+            MaxValueSize = Math.Max(MaxValueSize, propNode.ValueLength);
             IsQualifiedNumeric &= (propNode.Kind == JsonValueKind.Number);
 
             if (!IsQualifiedNumeric)
@@ -939,17 +995,13 @@ namespace FracturedJson
     internal class FormattedNode
     {
         public string Name { get; set; } = string.Empty;
+        public int NameLength { get; set; }
         public string Value { get; set; } = String.Empty;
+        public int ValueLength { get; set; }
         public int Complexity { get; set; }
         public int Depth { get; set; }
         public JsonValueKind Kind { get; set; } = JsonValueKind.Undefined;
         public Format Format { get; set; } = Format.Inline;
         public IList<FormattedNode> Children { get; set; } = Array.Empty<FormattedNode>();
-
-        public FormattedNode WithName(string name)
-        {
-            Name = name;
-            return this;
-        }
     }
 }

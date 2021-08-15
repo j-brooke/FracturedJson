@@ -23,4 +23,8 @@
     <ItemGroup>
         <None Include="packageIcon.png" Pack="true" PackagePath="" />
     </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Wcwidth" Version="0.4.0" />
+    </ItemGroup>
 </Project>
