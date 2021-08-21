@@ -88,6 +88,7 @@ namespace FracturedJson
         /// <summary>
         /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
         /// will include spaces inside the outer brackets.
+        /// <seealso cref="SimpleBracketPadding"/>
         /// </summary>
         /// <remarks>
         /// Example: <br/>
@@ -95,6 +96,13 @@ namespace FracturedJson
         /// false: [[1, 2, 3], [4]] <br/>
         /// </remarks>
         public bool NestedBracketPadding { get; set; } = true;
+
+        /// <summary>
+        /// If an inlined array or object does NOT contain other arrays/objects, setting SimpleBracketPadding to true
+        /// will include spaces inside the brackets.
+        /// <seealso cref="NestedBracketPadding"/>
+        /// </summary>
+        public bool SimpleBracketPadding { get; set; } = false;
 
         /// <summary>
         /// If true, includes a space after property colons.
@@ -387,9 +395,9 @@ namespace FracturedJson
             if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
                 return false;
 
-            var useNestedBracketPadding = (NestedBracketPadding && thisItem.Complexity >= 2);
-            var lineLength = 2 + (useNestedBracketPadding ? 2 : 0) +                       // outer brackets
-                             (thisItem.Children.Count - 1) * _paddedCommaStr.Length +         // commas
+            var useBracketPadding = (thisItem.Complexity >= 2) ? NestedBracketPadding : SimpleBracketPadding;
+            var lineLength = 2 + (useBracketPadding ? 2 : 0) +                       // outer brackets
+                             (thisItem.Children.Count - 1) * _paddedCommaStr.Length +   // commas
                              thisItem.Children.Sum(fn => fn.ValueLength);  // values
             if (lineLength > MaxInlineLength)
                 return false;
@@ -397,7 +405,7 @@ namespace FracturedJson
             _buff.Clear();
             _buff.Append('[');
 
-            if (useNestedBracketPadding)
+            if (useBracketPadding)
                 _buff.Append(' ');
 
             var firstElem = true;
@@ -409,7 +417,7 @@ namespace FracturedJson
                 firstElem = false;
             }
 
-            if (useNestedBracketPadding)
+            if (useBracketPadding)
                 _buff.Append(' ');
             _buff.Append(']');
 
@@ -597,11 +605,11 @@ namespace FracturedJson
             if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
                 return false;
             
-            var useNestedBracketPadding = (NestedBracketPadding && thisItem.Complexity >= 2);
+            var useBracketPadding = (thisItem.Complexity >= 2) ? NestedBracketPadding : SimpleBracketPadding;
 
-            var lineLength = 2 + (useNestedBracketPadding ? 2 : 0)                             // outer brackets
-                               + thisItem.Children.Count * _paddedColonStr.Length                 // colons
-                               + (thisItem.Children.Count - 1) * _paddedCommaStr.Length           // commas
+            var lineLength = 2 + (useBracketPadding ? 2 : 0)                             // outer brackets
+                               + thisItem.Children.Count * _paddedColonStr.Length           // colons
+                               + (thisItem.Children.Count - 1) * _paddedCommaStr.Length     // commas
                                + thisItem.Children.Sum(fn => fn.NameLength)    // prop names
                                + thisItem.Children.Sum(fn => fn.ValueLength);  // values
             if (lineLength > MaxInlineLength)
@@ -610,7 +618,7 @@ namespace FracturedJson
             _buff.Clear();
             _buff.Append('{');
 
-            if (useNestedBracketPadding)
+            if (useBracketPadding)
                 _buff.Append(' ');
 
             var firstElem = true;
@@ -622,7 +630,7 @@ namespace FracturedJson
                 firstElem = false;
             }
 
-            if (useNestedBracketPadding)
+            if (useBracketPadding)
                 _buff.Append(' ');
             _buff.Append('}');
 
