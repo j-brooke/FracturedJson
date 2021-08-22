@@ -1,5 +1,14 @@
 # FracturedJson Change Log
 
+## 2.2.0
+
+### Added
+
+* New property `StringWidthFunc` determines how many spaces are used as padding to line up columns when formatted as a table.
+    * Static method `Formatter.StringWidthWithEastAsian` (default) uses two spaces for East Asian "fullwidth" symbols, and one space for others.
+    * Static method `Formatter.StringWidthByCharacterCount` treats each character as having the width of one space.
+* New property `SimpleBracketPadding` controls whether brackets should have spaces inside when they contain only simple elements.  (The old property `NestedBracketPadding` is used when they contain other arrays/objects.)
+
 ## 2.0.1
 
 ### Bug Fixes
