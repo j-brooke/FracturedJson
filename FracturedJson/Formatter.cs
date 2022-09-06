@@ -870,7 +870,7 @@ namespace FracturedJson
             if (score < TableObjectMinimumSimilarity)
                 return null;
 
-            foreach (var propStats in orderedProps.Where(cs => cs.IsQualifiedNumeric))
+            foreach (var propStats in orderedProps.Where(cs => cs.IsQualifiedNumeric && !DontJustifyNumbers))
                 propStats.MakeNumericFormatString();
 
             // If the formatted lines would be too long, bail out.
