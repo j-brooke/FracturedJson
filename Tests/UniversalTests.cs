@@ -31,23 +31,6 @@ public class UniversalTests
     }
 
     /// <summary>
-    /// The sequence of structural elements should be identical in the input and output.
-    /// </summary>
-    [DataTestMethod]
-    [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
-    public void SameStructureTokens(string inputText, Formatter formatter)
-    {
-        var outputText = formatter.Serialize(inputText);
-
-        const string structTokens = "[]{},:\"";
-        var inputStructTokens = inputText.Where(c => structTokens.Contains(c))
-            .ToArray();
-        var outputStructTokens = outputText.Where(c => structTokens.Contains(c))
-            .ToArray();
-        CollectionAssert.AreEqual(inputStructTokens, outputStructTokens);
-    }
-
-    /// <summary>
     /// Any string that exists in the input should exist somewhere in the output.
     /// </summary>
     [DataTestMethod]
@@ -207,9 +190,9 @@ public class UniversalTests
             PrefixString = "\t\t"
         };
         yield return new Formatter()
-            { MaxInlineLength = 200, TableArrayMinimumSimilarity = 20, TableObjectMinimumSimilarity = 20 };
+            { MaxInlineLength = 120, TableArrayMinimumSimilarity = 20, TableObjectMinimumSimilarity = 20 };
         yield return new Formatter()
-            { MaxInlineLength = 200, TableArrayMinimumSimilarity = 101, TableObjectMinimumSimilarity = 101 };
+            { MaxInlineLength = 120, TableArrayMinimumSimilarity = 101, TableObjectMinimumSimilarity = 101 };
         yield return new Formatter()
             { 
                 MaxInlineLength = int.MaxValue, 
