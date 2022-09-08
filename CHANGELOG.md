@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 2.2.1
+
+### Bug Fixes
+
+* Fixed a [bug](https://github.com/j-brooke/FracturedJson/issues/16) caused by numbers with superfluous digits when `DontJustifyNumbers` is `true`.
+
 ## 2.2.0
 
 ### Added
