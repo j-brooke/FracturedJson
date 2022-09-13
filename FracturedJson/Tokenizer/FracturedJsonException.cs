@@ -2,6 +2,9 @@ using System;
 
 namespace FracturedJson.Tokenizer;
 
+/// <summary>
+/// Exception indicating something went wrong while processing JSON data.
+/// </summary>
 public class FracturedJsonException : Exception
 {
     public InputPosition?  InputPosition { get; }
