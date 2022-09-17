@@ -1,11 +1,25 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace FracturedJson.Tokenizer;
 
 public static class TokenScanner
 {
+    public static IEnumerable<JsonToken> Scan(FileInfo fileInfo)
+    {
+        return Scan(EnumerateFile(fileInfo));
+    }
+
+    public static IEnumerable<char> EnumerateFile(FileInfo fileInfo)
+    {
+        using var reader = new StreamReader(fileInfo.FullName);
+        int charRead;
+        while ((charRead = reader.Read()) >= 0)
+            yield return (char)charRead;
+    }
+
     /// <summary>
     /// Converts a sequence of characters into a sequence of JSON tokens.  There's no guarantee that the tokens make
     /// sense - just that they're lexically correct.

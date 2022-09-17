@@ -21,4 +21,10 @@ public class FracturedJsonException : Exception
     {
         InputPosition = inputPosition;
     }
+
+    public static FracturedJsonException Create(string message, InputPosition inputPosition)
+    {
+        var newMessage = $"{message} at idx={inputPosition.Index}, row={inputPosition.Row}, col={inputPosition.Column}";
+        return new FracturedJsonException(newMessage, inputPosition);
+    }
 }

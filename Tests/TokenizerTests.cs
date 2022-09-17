@@ -180,4 +180,12 @@ public class TokenizerTests
         var results = TokenScanner.Scan(string.Empty).ToArray();
         Assert.AreEqual(0, results.Length);
     }
+
+    [TestMethod]
+    public void TestTokensFromFile()
+    {
+        var fileInfo = new FileInfo(Path.Combine("TestFiles", "1.json"));
+        var results = TokenScanner.Scan(fileInfo).ToArray();
+        Assert.IsTrue(results.Length > 100);
+    }
 }

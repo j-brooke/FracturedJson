@@ -63,8 +63,6 @@ public class ScannerState
     [DoesNotReturn]
     public void Throw(string message)
     {
-        var newMessage =
-            $"{message} at idx={CurrentPosition.Index}, row={CurrentPosition.Row}, col={CurrentPosition.Column}";
-        throw new FracturedJsonException(newMessage, CurrentPosition);
+        throw FracturedJsonException.Create(message, CurrentPosition);
     }
 }
