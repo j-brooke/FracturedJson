@@ -13,7 +13,6 @@ namespace FracturedJson.V3;
 public class Parser
 {
     public FracturedJsonOptions Options { get; set; } = new();
-    public Func<string, int> StringLengthFunc = StringLengthByCharacterCount;
 
     /// <summary>
     /// Returns a sequence of <see cref="JsonItem"/>s representing the top-level items in the input.  In a typical
@@ -42,7 +41,6 @@ public class Parser
                 yield break;
 
             var item = ParseItem(enumerator, startingDepth);
-            ComputeItemLengths(item);
             yield return item;
             var isElement = item.Type != JsonItemType.BlankLine && item.Type != JsonItemType.BlockComment &&
                             item.Type != JsonItemType.LineComment;
@@ -257,9 +255,6 @@ public class Parser
             }
         }
 
-        foreach (var item in childList)
-            ComputeItemLengths(item);
-
         var arrayItem = new JsonItem()
         {
             Type = JsonItemType.Array,
@@ -394,9 +389,6 @@ public class Parser
             throw FracturedJsonException.Create("Object may not end with comma with current options",
                 enumerator.Current.InputPosition);
 
-        foreach (var item in childList)
-            ComputeItemLengths(item);
-
         var objItem = new JsonItem()
         {
             Type = JsonItemType.Object,
@@ -419,43 +411,6 @@ public class Parser
             TokenType.BeginObject => ParseObject(enumerator, depth),
             _ => ParseSimple(enumerator, depth),
         };
-    }
-
-    private void ComputeItemLengths(JsonItem item)
-    {
-        const char newLineChar = '\n';
-        
-        item.NameLength = StringLengthWithNullCheck(item.Name);
-        item.ValueLength = StringLengthWithNullCheck(item.Value);
-        item.PrefixCommentLength = StringLengthWithNullCheck(item.PrefixComment);
-        item.MiddleCommentLength = StringLengthWithNullCheck(item.MiddleComment);
-        item.PostfixCommentLength = StringLengthWithNullCheck(item.PostfixComment);
-
-        item.CommentsIncludeLineBreaks = (item.PrefixComment != null && item.PrefixComment.Contains(newLineChar))
-                                         || (item.MiddleComment != null && item.MiddleComment.Contains(newLineChar))
-                                         || (item.PostfixComment != null && item.PostfixComment.Contains(newLineChar));
-
-        var bracketLength = (item.Type == JsonItemType.Array || item.Type == JsonItemType.Object) ? 2 : 0;
-        var totalMinimumLength = 0L
-                                 + item.NameLength
-                                 + item.ValueLength
-                                 + item.PrefixCommentLength
-                                 + item.MiddleCommentLength
-                                 + item.PostfixCommentLength
-                                 + ((item.NameLength > 0) ? 1 : 0) // Possible colon
-                                 + item.Children.Sum(ch => ch.MinimumTotalLength)
-                                 + bracketLength
-                                 + Math.Max(0, item.Children.Count - 1); // 
-
-        if (totalMinimumLength > int.MaxValue)
-            throw new FracturedJsonException("Maximum document length exceeded");
-
-        item.MinimumTotalLength = (int)totalMinimumLength;
-    }
-
-    private int StringLengthWithNullCheck(string? value)
-    {
-        return (value != null) ? StringLengthFunc(value) : 0;
     }
 
     private static bool IsMultilineComment(JsonItem item)
@@ -528,11 +483,6 @@ public class Parser
         }
     }
 
-    private static int StringLengthByCharacterCount(string value)
-    {
-        return value.Length;
-    }
-    
     private enum CommaStatus
     {
         EmptyCollection,

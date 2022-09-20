@@ -472,29 +472,5 @@ public class ParserTests
         Assert.AreEqual(2, docModel[0].Children[4].Children[2].Depth);
         Assert.AreEqual(1, docModel[0].Children[4].Children[2].Complexity);
     }
-
-    /// <summary>
-    /// In general, our computed MinimumTotalLength should be equal to the length of a System.Text.Json minified string.
-    /// (This depends on a few things, like that there are no comments, and that StringLengthFunc is equivalent to
-    /// String.Length.
-    /// </summary>
-    [DataTestMethod]
-    [DataRow("3.13")]
-    [DataRow("[]")]
-    [DataRow("[3, 7, 9.2]")]
-    [DataRow("[\n\n 3,\n 7,\n 9.2\n\n]")]
-    [DataRow("[3, 7, 9.2, {}]")]
-    [DataRow("[3, 7, 9.2, { \"w\": -1, \"x\": null}]")]
-    public void MinimumLengthSameAsMinifiedString(string input)
-    {
-        var parser = new Parser();
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
-
-        var dotnetDocModel = System.Text.Json.Nodes.JsonNode.Parse(input);
-        var dotnetJsonString = dotnetDocModel!.ToJsonString();
-
-        Assert.AreEqual(1, docModel.Length);
-        Assert.AreEqual(dotnetJsonString.Length, docModel[0].MinimumTotalLength);
-    }
 }
 
