@@ -342,12 +342,7 @@ public class ParserTests
     [TestMethod]
     public void ObjectWithInlineBlockComments3()
     {
-        // Not the ideal behavior, but I'm codifying it in this test.  In the case below, to a human eye, it would
-        // probably make sense to postfix comment a onto element w, and prefix b onto x.  But the current logic doesn't
-        // do that, and I don't think this is a case worth all sorts of special code for.
-        // 
-        // So actually happens (and what we're testing for) is that comment a gets postfixed to w, but then comment
-        // b gets treated as a stand-alone comment.
+        // Here, we want comment a to be postfixed to "w":1 and b to be prefixed to "x":2.
         const string input = "{  \"w\": 1, /*a*/ /*b*/ \"x\": 2 }";
 
         var options = new FracturedJsonOptions()
@@ -360,19 +355,15 @@ public class ParserTests
         var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
-        Assert.AreEqual(3, docModel[0].Children.Count);
+        Assert.AreEqual(2, docModel[0].Children.Count);
         
         Assert.AreEqual("\"w\"", docModel[0].Children[0].Name);
         Assert.AreEqual(JsonItemType.Number, docModel[0].Children[0].Type);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
         
-        Assert.IsNull(docModel[0].Children[1].Name);
-        Assert.AreEqual(JsonItemType.BlockComment, docModel[0].Children[1].Type);
-        Assert.AreEqual("/*b*/", docModel[0].Children[1].Value);
-        
-        Assert.AreEqual("\"x\"", docModel[0].Children[2].Name);
-        Assert.AreEqual(JsonItemType.Number, docModel[0].Children[2].Type);
-        Assert.IsNull(docModel[0].Children[2].PrefixComment);
+        Assert.AreEqual("\"x\"", docModel[0].Children[1].Name);
+        Assert.AreEqual(JsonItemType.Number, docModel[0].Children[1].Type);
+        Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
     }
 
     [TestMethod]

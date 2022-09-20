@@ -293,7 +293,7 @@ public class Parser
         long linePropValueEnds = -1;
         var beforePropComments = new List<JsonItem>();
         var midPropComments = new List<JsonToken>();
-        var afterPropComments = new List<JsonItem>();
+        JsonItem? afterPropComment = null;
         
         var phase = ObjectPhase.BeforePropName;
         var thisObjComplexity = 0;
@@ -302,18 +302,26 @@ public class Parser
         {
             var token = GetNextTokenOrThrown(enumerator, startingInputPosition);
 
+            // We may have collected a bunch of stuff that should be combined into a single JsonItem.  If we have a
+            // property name and value, then we're just waiting for potential postfix comments.  But it might be time
+            // to bundle it all up and add it to childList before going on.
             var isNewLine = (linePropValueEnds != token.InputPosition.Row);
             var isEndOfObject = (token.Type == TokenType.EndObject);
             var startingNextPropName = (token.Type == TokenType.String && phase == ObjectPhase.AfterComma);
+            var isExcessPostComment = (afterPropComment != null &&
+                                       (token.Type == TokenType.BlockComment || token.Type == TokenType.LineComment));
             var needToFlush = propertyName != null && propertyValue != null &&
-                              (isNewLine || isEndOfObject || startingNextPropName);
+                              (isNewLine || isEndOfObject || startingNextPropName || isExcessPostComment);
             if (needToFlush)
             {
                 AttachObjectValuePieces(childList, propertyName!.Value, propertyValue!, linePropValueEnds,
-                    beforePropComments, midPropComments, afterPropComments);
+                    beforePropComments, midPropComments, afterPropComment);
                 thisObjComplexity = Math.Max(thisObjComplexity, propertyValue!.Complexity + 1);
                 propertyName = null;
                 propertyValue = null;
+                beforePropComments.Clear();
+                midPropComments.Clear();
+                afterPropComment = null;
                 if (!isEndOfObject)
                     phase = ObjectPhase.BeforePropName;
             }
@@ -328,7 +336,7 @@ public class Parser
                     else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         midPropComments.Add(token);
                     else
-                        afterPropComments.Add(ParseSimple(enumerator, depth + 1));
+                        afterPropComment = ParseSimple(enumerator, depth + 1);
                     break;
                 case TokenType.EndObject:
                     endOfObject = true;
@@ -346,9 +354,10 @@ public class Parser
                         phase = ObjectPhase.AfterPropValue;
                     }
                     else
+                    {
                         throw FracturedJsonException.Create("Unexpected string found while processing object",
                             token.InputPosition);
-
+                    }
                     break;
                 case TokenType.False:
                 case TokenType.True:
@@ -399,6 +408,9 @@ public class Parser
         return objItem;
     }
 
+    /// <summary>
+    /// Parse the next thing, no matter what it is.
+    /// </summary>
     private JsonItem ParseItem(IEnumerator<JsonToken> enumerator, int depth)
     {
         return enumerator.Current.Type switch
@@ -459,8 +471,13 @@ public class Parser
         return enumerator.Current;
     }
 
+    /// <summary>
+    /// Given a loose collection of comments, a prop name, and a prop value, bundle them all up into a single JsonItem
+    /// if possible and add it to the list.  (It's possible that some comments will need to be added as standalone items
+    /// too.)
+    /// </summary>
     private static void AttachObjectValuePieces(List<JsonItem> objItemList, JsonToken name, JsonItem element,
-        long valueEndingLine, List<JsonItem> beforeComments, List<JsonToken> midComments, List<JsonItem> afterComments)
+        long valueEndingLine, List<JsonItem> beforeComments, List<JsonToken> midComments, JsonItem? afterComment)
     {
         element.Name = name.Text;
 
@@ -502,23 +519,13 @@ public class Parser
 
         // Figure out if the first of the comments after the element should be attached to the element, and add 
         // the others as unattached comment items.
-        if (afterComments.Count > 0)
+        if (afterComment != null)
         {
-            var firstOfAfter = afterComments[0];
-            if (!IsMultilineComment(firstOfAfter) && firstOfAfter.InputLine == valueEndingLine)
-            {
-                element.PostfixComment = firstOfAfter.Value;
-                objItemList.AddRange(afterComments.Skip(1));
-            }
+            if (!IsMultilineComment(afterComment) && afterComment.InputLine == valueEndingLine)
+                element.PostfixComment = afterComment.Value;
             else
-            {
-                objItemList.AddRange(afterComments);
-            }
+                objItemList.Add(afterComment);
         }
-
-        beforeComments.Clear();
-        midComments.Clear();
-        afterComments.Clear();
     }
 
     private static int StringLengthByCharacterCount(string value)
