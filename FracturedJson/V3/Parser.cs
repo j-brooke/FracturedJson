@@ -233,6 +233,10 @@ public class Parser
                 case TokenType.Number:
                 case TokenType.BeginArray:
                 case TokenType.BeginObject:
+                    if (commaStatus == CommaStatus.ElementSeen)
+                        throw FracturedJsonException.Create("Comma missing while processing array",
+                            token.InputPosition);
+                    
                     var element = ParseItem(enumerator, depth + 1);
                     commaStatus = CommaStatus.ElementSeen;
                     thisArrayComplexity = Math.Max(thisArrayComplexity, element.Complexity + 1);
@@ -317,16 +321,25 @@ public class Parser
                 beforePropComments.Clear();
                 midPropComments.Clear();
                 afterPropComment = null;
-                if (!isEndOfObject)
-                    phase = ObjectPhase.BeforePropName;
             }
 
             switch (token.Type)
             {
                 case TokenType.BlankLine:
+                    if (!Options.PreserveBlankLines)
+                        break;
+                    if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
+                        break;
+                    childList.Add(ParseSimple(enumerator, depth + 1));
+                    break;
                 case TokenType.BlockComment:
                 case TokenType.LineComment:
-                    if (phase == ObjectPhase.BeforePropName)
+                    if (Options.CommentPolicy==CommentPolicy.Remove)
+                        break;
+                    if (Options.CommentPolicy == CommentPolicy.TreatAsError)
+                        throw FracturedJsonException.Create("Comments not allowed with current options",
+                            token.InputPosition);
+                    if (phase == ObjectPhase.BeforePropName || propertyName==null)
                         beforePropComments.Add(ParseSimple(enumerator, depth + 1));
                     else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         midPropComments.Add(token);

@@ -1,4 +1,5 @@
-﻿using FracturedJson.V3;
+﻿using FracturedJson.Tokenizer;
+using FracturedJson.V3;
 
 namespace Tests;
 
@@ -44,8 +45,8 @@ public class ParserTests
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("/*b*/", docModel[0].Children[0].PostfixComment);
     }
-    
-    
+
+
     [TestMethod]
     public void ArrayWithMixedInlineComments()
     {
@@ -70,9 +71,59 @@ public class ParserTests
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("//b", docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
-    public void ArrayAmbiguousCommentFollowsComma1()
+    public void ArrayWithUnattachedTrailingComment()
+    {
+        var inputSegments = new[]
+        {
+            "[ /*a*/ 1 /*b*/ /*c*/",
+            "]",
+        };
+        var input = string.Join("\r\n", inputSegments);
+
+        var options = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
+        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, docModel.Length);
+        Assert.AreEqual(2, docModel[0].Children.Count);
+        Assert.AreEqual(JsonItemType.Number, docModel[0].Children[0].Type);
+        Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
+        Assert.AreEqual("/*b*/", docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual(JsonItemType.BlockComment, docModel[0].Children[1].Type);
+        Assert.AreEqual("/*c*/", docModel[0].Children[1].Value);
+    }
+
+    [TestMethod]
+    public void ArrayWithMultipleLeadingComments()
+    {
+        var input = "[ /*a*/ /*b*/ 1 ]";
+
+        var options = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
+        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, docModel.Length);
+        Assert.AreEqual(2, docModel[0].Children.Count);
+        Assert.AreEqual(JsonItemType.BlockComment, docModel[0].Children[0].Type);
+        Assert.AreEqual("/*a*/", docModel[0].Children[0].Value);
+        Assert.AreEqual(JsonItemType.Number, docModel[0].Children[1].Type);
+        Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
+    }
+
+    [TestMethod]
+    public void ArrayAmbiguousCommentPrecedesComma()
     {
         // Comment b could belong to either element 1 or 2.  Since it's on 1's side of the comment, put it there.
         const string input = "[ /*a*/ 1 /*b*/, 2 /*c*/ ]";
@@ -93,9 +144,9 @@ public class ParserTests
         Assert.IsNull(docModel[0].Children[1].PrefixComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
     }
-    
+
     [TestMethod]
-    public void ArrayAmbiguousCommentFollowsComma2()
+    public void ArrayAmbiguousCommentFollowsComma()
     {
         // Comment b could belong to either element 1 or 2.  Since it's on 2's side of the comment, put it there.
         const string input = "[ /*a*/ 1, /*b*/ 2 /*c*/ ]";
@@ -116,9 +167,9 @@ public class ParserTests
         Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
     }
-    
+
     [TestMethod]
-    public void ArrayAmbiguousCommentFollowsComma3()
+    public void ArrayAmbiguousCommentFollowsCommaWithNewline()
     {
         // Comment b could belong to either element 1 or 2. It's after 1's comma, but on the same line with it,
         // so it belongs with 1.
@@ -144,6 +195,116 @@ public class ParserTests
         Assert.AreEqual("/*b*/", docModel[0].Children[0].PostfixComment);
         Assert.IsNull(docModel[0].Children[1].PrefixComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
+    }
+
+    [TestMethod]
+    public void ArrayMultipleUnattachedComments()
+    {
+        // The comments are on a separate line from the element, so they're unattached.
+        var inputSegments = new[]
+        {
+            "[",
+            "    /*a*/ //b",
+            "    null",
+            "]",
+        };
+        var input = string.Join("\r\n", inputSegments);
+
+        var options = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
+        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, docModel.Length);
+        Assert.AreEqual(3, docModel[0].Children.Count);
+        Assert.AreEqual("/*a*/", docModel[0].Children[0].Value);
+        Assert.AreEqual("//b", docModel[0].Children[1].Value);
+        Assert.AreEqual(JsonItemType.Null, docModel[0].Children[2].Type);
+    }
+    
+    [TestMethod]
+    public void ArrayMultilineCommentStandsAlone()
+    {
+        // Since the comment here is a multi-line block comment, it's a standalone comment, not attached to either 
+        // element.
+        var inputSegments = new[]
+        {
+            "[",
+            "    1, /*a",
+            "    b*/ 2",
+            "]",
+        };
+        var input = string.Join("\r\n", inputSegments);
+
+        var options = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
+        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, docModel.Length);
+        Assert.AreEqual(3, docModel[0].Children.Count);
+        Assert.AreEqual("1", docModel[0].Children[0].Value);
+        Assert.AreEqual("/*a\r\n    b*/", docModel[0].Children[1].Value);
+        Assert.AreEqual("2", docModel[0].Children[2].Value);
+    }
+    
+    [TestMethod]
+    public void ArrayBlankLinesArePreservedOrRemoved()
+    {
+        var inputSegments = new[]
+        {
+            "[",
+            "",
+            "    //comment",
+            "    true,",
+            "",
+            "    ",
+            "    false",
+            "]",
+        };
+        var input = string.Join("\r\n", inputSegments);
+
+        // First try the permissive options
+        var preserveOptions = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var preserveParser = new Parser() { Options = preserveOptions };
+        var preserveDocModel = preserveParser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, preserveDocModel.Length);
+        Assert.AreEqual(JsonItemType.Array ,preserveDocModel[0].Type);
+
+        var preserveExpectedTypes = new[] { JsonItemType.BlankLine, JsonItemType.LineComment, JsonItemType.True,
+            JsonItemType.BlankLine, JsonItemType.BlankLine, JsonItemType.False };
+        var preserveFoundTypes = preserveDocModel[0].Children.Select(ch => ch.Type).ToArray();
+        CollectionAssert.AreEqual(preserveExpectedTypes, preserveFoundTypes);
+        
+        // Now turn that stuff off
+        var removeOptions = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Remove, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = false,
+        };
+        var removeParser = new Parser() { Options = removeOptions };
+        var removeDocModel = removeParser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, removeDocModel.Length);
+        Assert.AreEqual(JsonItemType.Array ,removeDocModel[0].Type);
+        var removeExpectedTypes = new[] { JsonItemType.True, JsonItemType.False };
+        var removeFoundTypes = removeDocModel[0].Children.Select(ch => ch.Type).ToArray();
+        CollectionAssert.AreEqual(removeExpectedTypes, removeFoundTypes);
     }
     
     [TestMethod]
@@ -171,7 +332,57 @@ public class ParserTests
         var foundText = docModel[0].Children.Select(ch => ch.Value).ToArray();
         CollectionAssert.AreEqual(expectedText, foundText);
     }
-    
+
+    [TestMethod]
+    public void ObjectBlankLinesArePreservedOrRemoved()
+    {
+        var inputSegments = new[]
+        {
+            "{",
+            "",
+            "    //comment",
+            "    \"w\": true,",
+            "",
+            "    ",
+            "    \"x\": false",
+            "}",
+        };
+        var input = string.Join("\r\n", inputSegments);
+
+        var preserveOptions = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var preserveParser = new Parser() { Options = preserveOptions };
+        var preserveDocModel = preserveParser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, preserveDocModel.Length);
+        Assert.AreEqual(JsonItemType.Object ,preserveDocModel[0].Type);
+
+        var preserveExpectedTypes = new[] { JsonItemType.BlankLine, JsonItemType.LineComment, JsonItemType.True,
+            JsonItemType.BlankLine, JsonItemType.BlankLine, JsonItemType.False };
+        var preserveFoundTypes = preserveDocModel[0].Children.Select(ch => ch.Type).ToArray();
+        CollectionAssert.AreEqual(preserveExpectedTypes, preserveFoundTypes);
+        
+        // Now turn that stuff off
+        var removeOptions = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Remove, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = false,
+        };
+        var removeParser = new Parser() { Options = removeOptions };
+        var removeDocModel = removeParser.ParseTopLevel(input, 0, false).ToArray();
+        
+        Assert.AreEqual(1, removeDocModel.Length);
+        Assert.AreEqual(JsonItemType.Object ,removeDocModel[0].Type);
+        var removeExpectedTypes = new[] { JsonItemType.True, JsonItemType.False };
+        var removeFoundTypes = removeDocModel[0].Children.Select(ch => ch.Type).ToArray();
+        CollectionAssert.AreEqual(removeExpectedTypes, removeFoundTypes);
+    }
+
     [TestMethod]
     public void ObjectWithInlineBlockComments()
     {
@@ -193,7 +404,7 @@ public class ParserTests
         Assert.AreEqual("/*b*/", docModel[0].Children[0].MiddleComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectMiddleCommentsCombined1()
     {
@@ -223,7 +434,7 @@ public class ParserTests
         Assert.AreEqual("/*a*/ //b", docModel[0].Children[0].MiddleComment);
         Assert.IsNull(docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectMiddleCommentsCombined2()
     {
@@ -253,7 +464,7 @@ public class ParserTests
         Assert.AreEqual("/*a*/ /*b*/", docModel[0].Children[0].MiddleComment);
         Assert.IsNull(docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectMiddleCommentsCombined3()
     {
@@ -284,7 +495,7 @@ public class ParserTests
         Assert.AreEqual("//a\n/*b*/", docModel[0].Children[0].MiddleComment);
         Assert.IsNull(docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectCommentsPreferSameLineElements()
     {
@@ -294,7 +505,8 @@ public class ParserTests
             "{",
             "          \"w\": 1, /*a*/",
             "    /*b*/ \"x\": 2, /*c*/",
-            "          \"y\": 3  /*d*/",
+            "          \"y\": 3,  /*d*/",
+            "          \"z\": 4",
             "}"
         };
         var input = string.Join("\r\n", inputSegments);
@@ -309,7 +521,7 @@ public class ParserTests
         var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
-        Assert.AreEqual(3, docModel[0].Children.Count);
+        Assert.AreEqual(4, docModel[0].Children.Count);
         Assert.IsNull(docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
         Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
@@ -318,7 +530,7 @@ public class ParserTests
         Assert.AreEqual("/*d*/", docModel[0].Children[2].PostfixComment);
     }
 
-    
+
     [TestMethod]
     public void ObjectWithInlineBlockComments2()
     {
@@ -338,11 +550,11 @@ public class ParserTests
         Assert.AreEqual(2, docModel[0].Children.Count);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectWithInlineBlockComments3()
     {
-        // Here, we want comment a to be postfixed to "w":1 and b to be prefixed to "x":2.
+        // Here, we want comment a to be post-fixed to "w":1 and b to be prefixed to "x":2.
         const string input = "{  \"w\": 1, /*a*/ /*b*/ \"x\": 2 }";
 
         var options = new FracturedJsonOptions()
@@ -394,7 +606,7 @@ public class ParserTests
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("//b", docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void ObjectCommentsForMultilineElement()
     {
@@ -423,7 +635,7 @@ public class ParserTests
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("//b", docModel[0].Children[0].PostfixComment);
     }
-    
+
     [TestMethod]
     public void DepthAndComplexityWork()
     {
@@ -438,7 +650,14 @@ public class ParserTests
             "]"
         };
         var input = string.Join("\r\n", inputSegments);
-        var parser = new Parser();
+
+        var options = new FracturedJsonOptions()
+        { 
+            CommentPolicy = CommentPolicy.Preserve, 
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
         var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
 
         Assert.AreEqual(1, docModel.Length);
@@ -471,6 +690,39 @@ public class ParserTests
         Assert.AreEqual(2, docModel[0].Children[4].Complexity);
         Assert.AreEqual(2, docModel[0].Children[4].Children[2].Depth);
         Assert.AreEqual(1, docModel[0].Children[4].Children[2].Complexity);
+    }
+
+    [DataTestMethod]
+    [DataRow("[,1]")]
+    [DataRow("[1 2]")]
+    [DataRow("[1, 2,]")]
+    [DataRow("[1, 2}")]
+    [DataRow("[1, 2")]
+    [DataRow("[1, /*a*/ 2]")]
+    [DataRow("[1, //a\n 2]")]
+    [DataRow("{, \"w\":1 }")]
+    [DataRow("{ \"w\":1 ")]
+    [DataRow("{ /*a*/ \"w\":1 }")]
+    [DataRow("{ \"w\":1, }")]
+    [DataRow("{ \"w\":1 ]")]
+    [DataRow("{ \"w\"::1 ")]
+    [DataRow("{ \"w\" \"foo\" }")]
+    [DataRow("{ \"w\" {:1 }")]
+    [DataRow("{ \"w\":1 \"x\":2 }")]
+    public void ThrowsForMalformedData(string input)
+    {
+        var parser = new Parser();
+        Assert.ThrowsException<FracturedJsonException>(() => parser.ParseTopLevel(input, 0, false).ToArray());
+    }
+
+    [TestMethod]
+    public void StopsAfterFirstToken()
+    {
+        const string input = "[ 1, 2 ],[ 3, 4 ]";
+        var parser = new Parser();
+        var docModel = parser.ParseTopLevel(input, 0, true).ToArray();
+
+        Assert.AreEqual(1, docModel.Length);
     }
 }
 
