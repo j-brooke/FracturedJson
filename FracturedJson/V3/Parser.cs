@@ -50,12 +50,10 @@ public class Parser
     }
 
     /// <summary>
-    /// Parse a simple token (not an array or object) into a <see cref="JsonItem"/>.  The enumerator should be pointed
-    /// at the token to be processed.  It won't be changed by this call.
+    /// Parse a simple token (not an array or object) into a <see cref="JsonItem"/>. 
     /// </summary>
-    private JsonItem ParseSimple(IEnumerator<JsonToken> enumerator, int depth)
+    private JsonItem ParseSimple(JsonToken token, int depth)
     {
-        var token = enumerator.Current;
         var itemType = token.Type switch
         {
             TokenType.False => JsonItemType.False,
@@ -157,7 +155,7 @@ public class Parser
                 case TokenType.BlankLine:
                     if (!Options.PreserveBlankLines)
                         break;
-                    childList.Add(ParseSimple(enumerator, depth + 1));
+                    childList.Add(ParseSimple(token, depth + 1));
                     break;
 
                 case TokenType.BlockComment:
@@ -175,7 +173,7 @@ public class Parser
                     }
 
                     // If this is a multiline comment, add it as unattached.
-                    var commentItem = ParseSimple(enumerator, depth + 1);
+                    var commentItem = ParseSimple(token, depth + 1);
                     if (IsMultilineComment(commentItem))
                     {
                         childList.Add(commentItem);
@@ -208,7 +206,7 @@ public class Parser
                     {
                         // A previous comment followed by a line-ending comment?  Add them both as unattached comments
                         childList.Add(unplacedComment);
-                        childList.Add(ParseSimple(enumerator, depth + 1));
+                        childList.Add(ParseSimple(token, depth + 1));
                         unplacedComment = null;
                         break;
                     }
@@ -223,7 +221,7 @@ public class Parser
                         break;
                     }
 
-                    childList.Add(ParseSimple(enumerator, depth + 1));
+                    childList.Add(ParseSimple(token, depth + 1));
                     break;
 
                 case TokenType.False:
@@ -330,7 +328,7 @@ public class Parser
                         break;
                     if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         break;
-                    childList.Add(ParseSimple(enumerator, depth + 1));
+                    childList.Add(ParseSimple(token, depth + 1));
                     break;
                 case TokenType.BlockComment:
                 case TokenType.LineComment:
@@ -340,11 +338,11 @@ public class Parser
                         throw FracturedJsonException.Create("Comments not allowed with current options",
                             token.InputPosition);
                     if (phase == ObjectPhase.BeforePropName || propertyName==null)
-                        beforePropComments.Add(ParseSimple(enumerator, depth + 1));
+                        beforePropComments.Add(ParseSimple(token, depth + 1));
                     else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         midPropComments.Add(token);
                     else
-                        afterPropComment = ParseSimple(enumerator, depth + 1);
+                        afterPropComment = ParseSimple(token, depth + 1);
                     break;
                 case TokenType.EndObject:
                     endOfObject = true;
@@ -422,7 +420,7 @@ public class Parser
         {
             TokenType.BeginArray => ParseArray(enumerator, depth),
             TokenType.BeginObject => ParseObject(enumerator, depth),
-            _ => ParseSimple(enumerator, depth),
+            _ => ParseSimple(enumerator.Current, depth),
         };
     }
 
