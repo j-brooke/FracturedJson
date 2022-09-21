@@ -56,9 +56,9 @@ public class JsonItem
     public string? PostfixComment { get; set; }
     
     /// <summary>
-    /// True if the postfix comment was block style rather than to-end-of-line.
+    /// True if the postfix comment is to-end-of-line rather than block style.
     /// </summary>
-    public bool IsPostCommentBlockStyle { get; set; }
+    public bool IsPostCommentLineStyle { get; set; }
     
     public int NameLength { get; set; }
     public int ValueLength { get; set; }
@@ -72,10 +72,9 @@ public class JsonItem
     public int MinimumTotalLength { get; set; }
     
     /// <summary>
-    /// True if some of this item's comments have newlines in them, meaning it's impossible to format this on a single
-    /// line.
+    /// True if this item can't be written on a single line.
     /// </summary>
-    public bool CommentsIncludeLineBreaks { get; set; }
+    public bool RequiresMultipleLines { get; set; }
     
     /// <summary>
     /// List of this item's contents, if it's an array or object.

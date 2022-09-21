@@ -121,7 +121,7 @@ public class Parser
                     // doesn't belong to whatever is coming up next.  So attach the unplaced comment to the old 
                     // element.  (This is probably a comment at the end of a line after a comma.)
                     elemNeedingPostComment.PostfixComment = unplacedComment!.Value;
-                    elemNeedingPostComment.IsPostCommentBlockStyle = unplacedComment.Type == JsonItemType.BlockComment;
+                    elemNeedingPostComment.IsPostCommentLineStyle = unplacedComment.Type == JsonItemType.LineComment;
                 }
                 else
                 {
@@ -184,7 +184,7 @@ public class Parser
                     if (elemNeedingPostComment != null && commaStatus == CommaStatus.ElementSeen)
                     {
                         elemNeedingPostComment.PostfixComment = commentItem.Value;
-                        elemNeedingPostComment.IsPostCommentBlockStyle = true;
+                        elemNeedingPostComment.IsPostCommentLineStyle = false;
                         elemNeedingPostComment = null;
                         break;
                     }
@@ -216,7 +216,7 @@ public class Parser
                         // Since this is a line comment, we know there isn't anything else on the line after this.
                         // So if there was an element before this that can take a comment, attach it.
                         elemNeedingPostComment.PostfixComment = token.Text;
-                        elemNeedingPostComment.IsPostCommentBlockStyle = false;
+                        elemNeedingPostComment.IsPostCommentLineStyle = true;
                         elemNeedingPostComment = null;
                         break;
                     }
@@ -488,9 +488,14 @@ public class Parser
         if (afterComment != null)
         {
             if (!IsMultilineComment(afterComment) && afterComment.InputLine == valueEndingLine)
+            {
                 element.PostfixComment = afterComment.Value;
+                element.IsPostCommentLineStyle = (afterComment.Type == JsonItemType.LineComment);
+            }
             else
+            {
                 objItemList.Add(afterComment);
+            }
         }
     }
 
