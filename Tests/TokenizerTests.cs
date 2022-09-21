@@ -184,7 +184,7 @@ public class TokenizerTests
     [TestMethod]
     public void TestTokensFromFile()
     {
-        var fileInfo = new FileInfo(Path.Combine("TestFiles", "1.json"));
+        var fileInfo = new FileInfo(Path.Combine("StandardJsonFiles", "1.json"));
         var results = TokenScanner.Scan(fileInfo).ToArray();
         Assert.IsTrue(results.Length > 100);
     }

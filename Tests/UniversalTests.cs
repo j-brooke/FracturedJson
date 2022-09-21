@@ -156,7 +156,7 @@ public class UniversalTests
     /// </summary>
     public static IEnumerable<object[]> GenerateUniversalParams()
     {
-        var testFilesDir = new DirectoryInfo("TestFiles");
+        var testFilesDir = new DirectoryInfo("StandardJsonFiles");
         foreach (var file in testFilesDir.EnumerateFiles("*.json"))
         {
             var fileData = File.ReadAllText(file.FullName);
