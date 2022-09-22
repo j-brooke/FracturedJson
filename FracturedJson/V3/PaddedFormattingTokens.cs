@@ -1,49 +1,40 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FracturedJson.V3;
 
 public class PaddedFormattingTokens
 {
-    public string ArrEmpty { get; }
-    public string ArrStSimple { get; }
-    public string ArrEndSimple { get; }
-    public string ArrStComp { get; }
-    public string ArrEndComp { get; }
-    public string ObjEmpty { get; }
-    public string ObjStSimple { get; }
-    public string ObjEndSimple { get; }
-    public string ObjStComp { get; }
-    public string ObjEndComp { get; }
     public string Comma { get; }
     public string Colon { get; }
     public string EOL { get; }
-
-    public int ArrEmptyLen { get; }
-    public int ArrStSimpleLen { get; }
-    public int ArrEndSimpleLen { get; }
-    public int ArrStCompLen { get; }
-    public int ArrEndCompLen { get; }
-    public int ObjEmptyLen { get; }
-    public int ObjStSimpleLen { get; }
-    public int ObjEndSimpleLen { get; }
-    public int ObjStCompLen { get; }
-    public int ObjEndCompLen { get; }
     public int CommaLen { get; }
     public int ColonLen { get; }
     public int PrefixStringLen { get; }
     
     public PaddedFormattingTokens(FracturedJsonOptions opts, Func<string,int> strLenFunc)
     {
-        ArrEmpty = "[]";
-        ArrStSimple = (opts.SimpleBracketPadding) ? "[ " : "[";
-        ArrEndSimple = (opts.SimpleBracketPadding) ? " ]" : "]";
-        ArrStComp = (opts.NestedBracketPadding) ? "[ " : "[";
-        ArrEndComp = (opts.NestedBracketPadding) ? " ]" : "]";
-        ObjEmpty = "{}";
-        ObjStSimple = (opts.SimpleBracketPadding) ? "{ " : "{";
-        ObjEndSimple = (opts.SimpleBracketPadding) ? " }" : "}";
-        ObjStComp = (opts.NestedBracketPadding) ? "{ " : "{";
-        ObjEndComp = (opts.NestedBracketPadding) ? " }" : "}";
+        _arrStart = new string[3];
+        _arrStart[(int)BracketPaddingType.Empty] = "[";
+        _arrStart[(int)BracketPaddingType.Simple] = (opts.SimpleBracketPadding) ? "[ " : "[";
+        _arrStart[(int)BracketPaddingType.Complex] = (opts.NestedBracketPadding) ? "[ " : "[";
+
+        _arrEnd = new string[3];
+        _arrEnd[(int)BracketPaddingType.Empty] = "]";
+        _arrEnd[(int)BracketPaddingType.Simple] = (opts.SimpleBracketPadding) ? " ]" : "]";
+        _arrEnd[(int)BracketPaddingType.Complex] = (opts.NestedBracketPadding) ? " ]" : "]";
+        
+        _objStart = new string[3];
+        _objStart[(int)BracketPaddingType.Empty] = "{";
+        _objStart[(int)BracketPaddingType.Simple] = (opts.SimpleBracketPadding) ? "{ " : "{";
+        _objStart[(int)BracketPaddingType.Complex] = (opts.NestedBracketPadding) ? "{ " : "{";
+
+        _objEnd = new string[3];
+        _objEnd[(int)BracketPaddingType.Empty] = "}";
+        _objEnd[(int)BracketPaddingType.Simple] = (opts.SimpleBracketPadding) ? " }" : "}";
+        _objEnd[(int)BracketPaddingType.Complex] = (opts.NestedBracketPadding) ? " }" : "}";
+        
         Comma = (opts.CommaPadding) ? ", " : ",";
         Colon = (opts.ColonPadding) ? ": " : ":";
         EOL = opts.JsonEolStyle switch
@@ -53,18 +44,102 @@ public class PaddedFormattingTokens
             _ => Environment.NewLine,
         };
 
-        ArrEmptyLen = strLenFunc(ArrEmpty);
-        ArrStSimpleLen = strLenFunc(ArrStSimple);
-        ArrEndSimpleLen = strLenFunc(ArrEndSimple);
-        ArrStCompLen = strLenFunc(ArrStComp);
-        ArrEndCompLen = strLenFunc(ArrEndComp);
-        ObjEmptyLen = strLenFunc(ObjEmpty);
-        ObjStSimpleLen = strLenFunc(ObjStSimple);
-        ObjEndSimpleLen = strLenFunc(ObjEndSimple);
-        ObjStCompLen = strLenFunc(ObjStComp);
-        ObjEndCompLen = strLenFunc(ObjEndComp);
+        _arrStartLen = _arrStart.Select(strLenFunc).ToArray();
+        _arrEndLen = _arrEnd.Select(strLenFunc).ToArray();
+        _objStartLen = _objStart.Select(strLenFunc).ToArray();
+        _objEndLen = _objEnd.Select(strLenFunc).ToArray();
+
+        // Create pre-made indent strings for levels 0 and 1 now.  We'll construct and cache others as needed.
+        _indentStrings = new()
+        {
+            string.Empty,
+            (opts.UseTabToIndent)? "\t" : new string(' ', opts.IndentSpaces)
+        };
+
         CommaLen = strLenFunc(Comma);
         ColonLen = strLenFunc(Colon);
         PrefixStringLen = strLenFunc(opts.PrefixString);
     }
+
+    public string ArrStart(BracketPaddingType type)
+    {
+        return _arrStart[(int)type];
+    }
+
+    public string ArrEnd(BracketPaddingType type)
+    {
+        return _arrEnd[(int)type];
+    }
+
+    public string ObjStart(BracketPaddingType type)
+    {
+        return _objStart[(int)type];
+    }
+
+    public string ObjEnd(BracketPaddingType type)
+    {
+        return _objEnd[(int)type];
+    }
+
+    public string Start(JsonItemType elemType, BracketPaddingType bracketType)
+    {
+        return (elemType == JsonItemType.Array) ? ArrStart(bracketType) : ObjStart(bracketType);
+    }
+    
+    public string End(JsonItemType elemType, BracketPaddingType bracketType)
+    {
+        return (elemType == JsonItemType.Array) ? ArrEnd(bracketType) : ObjEnd(bracketType);
+    }
+    
+    public int ArrStartLen(BracketPaddingType type)
+    {
+        return _arrStartLen[(int)type];
+    }
+
+    public int ArrEndLen(BracketPaddingType type)
+    {
+        return _arrEndLen[(int)type];
+    }
+
+    public int ObjStartLen(BracketPaddingType type)
+    {
+        return _objStartLen[(int)type];
+    }
+
+    public int ObjEndLen(BracketPaddingType type)
+    {
+        return _objEndLen[(int)type];
+    }
+
+    public int StartLen(JsonItemType elemType, BracketPaddingType bracketType)
+    {
+        return (elemType == JsonItemType.Array) ? ArrStartLen(bracketType) : ObjStartLen(bracketType);
+    }
+    
+    public int EndLen(JsonItemType elemType, BracketPaddingType bracketType)
+    {
+        return (elemType == JsonItemType.Array) ? ArrEndLen(bracketType) : ObjEndLen(bracketType);
+    }
+
+    public string Indent(int level)
+    {
+        // If we don't have a cached indent string for this level, create one from the smaller ones.
+        if (level >= _indentStrings.Count)
+        {
+            for (var i = _indentStrings.Count; i <= level; ++i)
+                _indentStrings.Add(_indentStrings[i-1] + _indentStrings[1]);
+        }
+
+        return _indentStrings[level];
+    }
+    
+    private readonly string[] _arrStart;
+    private readonly string[] _arrEnd;
+    private readonly string[] _objStart;
+    private readonly string[] _objEnd;
+    private readonly int[] _arrStartLen;
+    private readonly int[] _arrEndLen;
+    private readonly int[] _objStartLen;
+    private readonly int[] _objEndLen;
+    private readonly List<string> _indentStrings;
 }

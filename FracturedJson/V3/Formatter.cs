@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using FracturedJson.Tokenizer;
 
 namespace FracturedJson.V3;
 
@@ -11,7 +12,13 @@ public class Formatter
 
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
-        throw new NotImplementedException();
+        var parser = new Parser() { Options = Options };
+        var docModel = parser.ParseTopLevel(jsonText, startingDepth, true);
+        var buffer = new StringBuilderBuffer();
+        foreach(var item in docModel)
+            FormatItem(buffer, item, false);
+
+        return buffer.AsString();
     }
 
     public static int StringLengthByCharCount(string s)
@@ -44,30 +51,28 @@ public class Formatter
         item.MiddleCommentLength = NullSafeStringLength(item.MiddleComment);
         item.PostfixCommentLength = NullSafeStringLength(item.PostfixComment);
         item.RequiresMultipleLines =
-            item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
-            || (item.PrefixComment != null && item.PrefixComment.Contains(newline))
-            || (item.MiddleComment != null && item.MiddleComment.Contains(newline))
-            || (item.PostfixComment != null && item.PostfixComment.Contains(newline))
+            (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment) 
+            || item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
+            || (item.PrefixComment != null && item.PrefixComment.Contains(newline)) 
+            || (item.MiddleComment != null && item.MiddleComment.Contains(newline)) 
+            || (item.PostfixComment != null && item.PostfixComment.Contains(newline)) 
             || (item.Value != null && item.Value.Contains(newline));
 
         var bracketLengths = 0;
-        if (item.Type == JsonItemType.Array)
+        switch (item.Type)
         {
-            bracketLengths = item.Complexity switch
+            case JsonItemType.Array:
             {
-                >= 2 => _pads.ArrStCompLen + _pads.ArrEndCompLen,
-                1 => _pads.ArrStSimpleLen + _pads.ArrEndSimpleLen,
-                _ => _pads.ArrEmptyLen
-            };
-        }
-        else if (item.Type == JsonItemType.Object)
-        {
-            bracketLengths = item.Complexity switch
+                var padType = GetPaddingType(item);
+                bracketLengths = _pads.ArrStartLen(padType) + _pads.ArrEndLen(padType);
+                break;
+            }
+            case JsonItemType.Object:
             {
-                >= 2 => _pads.ObjStCompLen + _pads.ObjEndCompLen,
-                1 => _pads.ObjStSimpleLen + _pads.ObjEndSimpleLen,
-                _ => _pads.ObjEmptyLen
-            };
+                var padType = GetPaddingType(item);
+                bracketLengths = _pads.ObjStartLen(padType) + _pads.ObjEndLen(padType);
+                break;
+            }
         }
 
         // Note that we're always assuming there will be a comma after any given
@@ -88,39 +93,87 @@ public class Formatter
         return (s == null) ? 0 : StringLengthFunc(s);
     }
 
+    /// <summary>
+    /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.
+    /// </summary>
     private void FormatItem(IBuffer buffer, JsonItem item, bool includeTrailingComma)
     {
         switch (item.Type)
         {
             case JsonItemType.Array:
-                FormatArray(buffer, item, includeTrailingComma);
-                break;
             case JsonItemType.Object:
-                FormatObject(buffer, item, includeTrailingComma);
+                FormatContainer(buffer, item, includeTrailingComma);
                 break;
             case JsonItemType.BlankLine:
+                FormatBlankLine(buffer);
+                break;
             case JsonItemType.BlockComment:
             case JsonItemType.LineComment:
                 FormatStandaloneComment(buffer, item);
                 break;
             default:
-                FormatSimpleOrInlineElement(buffer, item, includeTrailingComma);
+                if (item.RequiresMultipleLines)
+                    FormatSplitKeyValue(buffer, item, includeTrailingComma);
+                else
+                    FormatInlineElement(buffer, item, includeTrailingComma);
                 break;
         }
     }
 
-    private void FormatArray(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.
+    /// The array/object might be formatted inline, compact multiline, table, or expanded, according to circumstances.
+    /// </summary>
+    private void FormatContainer(IBuffer buffer, JsonItem item, bool includeTrailingComma)
     {
-        // TODO: Try inline, try compact multiline, try table, try default
+        if (FormatContainerInline(buffer, item, includeTrailingComma))
+            return;
+        if (FormatContainerCompactMultiline(buffer, item, includeTrailingComma))
+            return;
+        if (FormatContainerTable(buffer, item, includeTrailingComma))
+            return;
+        FormatContainerExpanded(buffer, item, includeTrailingComma);
     }
 
-    private void FormatObject(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
+    /// if the array/object qualifies.
+    /// </summary>
+    /// <returns>True if the content was added.</returns>
+    private bool FormatContainerInline(IBuffer buffer, JsonItem item, bool includeTrailingComma)
     {
-        // TODO: Try inline, try table, try default
+        var maxInlineLength = Math.Min(Options.MaxInlineLength,
+            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * item.Depth);
+        if (item.MinimumTotalLength > maxInlineLength || item.Complexity > Options.MaxInlineComplexity)
+            return false;
+
+        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
+        InlineElement(buffer, item, includeTrailingComma);
+        buffer.Add(_pads.EOL);
+
+        return true;
     }
 
-    private void FormatSimpleOrInlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private bool FormatContainerCompactMultiline(IBuffer buffer, JsonItem item, bool includeTrailingComma)
     {
+        // TODO: Implement
+        return false;
+    }
+
+    private bool FormatContainerTable(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        // TODO: Implement
+        return false;
+    }
+    
+
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
+    /// broken out on separate lines.
+    /// </summary>
+    private void FormatContainerExpanded(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
         if (item.PrefixComment != null)
             buffer.Add(item.PrefixComment);
         
@@ -128,10 +181,63 @@ public class Formatter
             buffer.Add(item.Name, _pads.Colon);
 
         if (item.MiddleComment != null)
-            buffer.Add(item.MiddleComment);  // TODO - add logic to fix multiline comments
+            buffer.Add(item.MiddleComment);
 
-        if (item.Type == JsonItemType.Array || item.Type == JsonItemType.Object)
-            FormatContainerValue(buffer, item);
+        buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        
+        for (var i=0; i<item.Children.Count; ++i)
+            FormatItem(buffer, item.Children[i], (i<item.Children.Count-1));
+
+        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth), _pads.End(item.Type, BracketPaddingType.Empty));
+        
+        if (includeTrailingComma && item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+        if (item.PostfixComment != null)
+            buffer.Add(item.PostfixComment);
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+        buffer.Add(_pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds the inline representation of this item to the buffer.  This includes all of this element's
+    /// comments and children when appropriate.  It doesn't include indentation, newlines, or any of that.  This
+    /// should only be called if item.RequiresMultipleLines is false.
+    /// </summary>
+    private void InlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        if (item.RequiresMultipleLines)
+            throw new FracturedJsonException("Logic error - trying to inline invalid element");
+        
+        if (item.PrefixComment != null)
+            buffer.Add(item.PrefixComment);
+        
+        if (item.Name != null)
+            buffer.Add(item.Name, _pads.Colon);
+
+        if (item.MiddleComment != null)
+            buffer.Add(item.MiddleComment);
+
+        if (item.Type == JsonItemType.Array)
+        {
+            var padType = GetPaddingType(item);
+            buffer.Add(_pads.ArrStart(padType));
+            
+            for (var i=0; i<item.Children.Count; ++i)
+                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+            
+            buffer.Add(_pads.ArrEnd(padType));
+        }
+        else if (item.Type == JsonItemType.Object)
+        {
+            var padType = GetPaddingType(item);
+            buffer.Add(_pads.ObjStart(padType));
+            
+            for (var i=0; i<item.Children.Count; ++i)
+                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+            
+            buffer.Add(_pads.ObjEnd(padType));
+        }
         else if (item.Value != null)
             buffer.Add(item.Value);
 
@@ -139,59 +245,65 @@ public class Formatter
             buffer.Add(_pads.Comma);
         if (item.PostfixComment != null)
             buffer.Add(item.PostfixComment);
-        if (includeTrailingComma && item.IsPostCommentLineStyle)
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
     }
 
-    private void FormatContainerValue(IBuffer buffer, JsonItem item)
-    {
-        if (item.Children.Count == 0)
-        {
-            buffer.Add((item.Type == JsonItemType.Array) ? _pads.ArrEmpty : _pads.ObjEmpty);
-            return;
-        }
-
-        // Figure out which variety of padded brackets to use.  There's a separate padding option for complex
-        // containers than simple ones.
-        string startBracket;
-        string endBracket;
-
-        if (item.Complexity >= 2)
-        {
-            if (item.Type == JsonItemType.Array)
-                (startBracket, endBracket) = (_pads.ArrStComp, _pads.ArrEndComp);
-            else
-                (startBracket, endBracket) = (_pads.ObjStComp, _pads.ObjEndComp);
-        }
-        else
-        {
-            if (item.Type == JsonItemType.Array)
-                (startBracket, endBracket) = (_pads.ArrStSimple, _pads.ArrEndSimple);
-            else
-                (startBracket, endBracket) = (_pads.ObjStSimple, _pads.ObjEndSimple);
-        }
-        
-        buffer.Add(startBracket);
-        
-        for (var i = 0; i<item.Children.Count; ++i)
-            FormatSimpleOrInlineElement(buffer, item.Children[i], (i < item.Children.Count - 1));
-        
-        buffer.Add(endBracket);
-    }
-
+    /// <summary>
+    /// Adds a (possibly multiline) standalone comment to the buffer, with indents and newlines on each line.
+    /// </summary>
     private void FormatStandaloneComment(IBuffer buffer, JsonItem item)
     {
         if (item.Value == null)
             return;
-        if (!item.RequiresMultipleLines)
+
+        var commentRows = NormalizeMultilineComment(item.Value);
+        
+        foreach (var line in commentRows)
+            buffer.Add(Options.PrefixString, _pads.Indent(item.Depth), line, _pads.EOL );
+    }
+
+    private void FormatBlankLine(IBuffer buffer)
+    {
+        buffer.Add(_pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
+    /// </summary>
+    private void FormatInlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
+        InlineElement(buffer, item, includeTrailingComma);
+        buffer.Add(_pads.EOL);
+    }
+
+    private void FormatSplitKeyValue(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        // TODO: Figure this out
+        throw new NotImplementedException();
+    }
+
+    private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
+    {
+        if (arrOrObj.Children.Count == 0)
+            return BracketPaddingType.Empty;
+
+        return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
+    }
+
+    private string[] NormalizeMultilineComment(string comment)
+    {
+        var spaces = new string(' ', Options.IndentSpaces);
+        var normalized = comment.Replace("\t", spaces);
+        var rows = normalized.Split('\n');
+
+        for (var i = 1; i < rows.Length; ++i)
         {
-            buffer.Add(item.Value);
-            return;
+            // TODO: replace this with smarter heuristic to line it up.
+            rows[i] = rows[i].Trim();
         }
 
-        var spaces = new string(' ', Options.IndentSpaces);
-        var spaceNormalized = item.Value.Replace("\t", spaces);
-        var rows = spaceNormalized.Split('\n');
-        // TODO: To be continued
+        return rows;
     }
 }
