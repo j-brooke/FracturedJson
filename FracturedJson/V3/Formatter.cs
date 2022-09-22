@@ -13,10 +13,13 @@ public class Formatter
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, startingDepth, true);
+        var docModel = parser.ParseTopLevel(jsonText, startingDepth, false);
         var buffer = new StringBuilderBuffer();
         foreach(var item in docModel)
+        {
+            Preprocess(item);
             FormatItem(buffer, item, false);
+        }
 
         return buffer.AsString();
     }
