@@ -147,10 +147,8 @@ public class Formatter
     {
         if (item.RequiresMultipleLines)
             return false;
-        var maxInlineLength = Math.Min(Options.MaxInlineLength,
-            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
         var lengthToConsider = item.MinimumTotalLength + ((includeTrailingComma) ? _pads.CommaLen : 0);
-        if (lengthToConsider > maxInlineLength || item.Complexity > Options.MaxInlineComplexity)
+        if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
             return false;
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
@@ -162,8 +160,41 @@ public class Formatter
 
     private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
     {
-        // TODO: Implement
-        return false;
+        if (item.Type != JsonItemType.Array)
+            return false;
+        if (item.Complexity > Options.MaxCompactArrayComplexity)
+            return false;
+        if (item.RequiresMultipleLines)
+            return false;
+        
+        StandardFormatStart(item, depth);
+
+        // Starting bracket (with no EOL).
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+
+        var availableLineSpace = AvailableLineSpace(depth+1);
+        var remainingLineSpace = -1;
+        for (var i=0; i<item.Children.Count; ++i)
+        {
+            // Figure out whether the next item fits on the current line.  If not, start a new one.
+            var needsComma = (i < item.Children.Count - 1);
+            var spaceNeededForNext = item.Children[i].MinimumTotalLength + ((needsComma) ? _pads.CommaLen : 0);
+            if (remainingLineSpace < spaceNeededForNext)
+            {
+                _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depth+1));
+                remainingLineSpace = availableLineSpace;
+            }
+            
+            InlineElement(_buffer, item.Children[i], needsComma);
+            remainingLineSpace -= spaceNeededForNext;
+        }
+
+        // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
+        _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depth),
+            _pads.End(item.Type, BracketPaddingType.Empty));
+
+        StandardFormatEnd(item, depth, includeTrailingComma);
+        return true;
     }
 
     private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
@@ -179,6 +210,20 @@ public class Formatter
     /// </summary>
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
+        StandardFormatStart(item, depth);
+
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        
+        for (var i=0; i<item.Children.Count; ++i)
+            FormatItem(item.Children[i], depth+1, (i<item.Children.Count-1));
+
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth), _pads.End(item.Type, BracketPaddingType.Empty));
+
+        StandardFormatEnd(item, depth, includeTrailingComma);
+    }
+
+    private void StandardFormatStart(JsonItem item, int depth)
+    {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         if (item.PrefixComment != null)
             _buffer.Add(item.PrefixComment, _pads.Comment);
@@ -188,14 +233,10 @@ public class Formatter
 
         if (item.MiddleComment != null)
             _buffer.Add(item.MiddleComment);
+    }
 
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
-        
-        for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(item.Children[i], depth+1, (i<item.Children.Count-1));
-
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth), _pads.End(item.Type, BracketPaddingType.Empty));
-        
+    private void StandardFormatEnd(JsonItem item, int depth, bool includeTrailingComma)
+    {
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
         if (item.PostfixComment != null)
@@ -204,6 +245,7 @@ public class Formatter
             _buffer.Add(_pads.Comma);
         _buffer.Add(_pads.EOL);
     }
+    
 
     /// <summary>
     /// Adds the inline representation of this item to the buffer.  This includes all of this element's
@@ -298,7 +340,17 @@ public class Formatter
         return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
     }
 
-    private string[] NormalizeMultilineComment(string comment, int firstLineColumn)
+    /// <summary>
+    /// Figures out how much room is allowed for inlining at this indentation level, considering
+    /// <see cref="FracturedJsonOptions.MaxTotalLineLength"/> and <see cref="FracturedJsonOptions.MaxInlineLength"/>.
+    /// </summary>
+    private int AvailableLineSpace(int depth)
+    {
+        return Math.Min(Options.MaxInlineLength,
+            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
+    }
+
+    private static string[] NormalizeMultilineComment(string comment, int firstLineColumn)
     {
         // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
         // line endings that the user wants ourselves.

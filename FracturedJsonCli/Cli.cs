@@ -21,6 +21,7 @@ namespace FracturedJsonCli
                     MaxTotalLineLength = 800,
                     MaxInlineLength = 80,
                     MaxInlineComplexity = 2,
+                    MaxCompactArrayComplexity = 2,
                 };
                 var formatter = new Formatter() { Options = options };
                 var formattedDoc = formatter.Reformat(inputText, 0);
