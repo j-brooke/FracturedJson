@@ -431,7 +431,7 @@ public class ParserTests
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
         Assert.IsNull(docModel[0].Children[0].PrefixComment);
-        Assert.AreEqual("/*a*/ //b", docModel[0].Children[0].MiddleComment);
+        Assert.AreEqual("/*a*/\n//b\n", docModel[0].Children[0].MiddleComment);
         Assert.IsNull(docModel[0].Children[0].PostfixComment);
     }
 
@@ -461,7 +461,7 @@ public class ParserTests
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
         Assert.IsNull(docModel[0].Children[0].PrefixComment);
-        Assert.AreEqual("/*a*/ /*b*/", docModel[0].Children[0].MiddleComment);
+        Assert.AreEqual("/*a*/\n/*b*/", docModel[0].Children[0].MiddleComment);
         Assert.IsNull(docModel[0].Children[0].PostfixComment);
     }
 

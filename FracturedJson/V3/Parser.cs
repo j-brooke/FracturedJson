@@ -442,23 +442,21 @@ public class Parser
         element.Name = name.Text;
 
         // Deal with any comments between the property name and its element.  If there's more than one, squish them 
-        // together.
-        var combinedMiddleCommentText = string.Empty;
-        var lastMiddleWasLineComment = false;
-        foreach (var comment in midComments)
+        // together.  If it's a line comment, make sure it ends in a \n (which isn't how it's handled elsewhere, alas.)
+        if (midComments.Count > 0)
         {
-            // Not even going to try to preserve this case.
-            if (comment.Type == TokenType.BlankLine)
-                continue;
+            var combined = string.Empty;
+            for (var i = 0; i < midComments.Count; ++i)
+            {
+                combined += midComments[i].Text;
+                if (i < midComments.Count - 1 || midComments[i].Type == TokenType.LineComment)
+                    combined += '\n';
+            }
 
-            if (combinedMiddleCommentText.Length > 0)
-                combinedMiddleCommentText += (lastMiddleWasLineComment) ? '\n' : ' ';
-            combinedMiddleCommentText += comment.Text;
-            lastMiddleWasLineComment = (comment.Type == TokenType.LineComment);
+            element.MiddleComment = combined;
         }
-
-        element.MiddleComment = (combinedMiddleCommentText.Length > 0) ? combinedMiddleCommentText : null;
-
+        
+        
         // Figure out if the last of the comments before the prop name should be attached to this element.
         // Any others should be added as unattached comment items.
         if (beforeComments.Count > 0)

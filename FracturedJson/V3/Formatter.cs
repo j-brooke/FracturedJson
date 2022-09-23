@@ -167,12 +167,12 @@ public class Formatter
         if (item.RequiresMultipleLines)
             return false;
         
-        StandardFormatStart(item, depth);
+        var depthAfterColon = StandardFormatStart(item, depth);
 
         // Starting bracket (with no EOL).
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
 
-        var availableLineSpace = AvailableLineSpace(depth+1);
+        var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
         var remainingLineSpace = -1;
         for (var i=0; i<item.Children.Count; ++i)
         {
@@ -181,7 +181,7 @@ public class Formatter
             var spaceNeededForNext = item.Children[i].MinimumTotalLength + ((needsComma) ? _pads.CommaLen : 0);
             if (remainingLineSpace < spaceNeededForNext)
             {
-                _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depth+1));
+                _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon+1));
                 remainingLineSpace = availableLineSpace;
             }
             
@@ -190,10 +190,10 @@ public class Formatter
         }
 
         // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
-        _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depth),
+        _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon),
             _pads.End(item.Type, BracketPaddingType.Empty));
 
-        StandardFormatEnd(item, depth, includeTrailingComma);
+        StandardFormatEnd(item, includeTrailingComma);
         return true;
     }
 
@@ -210,32 +210,50 @@ public class Formatter
     /// </summary>
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
-        StandardFormatStart(item, depth);
+        var depthAfterColon = StandardFormatStart(item, depth);
 
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
         
         for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(item.Children[i], depth+1, (i<item.Children.Count-1));
+            FormatItem(item.Children[i], depthAfterColon+1, (i<item.Children.Count-1));
 
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth), _pads.End(item.Type, BracketPaddingType.Empty));
+        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
 
-        StandardFormatEnd(item, depth, includeTrailingComma);
+        StandardFormatEnd(item, includeTrailingComma);
     }
 
-    private void StandardFormatStart(JsonItem item, int depth)
+    private int StandardFormatStart(JsonItem item, int depth)
     {
+        // Everything is straightforward until the colon
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         if (item.PrefixComment != null)
             _buffer.Add(item.PrefixComment, _pads.Comment);
         
         if (item.Name != null)
             _buffer.Add(item.Name, _pads.Colon);
+        
+        if (item.MiddleComment == null)
+            return depth;
 
-        if (item.MiddleComment != null)
+        // If there's a middle comment, we write it on the same line and move along.  Easy.
+        if (!item.MiddleComment.Contains('\n'))
+        {
             _buffer.Add(item.MiddleComment);
+            return depth;
+        }
+
+        // If the middle comment requires multiple lines, start a new line and indent everything after this.
+        var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
+        _buffer.Add(_pads.EOL);
+        
+        foreach (var row in commentRows)
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row, _pads.EOL);
+        
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth+1));
+        return depth + 1;
     }
 
-    private void StandardFormatEnd(JsonItem item, int depth, bool includeTrailingComma)
+    private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
     {
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
@@ -328,8 +346,10 @@ public class Formatter
 
     private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
     {
-        // TODO: Figure this out
-        throw new NotImplementedException();
+        StandardFormatStart(item, depth);
+        if (item.Value!=null)
+            _buffer.Add(item.Value);
+        StandardFormatEnd(item, includeTrailingComma);
     }
 
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
@@ -355,7 +375,9 @@ public class Formatter
         // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
         // line endings that the user wants ourselves.
         var normalized = comment.Replace("\r", string.Empty);
-        var commentRows = normalized.Split('\n');
+        var commentRows = normalized.Split('\n')
+            .Where(line => line.Length>0)
+            .ToArray();
         
         /*
          * The first line doesn't include any leading whitespace, but subsequent lines probably do.
@@ -366,6 +388,7 @@ public class Formatter
         for (var i = 1; i < commentRows.Length; ++i)
         {
             var line = commentRows[i];
+
             var nonWsIdx = 0;
             while (nonWsIdx < line.Length && nonWsIdx < firstLineColumn && char.IsWhiteSpace(line[nonWsIdx]))
                 nonWsIdx += 1;
