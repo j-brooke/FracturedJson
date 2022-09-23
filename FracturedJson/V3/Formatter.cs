@@ -78,17 +78,17 @@ public class Formatter
             }
         }
 
-        // Note that we're always assuming there will be a comma after any given
-        // element.  It's not strictly true, but it makes things so much simpler.
+        // Note that we're not considering this item's own trailing comma, if any.  But we are considering
+        // commas between children.
         item.MinimumTotalLength =
-            item.PrefixCommentLength
-            + item.NameLength
-            + ((item.NameLength > 0) ? _pads.ColonLen : 0)
+            ((item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0)
+            + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0)
             + item.MiddleCommentLength
             + item.ValueLength
-            + _pads.CommaLen
+            + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0)
             + bracketLengths
-            + item.Children.Sum(ch => ch.MinimumTotalLength);
+            + item.Children.Sum(ch => ch.MinimumTotalLength)
+            + Math.Max(0, _pads.CommaLen * (item.Children.Count - 1));
     }
 
     private int NullSafeStringLength(string? s)
@@ -149,7 +149,8 @@ public class Formatter
             return false;
         var maxInlineLength = Math.Min(Options.MaxInlineLength,
             Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
-        if (item.MinimumTotalLength > maxInlineLength || item.Complexity > Options.MaxInlineComplexity)
+        var lengthToConsider = item.MinimumTotalLength + ((includeTrailingComma) ? _pads.CommaLen : 0);
+        if (lengthToConsider > maxInlineLength || item.Complexity > Options.MaxInlineComplexity)
             return false;
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
@@ -180,7 +181,7 @@ public class Formatter
     {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         if (item.PrefixComment != null)
-            _buffer.Add(item.PrefixComment);
+            _buffer.Add(item.PrefixComment, _pads.Comment);
         
         if (item.Name != null)
             _buffer.Add(item.Name, _pads.Colon);
@@ -198,7 +199,7 @@ public class Formatter
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
         if (item.PostfixComment != null)
-            _buffer.Add(item.PostfixComment);
+            _buffer.Add(_pads.Comment, item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
         _buffer.Add(_pads.EOL);
@@ -215,7 +216,7 @@ public class Formatter
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
         
         if (item.PrefixComment != null)
-            buffer.Add(item.PrefixComment);
+            buffer.Add(item.PrefixComment, _pads.Comment);
         
         if (item.Name != null)
             buffer.Add(item.Name, _pads.Colon);
@@ -249,7 +250,7 @@ public class Formatter
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
         if (item.PostfixComment != null)
-            buffer.Add(item.PostfixComment);
+            buffer.Add(_pads.Comment, item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
     }

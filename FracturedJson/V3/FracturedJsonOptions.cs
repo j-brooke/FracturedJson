@@ -38,6 +38,11 @@ public record struct FracturedJsonOptions
     public bool CommaPadding { get; set; } = true;
 
     /// <summary>
+    /// If true, spaces are included between prefix and postfix comments and their content.
+    /// </summary>
+    public bool CommentPadding { get; set; } = true;
+
+    /// <summary>
     /// Number of spaces to use per indent level (unless UseTabToIndent is true)
     /// </summary>
     public int IndentSpaces { get; set; } = 4;

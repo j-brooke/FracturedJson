@@ -8,9 +8,11 @@ public class PaddedFormattingTokens
 {
     public string Comma { get; }
     public string Colon { get; }
+    public string Comment { get; }
     public string EOL { get; }
     public int CommaLen { get; }
     public int ColonLen { get; }
+    public int CommentLen { get; }
     public int PrefixStringLen { get; }
     
     public PaddedFormattingTokens(FracturedJsonOptions opts, Func<string,int> strLenFunc)
@@ -37,6 +39,7 @@ public class PaddedFormattingTokens
         
         Comma = (opts.CommaPadding) ? ", " : ",";
         Colon = (opts.ColonPadding) ? ": " : ":";
+        Comment = (opts.CommentPadding) ? " " : string.Empty;
         EOL = opts.JsonEolStyle switch
         {
             EolStyle.Crlf => "\r\n",
@@ -58,6 +61,7 @@ public class PaddedFormattingTokens
 
         CommaLen = strLenFunc(Comma);
         ColonLen = strLenFunc(Colon);
+        CommentLen = strLenFunc(Comment);
         PrefixStringLen = strLenFunc(opts.PrefixString);
     }
 
