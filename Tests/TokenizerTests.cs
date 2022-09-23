@@ -66,7 +66,7 @@ public class TokenizerTests
     [DataRow("/*1*/,", 5, 0, 5)]
     [DataRow("/*1\n*/,", 6, 1, 2)]
     [DataRow("\n\n", 1, 1, 0)]
-    public void CorrectPositionForSecondToken(string input, long index, long row, long column)
+    public void CorrectPositionForSecondToken(string input, int index, int row, int column)
     {
         var results = TokenScanner.Scan(input).ToArray();
         Assert.AreEqual(2, results.Length);
@@ -113,7 +113,7 @@ public class TokenizerTests
     [DataRow("-g", 1, 0, 1)]
     [DataRow("1.0eg", 4, 0, 4)]
     [DataRow("\"beep\u0007beep\"", 5, 0, 5)]
-    public void ThrowIfBadCharacter(string input, long index, long row, long column)
+    public void ThrowIfBadCharacter(string input, int index, int row, int column)
     {
         try
         {

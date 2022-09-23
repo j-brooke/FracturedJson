@@ -21,6 +21,12 @@ public class FracturedJsonException : Exception
     {
         InputPosition = inputPosition;
     }
+    
+    public FracturedJsonException(string message, Exception innerException, InputPosition inputPosition)
+        : base(message, innerException)
+    {
+        InputPosition = inputPosition;
+    }
 
     public static FracturedJsonException Create(string message, InputPosition inputPosition)
     {

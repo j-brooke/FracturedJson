@@ -6,9 +6,9 @@ namespace FracturedJson.Tokenizer;
 /// <param name="Index">Number of characters from the start of the input.</param>
 /// <param name="Row">Number of newlines since the start of the input.</param>
 /// <param name="Column">Number of characters since the latest newline.</param>
-public readonly record struct InputPosition(long Index, long Row, long Column)
+public readonly record struct InputPosition(int Index, int Row, int Column)
 {
-    public long Index { get; } = Index;
-    public long Row { get; } = Row;
-    public long Column { get; } = Column;
+    public int Index { get; } = Index;
+    public int Row { get; } = Row;
+    public int Column { get; } = Column;
 }

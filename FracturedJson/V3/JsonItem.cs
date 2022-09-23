@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using FracturedJson.Tokenizer;
 
 namespace FracturedJson.V3;
 
@@ -16,7 +17,7 @@ public class JsonItem
     /// <summary>
     /// Line number from the input - if available - where this element began.
     /// </summary>
-    public long InputLine { get; set; }
+    public InputPosition InputPosition { get; set; }
 
     /// <summary>
     /// Nesting level of this item's contents if any.  A simple item, or an empty array or object, has a complexity of

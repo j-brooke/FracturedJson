@@ -263,7 +263,7 @@ public class Formatter
         if (item.Value == null)
             return;
 
-        var commentRows = NormalizeMultilineComment(item.Value);
+        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
         
         foreach (var line in commentRows)
             _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
@@ -298,18 +298,29 @@ public class Formatter
         return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
     }
 
-    private string[] NormalizeMultilineComment(string comment)
+    private string[] NormalizeMultilineComment(string comment, int firstLineColumn)
     {
-        var spaces = new string(' ', Options.IndentSpaces);
-        var normalized = comment.Replace("\t", spaces);
-        var rows = normalized.Split('\n');
-
-        for (var i = 1; i < rows.Length; ++i)
+        // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
+        // line endings that the user wants ourselves.
+        var normalized = comment.Replace("\r", string.Empty);
+        var commentRows = normalized.Split('\n');
+        
+        /*
+         * The first line doesn't include any leading whitespace, but subsequent lines probably do.
+         * We want to remove leading whitespace from those rows, but only up to where the first line began.
+         * The idea is to preserve spaces used to line up comments, like the ones before the asterisks
+         * in THIS VERY COMMENT that you're reading RIGHT NOW.
+         */
+        for (var i = 1; i < commentRows.Length; ++i)
         {
-            // TODO: replace this with smarter heuristic to line it up.
-            rows[i] = rows[i].Trim();
+            var line = commentRows[i];
+            var nonWsIdx = 0;
+            while (nonWsIdx < line.Length && nonWsIdx < firstLineColumn && char.IsWhiteSpace(line[nonWsIdx]))
+                nonWsIdx += 1;
+
+            commentRows[i] = line.Substring(nonWsIdx);
         }
 
-        return rows;
+        return commentRows;
     }
 }

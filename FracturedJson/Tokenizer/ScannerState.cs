@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -19,8 +20,18 @@ public class ScannerState
     /// <param name="isWhitespace">True if the character just read was whitespace outside of a token.</param>
     public void Advance(bool isWhitespace)
     {
-        CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row, CurrentPosition.Column + 1);
-        NonWhitespaceSinceLastNewline |= !isWhitespace;
+        try
+        {
+            checked
+            {
+                CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row, CurrentPosition.Column + 1);
+                NonWhitespaceSinceLastNewline |= !isWhitespace;
+            }
+        }
+        catch (OverflowException e)
+        {
+            throw new FracturedJsonException("Maximum document length exceeded", e, CurrentPosition);
+        }
     }
 
     /// <summary>
@@ -28,8 +39,18 @@ public class ScannerState
     /// </summary>
     public void NewLine()
     {
-        CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row + 1, 0);
-        NonWhitespaceSinceLastNewline = false;
+        try
+        {
+            checked
+            {
+                CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row + 1, 0);
+                NonWhitespaceSinceLastNewline = false;
+            }
+        }
+        catch (OverflowException e)
+        {
+            throw new FracturedJsonException("Maximum document length exceeded", e, CurrentPosition);
+        }
     }
 
     /// <summary>

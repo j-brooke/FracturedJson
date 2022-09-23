@@ -68,7 +68,7 @@ public class Parser
         {
             Type = itemType,
             Value = token.Text,
-            InputLine = token.InputPosition.Row,
+            InputPosition = token.InputPosition,
             Complexity = 0,
         };
 
@@ -106,7 +106,7 @@ public class Parser
             // If the token we're about to deal with isn't on the same line as an unplaced comment or is the end of the
             // array, this is our last chance to find a place for that comment.
             var unplacedCommentNeedsHome = unplacedComment != null &&
-                                           (unplacedComment.InputLine != token.InputPosition.Row ||
+                                           (unplacedComment.InputPosition.Row != token.InputPosition.Row ||
                                             token.Type == TokenType.EndArray);
             if (unplacedCommentNeedsHome)
             {
@@ -256,7 +256,7 @@ public class Parser
         var arrayItem = new JsonItem()
         {
             Type = JsonItemType.Array,
-            InputLine = startingInputPosition.Row,
+            InputPosition = startingInputPosition,
             Complexity = thisArrayComplexity,
             Children = childList,
         };
@@ -282,7 +282,7 @@ public class Parser
         // when conditions are appropriate.
         JsonToken? propertyName = null;
         JsonItem? propertyValue = null;
-        long linePropValueEnds = -1;
+        var linePropValueEnds = -1;
         var beforePropComments = new List<JsonItem>();
         var midPropComments = new List<JsonToken>();
         JsonItem? afterPropComment = null;
@@ -398,7 +398,7 @@ public class Parser
         var objItem = new JsonItem()
         {
             Type = JsonItemType.Object,
-            InputLine = startingInputPosition.Row,
+            InputPosition = startingInputPosition,
             Complexity = thisObjComplexity,
             Children = childList,
         };
@@ -437,7 +437,7 @@ public class Parser
     /// too.)
     /// </summary>
     private static void AttachObjectValuePieces(List<JsonItem> objItemList, JsonToken name, JsonItem element,
-        long valueEndingLine, List<JsonItem> beforeComments, List<JsonToken> midComments, JsonItem? afterComment)
+        int valueEndingLine, List<JsonItem> beforeComments, List<JsonToken> midComments, JsonItem? afterComment)
     {
         element.Name = name.Text;
 
@@ -464,7 +464,8 @@ public class Parser
         if (beforeComments.Count > 0)
         {
             var lastOfBefore = beforeComments[^1];
-            if (lastOfBefore.Type == JsonItemType.BlockComment && lastOfBefore.InputLine == element.InputLine)
+            if (lastOfBefore.Type == JsonItemType.BlockComment && 
+                lastOfBefore.InputPosition.Row == element.InputPosition.Row)
             {
                 element.PrefixComment = lastOfBefore.Value;
                 objItemList.AddRange(beforeComments.Take(beforeComments.Count - 1));
@@ -481,7 +482,7 @@ public class Parser
         // the others as unattached comment items.
         if (afterComment != null)
         {
-            if (!IsMultilineComment(afterComment) && afterComment.InputLine == valueEndingLine)
+            if (!IsMultilineComment(afterComment) && afterComment.InputPosition.Row == valueEndingLine)
             {
                 element.PostfixComment = afterComment.Value;
                 element.IsPostCommentLineStyle = (afterComment.Type == JsonItemType.LineComment);
