@@ -20,19 +20,16 @@ public class Parser
     /// we have to be able to return multiple things before or after the actual data.
     /// </summary>
     /// <param name="charEnumeration">The JSON (with comments, maybe) text</param>
-    /// <param name="startingDepth">Starting logical depth, for use when formatting</param>
     /// <param name="stopAfterFirstElem">If true, the enumeration ends when a single top-level element (real JSON value)
     /// is read.  </param>
     /// <returns>JsonItems representing the top-level data, comments, and blank lines from the input.</returns>
-    public IEnumerable<JsonItem> ParseTopLevel(IEnumerable<char> charEnumeration, int startingDepth,
-        bool stopAfterFirstElem)
+    public IEnumerable<JsonItem> ParseTopLevel(IEnumerable<char> charEnumeration, bool stopAfterFirstElem)
     {
         var tokenStream = TokenScanner.Scan(charEnumeration);
-        return ParseTopLevel(tokenStream, startingDepth, stopAfterFirstElem);
+        return ParseTopLevel(tokenStream, stopAfterFirstElem);
     }
 
-    private IEnumerable<JsonItem> ParseTopLevel(IEnumerable<JsonToken> tokenEnumeration, int startingDepth,
-        bool stopAfterFirstElem)
+    private IEnumerable<JsonItem> ParseTopLevel(IEnumerable<JsonToken> tokenEnumeration, bool stopAfterFirstElem)
     {
         using var enumerator = tokenEnumeration.GetEnumerator();
         while (true)
@@ -40,7 +37,7 @@ public class Parser
             if (!enumerator.MoveNext())
                 yield break;
 
-            var item = ParseItem(enumerator, startingDepth);
+            var item = ParseItem(enumerator);
             yield return item;
             var isElement = item.Type != JsonItemType.BlankLine && item.Type != JsonItemType.BlockComment &&
                             item.Type != JsonItemType.LineComment;
@@ -52,7 +49,7 @@ public class Parser
     /// <summary>
     /// Parse a simple token (not an array or object) into a <see cref="JsonItem"/>. 
     /// </summary>
-    private JsonItem ParseSimple(JsonToken token, int depth)
+    private JsonItem ParseSimple(JsonToken token)
     {
         var itemType = token.Type switch
         {
@@ -72,7 +69,6 @@ public class Parser
             Type = itemType,
             Value = token.Text,
             InputLine = token.InputPosition.Row,
-            Depth = depth,
             Complexity = 0,
         };
 
@@ -84,7 +80,7 @@ public class Parser
     /// square bracket token at the start of the call.  It will be pointing to the closing bracket when the call
     /// returns.
     /// </summary>
-    private JsonItem ParseArray(IEnumerator<JsonToken> enumerator, int depth)
+    private JsonItem ParseArray(IEnumerator<JsonToken> enumerator)
     {
         if (enumerator.Current.Type != TokenType.BeginArray)
             throw FracturedJsonException.Create("Parser logic error", enumerator.Current.InputPosition);
@@ -155,7 +151,7 @@ public class Parser
                 case TokenType.BlankLine:
                     if (!Options.PreserveBlankLines)
                         break;
-                    childList.Add(ParseSimple(token, depth + 1));
+                    childList.Add(ParseSimple(token));
                     break;
 
                 case TokenType.BlockComment:
@@ -173,7 +169,7 @@ public class Parser
                     }
 
                     // If this is a multiline comment, add it as unattached.
-                    var commentItem = ParseSimple(token, depth + 1);
+                    var commentItem = ParseSimple(token);
                     if (IsMultilineComment(commentItem))
                     {
                         childList.Add(commentItem);
@@ -206,7 +202,7 @@ public class Parser
                     {
                         // A previous comment followed by a line-ending comment?  Add them both as unattached comments
                         childList.Add(unplacedComment);
-                        childList.Add(ParseSimple(token, depth + 1));
+                        childList.Add(ParseSimple(token));
                         unplacedComment = null;
                         break;
                     }
@@ -221,7 +217,7 @@ public class Parser
                         break;
                     }
 
-                    childList.Add(ParseSimple(token, depth + 1));
+                    childList.Add(ParseSimple(token));
                     break;
 
                 case TokenType.False:
@@ -235,7 +231,7 @@ public class Parser
                         throw FracturedJsonException.Create("Comma missing while processing array",
                             token.InputPosition);
                     
-                    var element = ParseItem(enumerator, depth + 1);
+                    var element = ParseItem(enumerator);
                     commaStatus = CommaStatus.ElementSeen;
                     thisArrayComplexity = Math.Max(thisArrayComplexity, element.Complexity + 1);
 
@@ -261,7 +257,6 @@ public class Parser
         {
             Type = JsonItemType.Array,
             InputLine = startingInputPosition.Row,
-            Depth = depth,
             Complexity = thisArrayComplexity,
             Children = childList,
         };
@@ -274,7 +269,7 @@ public class Parser
     /// curly bracket token at the start of the call.  It will be pointing to the closing bracket when the call
     /// returns.
     /// </summary>
-    private JsonItem ParseObject(IEnumerator<JsonToken> enumerator, int depth)
+    private JsonItem ParseObject(IEnumerator<JsonToken> enumerator)
     {
         if (enumerator.Current.Type != TokenType.BeginObject)
             throw FracturedJsonException.Create("Parser logic error", enumerator.Current.InputPosition);
@@ -328,7 +323,7 @@ public class Parser
                         break;
                     if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         break;
-                    childList.Add(ParseSimple(token, depth + 1));
+                    childList.Add(ParseSimple(token));
                     break;
                 case TokenType.BlockComment:
                 case TokenType.LineComment:
@@ -338,11 +333,11 @@ public class Parser
                         throw FracturedJsonException.Create("Comments not allowed with current options",
                             token.InputPosition);
                     if (phase == ObjectPhase.BeforePropName || propertyName==null)
-                        beforePropComments.Add(ParseSimple(token, depth + 1));
+                        beforePropComments.Add(ParseSimple(token));
                     else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         midPropComments.Add(token);
                     else
-                        afterPropComment = ParseSimple(token, depth + 1);
+                        afterPropComment = ParseSimple(token);
                     break;
                 case TokenType.EndObject:
                     endOfObject = true;
@@ -355,7 +350,7 @@ public class Parser
                     }
                     else if (phase == ObjectPhase.AfterColon)
                     {
-                        propertyValue = ParseItem(enumerator, depth + 1);
+                        propertyValue = ParseItem(enumerator);
                         linePropValueEnds = enumerator.Current.InputPosition.Row;
                         phase = ObjectPhase.AfterPropValue;
                     }
@@ -374,7 +369,7 @@ public class Parser
                     if (phase != ObjectPhase.AfterColon)
                         throw FracturedJsonException.Create("Unexpected element while processing object",
                             token.InputPosition);
-                    propertyValue = ParseItem(enumerator, depth + 1);
+                    propertyValue = ParseItem(enumerator);
                     linePropValueEnds = enumerator.Current.InputPosition.Row;
                     phase = ObjectPhase.AfterPropValue;
                     break;
@@ -404,7 +399,6 @@ public class Parser
         {
             Type = JsonItemType.Object,
             InputLine = startingInputPosition.Row,
-            Depth = depth,
             Complexity = thisObjComplexity,
             Children = childList,
         };
@@ -414,13 +408,13 @@ public class Parser
     /// <summary>
     /// Parse the next thing, no matter what it is.
     /// </summary>
-    private JsonItem ParseItem(IEnumerator<JsonToken> enumerator, int depth)
+    private JsonItem ParseItem(IEnumerator<JsonToken> enumerator)
     {
         return enumerator.Current.Type switch
         {
-            TokenType.BeginArray => ParseArray(enumerator, depth),
-            TokenType.BeginObject => ParseObject(enumerator, depth),
-            _ => ParseSimple(enumerator.Current, depth),
+            TokenType.BeginArray => ParseArray(enumerator),
+            TokenType.BeginObject => ParseObject(enumerator),
+            _ => ParseSimple(enumerator.Current),
         };
     }
 

@@ -17,12 +17,7 @@ public class JsonItem
     /// Line number from the input - if available - where this element began.
     /// </summary>
     public long InputLine { get; set; }
-    
-    /// <summary>
-    /// How many ancestors this item has.
-    /// </summary>
-    public int Depth { get; set; }
-    
+
     /// <summary>
     /// Nesting level of this item's contents if any.  A simple item, or an empty array or object, has a complexity of
     /// zero.  Non-empty arrays/objects have a complexity 1 greater than that of their child with the greatest

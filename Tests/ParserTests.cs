@@ -11,7 +11,7 @@ public class ParserTests
     {
         const string input = "[4.7, true, null, \"a string\", {}, false, []]";
         var parser = new Parser();
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(JsonItemType.Array ,docModel[0].Type);
@@ -38,7 +38,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -64,7 +64,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -89,7 +89,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -112,7 +112,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -135,7 +135,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -158,7 +158,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -187,7 +187,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -217,7 +217,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(3, docModel[0].Children.Count);
@@ -247,7 +247,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(3, docModel[0].Children.Count);
@@ -280,7 +280,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var preserveParser = new Parser() { Options = preserveOptions };
-        var preserveDocModel = preserveParser.ParseTopLevel(input, 0, false).ToArray();
+        var preserveDocModel = preserveParser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, preserveDocModel.Length);
         Assert.AreEqual(JsonItemType.Array ,preserveDocModel[0].Type);
@@ -298,7 +298,7 @@ public class ParserTests
             PreserveBlankLines = false,
         };
         var removeParser = new Parser() { Options = removeOptions };
-        var removeDocModel = removeParser.ParseTopLevel(input, 0, false).ToArray();
+        var removeDocModel = removeParser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, removeDocModel.Length);
         Assert.AreEqual(JsonItemType.Array ,removeDocModel[0].Type);
@@ -314,7 +314,7 @@ public class ParserTests
         const string input = 
             "{ \"a\": 5.2, \"b\": false, \"c\": null, \"d\": true, \"e\":[], \"f\":{}, \"g\": \"a string\" }";
         var parser = new Parser();
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(JsonItemType.Object ,docModel[0].Type);
@@ -356,7 +356,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var preserveParser = new Parser() { Options = preserveOptions };
-        var preserveDocModel = preserveParser.ParseTopLevel(input, 0, false).ToArray();
+        var preserveDocModel = preserveParser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, preserveDocModel.Length);
         Assert.AreEqual(JsonItemType.Object ,preserveDocModel[0].Type);
@@ -374,7 +374,7 @@ public class ParserTests
             PreserveBlankLines = false,
         };
         var removeParser = new Parser() { Options = removeOptions };
-        var removeDocModel = removeParser.ParseTopLevel(input, 0, false).ToArray();
+        var removeDocModel = removeParser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, removeDocModel.Length);
         Assert.AreEqual(JsonItemType.Object ,removeDocModel[0].Type);
@@ -396,7 +396,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -426,7 +426,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -456,7 +456,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -487,7 +487,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -518,7 +518,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(4, docModel[0].Children.Count);
@@ -544,7 +544,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -564,7 +564,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
@@ -599,7 +599,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -628,7 +628,7 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
@@ -637,7 +637,7 @@ public class ParserTests
     }
 
     [TestMethod]
-    public void DepthAndComplexityWork()
+    public void ComplexityWork()
     {
         var inputSegments = new[]
         {
@@ -658,37 +658,28 @@ public class ParserTests
             PreserveBlankLines = true,
         };
         var parser = new Parser() { Options = options };
-        var docModel = parser.ParseTopLevel(input, 0, false).ToArray();
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
 
         Assert.AreEqual(1, docModel.Length);
-        Assert.AreEqual(0, docModel[0].Depth);
         Assert.AreEqual(3, docModel[0].Complexity);
         Assert.AreEqual(5, docModel[0].Children.Count);
         
         // Primitive elements always have a complexity of 0.
-        Assert.AreEqual(1, docModel[0].Children[0].Depth);
         Assert.AreEqual(0, docModel[0].Children[0].Complexity);
         
         // An array/object always has a complexity 1 greater than the greatest of its child element complexities.
-        Assert.AreEqual(1, docModel[0].Children[1].Depth);
         Assert.AreEqual(1, docModel[0].Children[1].Complexity);
 
         // An empty array/object has a complexity of 0, so this is treated the same as the case above.
-        Assert.AreEqual(1, docModel[0].Children[2].Depth);
         Assert.AreEqual(1, docModel[0].Children[2].Complexity);
-        Assert.AreEqual(2, docModel[0].Children[2].Children[2].Depth);
         Assert.AreEqual(0, docModel[0].Children[2].Children[2].Complexity);
 
         // Comments don't count when determining an object/array's complexity, so this is the same as above.
-        Assert.AreEqual(1, docModel[0].Children[3].Depth);
         Assert.AreEqual(1, docModel[0].Children[3].Complexity);
-        Assert.AreEqual(2, docModel[0].Children[3].Children[2].Depth);
         Assert.AreEqual(0, docModel[0].Children[3].Children[2].Complexity);
 
         // Here there's a non-empty object nested in the array, so it's more complex.
-        Assert.AreEqual(1, docModel[0].Children[4].Depth);
         Assert.AreEqual(2, docModel[0].Children[4].Complexity);
-        Assert.AreEqual(2, docModel[0].Children[4].Children[2].Depth);
         Assert.AreEqual(1, docModel[0].Children[4].Children[2].Complexity);
     }
 
@@ -712,7 +703,7 @@ public class ParserTests
     public void ThrowsForMalformedData(string input)
     {
         var parser = new Parser();
-        Assert.ThrowsException<FracturedJsonException>(() => parser.ParseTopLevel(input, 0, false).ToArray());
+        Assert.ThrowsException<FracturedJsonException>(() => parser.ParseTopLevel(input, false).ToArray());
     }
 
     [TestMethod]
@@ -720,7 +711,7 @@ public class ParserTests
     {
         const string input = "[ 1, 2 ],[ 3, 4 ]";
         var parser = new Parser();
-        var docModel = parser.ParseTopLevel(input, 0, true).ToArray();
+        var docModel = parser.ParseTopLevel(input, true).ToArray();
 
         Assert.AreEqual(1, docModel.Length);
     }

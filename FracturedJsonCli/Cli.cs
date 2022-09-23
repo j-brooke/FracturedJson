@@ -5,8 +5,7 @@ using FracturedJson.V3;
 namespace FracturedJsonCli
 {
     /// <summary>
-    /// Commandline app to format JSON using FracturedJson.Formatter.  Output is to standard out.  Input
-    /// is expected from standard in, or you can use --file and give it a file name.
+    /// Commandline app to format JSON using FracturedJson.Formatter.  Output is to standard out.
     /// </summary>
     internal static class Cli
     {
@@ -20,7 +19,8 @@ namespace FracturedJsonCli
                     CommentPolicy = CommentPolicy.Preserve,
                     PreserveBlankLines = true,
                     MaxTotalLineLength = 800,
-                    MaxInlineLength = 120,
+                    MaxInlineLength = 80,
+                    MaxInlineComplexity = 2,
                 };
                 var formatter = new Formatter() { Options = options };
                 var formattedDoc = formatter.Reformat(inputText, 0);

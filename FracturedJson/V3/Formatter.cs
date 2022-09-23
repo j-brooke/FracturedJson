@@ -13,15 +13,14 @@ public class Formatter
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, startingDepth, false);
-        var buffer = new StringBuilderBuffer();
+        var docModel = parser.ParseTopLevel(jsonText, false);
         foreach(var item in docModel)
         {
             Preprocess(item);
-            FormatItem(buffer, item, false);
+            FormatItem(item, startingDepth, false);
         }
 
-        return buffer.AsString();
+        return _buffer.AsString();
     }
 
     public static int StringLengthByCharCount(string s)
@@ -29,6 +28,7 @@ public class Formatter
         return s.Length;
     }
 
+    private readonly IBuffer _buffer = new StringBuilderBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
     
     private void Preprocess(JsonItem root)
@@ -99,26 +99,26 @@ public class Formatter
     /// <summary>
     /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.
     /// </summary>
-    private void FormatItem(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void FormatItem(JsonItem item, int depth, bool includeTrailingComma)
     {
         switch (item.Type)
         {
             case JsonItemType.Array:
             case JsonItemType.Object:
-                FormatContainer(buffer, item, includeTrailingComma);
+                FormatContainer(item, depth, includeTrailingComma);
                 break;
             case JsonItemType.BlankLine:
-                FormatBlankLine(buffer);
+                FormatBlankLine();
                 break;
             case JsonItemType.BlockComment:
             case JsonItemType.LineComment:
-                FormatStandaloneComment(buffer, item);
+                FormatStandaloneComment(item, depth);
                 break;
             default:
                 if (item.RequiresMultipleLines)
-                    FormatSplitKeyValue(buffer, item, includeTrailingComma);
+                    FormatSplitKeyValue(item, depth, includeTrailingComma);
                 else
-                    FormatInlineElement(buffer, item, includeTrailingComma);
+                    FormatInlineElement(item, depth, includeTrailingComma);
                 break;
         }
     }
@@ -127,15 +127,15 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.
     /// The array/object might be formatted inline, compact multiline, table, or expanded, according to circumstances.
     /// </summary>
-    private void FormatContainer(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma)
     {
-        if (FormatContainerInline(buffer, item, includeTrailingComma))
+        if (FormatContainerInline(item, depth, includeTrailingComma))
             return;
-        if (FormatContainerCompactMultiline(buffer, item, includeTrailingComma))
+        if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
             return;
-        if (FormatContainerTable(buffer, item, includeTrailingComma))
+        if (FormatContainerTable(item, depth, includeTrailingComma))
             return;
-        FormatContainerExpanded(buffer, item, includeTrailingComma);
+        FormatContainerExpanded(item, depth, includeTrailingComma);
     }
 
     /// <summary>
@@ -143,27 +143,29 @@ public class Formatter
     /// if the array/object qualifies.
     /// </summary>
     /// <returns>True if the content was added.</returns>
-    private bool FormatContainerInline(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private bool FormatContainerInline(JsonItem item, int depth, bool includeTrailingComma)
     {
+        if (item.RequiresMultipleLines)
+            return false;
         var maxInlineLength = Math.Min(Options.MaxInlineLength,
-            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * item.Depth);
+            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
         if (item.MinimumTotalLength > maxInlineLength || item.Complexity > Options.MaxInlineComplexity)
             return false;
 
-        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
-        InlineElement(buffer, item, includeTrailingComma);
-        buffer.Add(_pads.EOL);
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        InlineElement(_buffer, item, includeTrailingComma);
+        _buffer.Add(_pads.EOL);
 
         return true;
     }
 
-    private bool FormatContainerCompactMultiline(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
     {
         // TODO: Implement
         return false;
     }
 
-    private bool FormatContainerTable(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
     {
         // TODO: Implement
         return false;
@@ -174,32 +176,32 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
     /// broken out on separate lines.
     /// </summary>
-    private void FormatContainerExpanded(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
-        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         if (item.PrefixComment != null)
-            buffer.Add(item.PrefixComment);
+            _buffer.Add(item.PrefixComment);
         
         if (item.Name != null)
-            buffer.Add(item.Name, _pads.Colon);
+            _buffer.Add(item.Name, _pads.Colon);
 
         if (item.MiddleComment != null)
-            buffer.Add(item.MiddleComment);
+            _buffer.Add(item.MiddleComment);
 
-        buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
         
         for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(buffer, item.Children[i], (i<item.Children.Count-1));
+            FormatItem(item.Children[i], depth+1, (i<item.Children.Count-1));
 
-        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth), _pads.End(item.Type, BracketPaddingType.Empty));
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth), _pads.End(item.Type, BracketPaddingType.Empty));
         
         if (includeTrailingComma && item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
+            _buffer.Add(_pads.Comma);
         if (item.PostfixComment != null)
-            buffer.Add(item.PostfixComment);
+            _buffer.Add(item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
-        buffer.Add(_pads.EOL);
+            _buffer.Add(_pads.Comma);
+        _buffer.Add(_pads.EOL);
     }
 
     /// <summary>
@@ -255,7 +257,7 @@ public class Formatter
     /// <summary>
     /// Adds a (possibly multiline) standalone comment to the buffer, with indents and newlines on each line.
     /// </summary>
-    private void FormatStandaloneComment(IBuffer buffer, JsonItem item)
+    private void FormatStandaloneComment(JsonItem item, int depth)
     {
         if (item.Value == null)
             return;
@@ -263,25 +265,25 @@ public class Formatter
         var commentRows = NormalizeMultilineComment(item.Value);
         
         foreach (var line in commentRows)
-            buffer.Add(Options.PrefixString, _pads.Indent(item.Depth), line, _pads.EOL );
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
     }
 
-    private void FormatBlankLine(IBuffer buffer)
+    private void FormatBlankLine()
     {
-        buffer.Add(_pads.EOL);
+        _buffer.Add(_pads.EOL);
     }
 
     /// <summary>
     /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
     /// </summary>
-    private void FormatInlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
     {
-        buffer.Add(Options.PrefixString, _pads.Indent(item.Depth));
-        InlineElement(buffer, item, includeTrailingComma);
-        buffer.Add(_pads.EOL);
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        InlineElement(_buffer, item, includeTrailingComma);
+        _buffer.Add(_pads.EOL);
     }
 
-    private void FormatSplitKeyValue(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
     {
         // TODO: Figure this out
         throw new NotImplementedException();
