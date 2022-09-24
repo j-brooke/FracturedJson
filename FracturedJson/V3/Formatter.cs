@@ -192,7 +192,7 @@ public class Formatter
             
             // Write it out
             if (template.CanBeUsedInTable)
-                InlineTableRowSegment(_buffer, template, child, needsComma);
+                InlineTableRowSegment(_buffer, template, child, needsComma, false);
             else
                 InlineElement(_buffer, child, needsComma);
             remainingLineSpace -= spaceNeededForNext;
@@ -250,7 +250,7 @@ public class Formatter
             }
             
             _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
-            InlineTableRowSegment(_buffer, template, rowItem, (i<item.Children.Count-1));
+            InlineTableRowSegment(_buffer, template, rowItem, (i<item.Children.Count-1), true);
             _buffer.Add(_pads.EOL);
         }
         
@@ -392,7 +392,8 @@ public class Formatter
     /// <summary>
     /// Adds this item's representation to the buffer inlined, formatted according to the given TableTemplate.
     /// </summary>
-    private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma)
+    private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma,
+        bool isWholeRow)
     {
         if (template.PrefixCommentLength > 0)
             buffer.Add(item.PrefixComment, 
@@ -420,15 +421,33 @@ public class Formatter
             InlineElementRaw(buffer, item);
             buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
         }
+
+        // If there's a postfix line comment, the comma needs to happen first.  For block comments,
+        // it would be better to put the comma after the comment.
+        var commaGoesBeforeComment = item.IsPostCommentLineStyle || item.PostfixCommentLength == 0;
+        if (commaGoesBeforeComment)
+        {
+            // For internal row segments, there won't be trailing comments for any of the rows.  But
+            // if this item represents the entire row, then they'll all have commas except the last.
+            // the isWholeRow param lets up put in padding to line that up right.
+            if (includeTrailingComma)
+                buffer.Add(_pads.Comma);
+            else if (isWholeRow)
+                buffer.Add(_pads.DummyComma);
+        }
         
-        if (includeTrailingComma && item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
         if (template.PostfixCommentLength > 0)
             buffer.Add(_pads.Comment, 
                 _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength),
                 item.PostfixComment);
-        if (includeTrailingComma && !item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
+        
+        if (!commaGoesBeforeComment)
+        {
+            if (includeTrailingComma)
+                buffer.Add(_pads.Comma);
+            else if (isWholeRow)
+                buffer.Add(_pads.DummyComma);
+        }
     }
 
     private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
@@ -445,13 +464,13 @@ public class Formatter
             {
                 buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
                 if (!isLastInTemplate)
-                    buffer.Add(_pads.DummyComma());
+                    buffer.Add(_pads.DummyComma);
             }
             else
             {
-                InlineTableRowSegment(buffer, subTemplate, item.Children[i], !isLastInArray);
+                InlineTableRowSegment(buffer, subTemplate, item.Children[i], !isLastInArray, false);
                 if (isLastInArray && !isLastInTemplate)
-                    buffer.Add(_pads.DummyComma());
+                    buffer.Add(_pads.DummyComma);
             }
         }
         buffer.Add(_pads.ArrEnd(template.PadType));
@@ -477,15 +496,15 @@ public class Formatter
             var isLastInTemplate = (i == matches.Length - 1);
             if (subItem != null)
             {
-                InlineTableRowSegment(buffer, subTemplate, subItem, !isLastInObject );
+                InlineTableRowSegment(buffer, subTemplate, subItem, !isLastInObject, false);
                 if (isLastInObject && !isLastInTemplate)
-                    buffer.Add(_pads.DummyComma());
+                    buffer.Add(_pads.DummyComma);
             }
             else
             {
                 buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
                 if (!isLastInTemplate)
-                    buffer.Add(_pads.DummyComma());
+                    buffer.Add(_pads.DummyComma);
             }
         }
         buffer.Add(_pads.ObjEnd(template.PadType));

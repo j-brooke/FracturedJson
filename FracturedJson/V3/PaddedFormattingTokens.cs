@@ -14,6 +14,7 @@ public class PaddedFormattingTokens
     public int ColonLen { get; }
     public int CommentLen { get; }
     public int PrefixStringLen { get; }
+    public string DummyComma => Spaces(CommaLen);
     
     public PaddedFormattingTokens(FracturedJsonOptions opts, Func<string,int> strLenFunc)
     {
@@ -143,11 +144,6 @@ public class PaddedFormattingTokens
         return new string(' ', quantity);
     }
 
-    public string DummyComma()
-    {
-        return Spaces(CommaLen);
-    }
-    
     private readonly string[] _arrStart;
     private readonly string[] _arrEnd;
     private readonly string[] _objStart;
