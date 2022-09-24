@@ -82,4 +82,11 @@ public class JsonItem
     /// List of this item's contents, if it's an array or object.
     /// </summary>
     public IList<JsonItem> Children { get; set; } = Array.Empty<JsonItem>();
+
+    public override string ToString()
+    {
+        var shortName = (Name.Length <= 10) ? Name : Name[..7] + "...";
+        var shortVal = (Value.Length <= 10) ? Value : Value[..7] + "...";
+        return $"{{ Name = {shortName}, Value = {shortVal} }}";
+    }
 }

@@ -142,6 +142,11 @@ public class PaddedFormattingTokens
         // todo - make smarter
         return new string(' ', quantity);
     }
+
+    public string DummyComma()
+    {
+        return Spaces(CommaLen);
+    }
     
     private readonly string[] _arrStart;
     private readonly string[] _arrEnd;

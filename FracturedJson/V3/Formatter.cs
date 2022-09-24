@@ -217,7 +217,8 @@ public class Formatter
         // If the lines would be too long if formatted as a table, give up.
         // TODO: Try to adapt by dropping sub-templates, maybe?
         var availableSpace = AvailableLineSpace(depth + 1);
-        if (template.ComputeSize(_pads) > availableSpace)
+        var templateSize = template.ComputeSize(_pads) + _pads.CommaLen;
+        if (templateSize > availableSpace)
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth);
@@ -396,7 +397,7 @@ public class Formatter
             buffer.Add(item.MiddleComment, 
                 _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength));
 
-        if (template.Children.Count > 0)
+        if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
             if (template.Type is JsonItemType.Array)
                 InlineTableRawArray(buffer, template, item);
@@ -424,19 +425,22 @@ public class Formatter
         buffer.Add(_pads.ArrStart(BracketPaddingType.Complex));
         for (var i = 0; i < template.Children.Count; ++i)
         {
+            var isLastInTemplate = (i == template.Children.Count - 1);
+            var isLastInArray = (i == item.Children.Count - 1);
+            var isPastEndOfArray = (i >= item.Children.Count);
             var subTemplate = template.Children[i];
-            if (i == item.Children.Count-1)
+
+            if (isPastEndOfArray)
             {
-                InlineTableRowSegment(buffer, subTemplate, item.Children[i], false);
-            }
-            else if (i < item.Children.Count-1)
-            {
-                InlineTableRowSegment(buffer, subTemplate, item.Children[i], true);
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
+                if (!isLastInTemplate)
+                    buffer.Add(_pads.DummyComma());
             }
             else
             {
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)), 
-                    _pads.Spaces(_pads.CommaLen));
+                InlineTableRowSegment(buffer, subTemplate, item.Children[i], !isLastInArray);
+                if (isLastInArray && !isLastInTemplate)
+                    buffer.Add(_pads.DummyComma());
             }
         }
         buffer.Add(_pads.ArrEnd(BracketPaddingType.Complex));
@@ -458,14 +462,19 @@ public class Formatter
         {
             var subTemplate = matches[i].sub;
             var subItem = matches[i].Item2;
+            var isLastInObject = (i == lastNonNullIdx);
+            var isLastInTemplate = (i == matches.Length - 1);
             if (subItem != null)
             {
-                var isNotLastItem = (i < lastNonNullIdx);
-                InlineTableRowSegment(buffer, subTemplate, subItem, isNotLastItem );
+                InlineTableRowSegment(buffer, subTemplate, subItem, !isLastInObject );
+                if (isLastInObject && !isLastInTemplate)
+                    buffer.Add(_pads.DummyComma());
             }
             else
             {
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)), _pads.Spaces(_pads.CommaLen));
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
+                if (!isLastInTemplate)
+                    buffer.Add(_pads.DummyComma());
             }
         }
         buffer.Add(_pads.ObjEnd(BracketPaddingType.Complex));
