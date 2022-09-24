@@ -16,6 +16,7 @@ public class TableTemplate
     public int PrefixCommentLength { get; set; }
     public int MiddleCommentLength { get; set; }
     public int PostfixCommentLength { get; set; }
+    public BracketPaddingType PadType { get; set; } = BracketPaddingType.Empty;
 
     public IList<TableTemplate> Children { get; set; } = new List<TableTemplate>();
 
@@ -31,13 +32,22 @@ public class TableTemplate
         PruneUnusableSegments();
 
         // If there are fewer than 2 actual data rows (i.e., not standalone comments), no point making a table.
-        CanBeUsedInTable &= (RowCount < 2);
+        CanBeUsedInTable &= (RowCount >= 2);
     }
 
-    public int ComputeSize()
+    public int ComputeSize(PaddedFormattingTokens pads)
     {
-        // TODO
-        throw new NotImplementedException();
+        var actualValueSize = ValueLength;
+        if (Children.Count>0)
+            actualValueSize = Children.Sum(ch => ch.ComputeSize(pads)) 
+                        + Math.Max(0, pads.CommaLen * (Children.Count - 1))
+                        + pads.ArrStartLen(BracketPaddingType.Complex)
+                        + pads.ArrEndLen(BracketPaddingType.Complex);
+        return ((PrefixCommentLength > 0) ? PrefixCommentLength + pads.CommentLen : 0)
+               + ((NameLength > 0) ? NameLength + pads.ColonLen : 0)
+               + MiddleCommentLength
+               + actualValueSize
+               + ((PostfixCommentLength > 0) ? PostfixCommentLength + pads.CommentLen : 0);
     }
 
     private void AssessRowSegment(JsonItem rowSegment)

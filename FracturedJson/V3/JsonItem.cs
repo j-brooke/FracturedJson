@@ -25,31 +25,31 @@ public class JsonItem
     /// complexity.
     /// </summary>
     public int Complexity { get; set; }
-    
+
     /// <summary>
     /// Property name, if this is an element (real JSON value) that is contained in an object.
     /// </summary>
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// The text value of this item, non-recursively.  Null for objects and arrays.
     /// </summary>
-    public string? Value { get; set; }
+    public string Value { get; set; } = string.Empty;
     
     /// <summary>
     /// Comment that belongs in front of this element on the same line, if any.
     /// </summary>
-    public string? PrefixComment { get; set; }
+    public string PrefixComment { get; set; } = string.Empty;
     
     /// <summary>
     /// Comment (or, possibly many of them) that belongs in between the property name and value, if any.
     /// </summary>
-    public string? MiddleComment { get; set; }
+    public string MiddleComment { get; set; } = string.Empty;
     
     /// <summary>
     /// Comment that belongs in front of this element on the same line, if any.
     /// </summary>
-    public string? PostfixComment { get; set; }
+    public string PostfixComment { get; set; } = string.Empty;
     
     /// <summary>
     /// True if the postfix comment is to-end-of-line rather than block style.

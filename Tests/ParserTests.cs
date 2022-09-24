@@ -21,7 +21,7 @@ public class ParserTests
         var foundChildTypes = docModel[0].Children.Select(ch => ch.Type).ToArray();
         CollectionAssert.AreEqual(expectedChildTypes, foundChildTypes);
 
-        var expectedText = new[] { "4.7", "true", "null", "\"a string\"", null, "false", null };
+        var expectedText = new[] { "4.7", "true", "null", "\"a string\"", string.Empty, "false", string.Empty };
         var foundText = docModel[0].Children.Select(ch => ch.Value).ToArray();
         CollectionAssert.AreEqual(expectedText, foundText);
     }
@@ -141,7 +141,7 @@ public class ParserTests
         Assert.AreEqual(2, docModel[0].Children.Count);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("/*b*/", docModel[0].Children[0].PostfixComment);
-        Assert.IsNull(docModel[0].Children[1].PrefixComment);
+        Assert.AreEqual(0, docModel[0].Children[1].PrefixCommentLength);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
     }
 
@@ -163,7 +163,7 @@ public class ParserTests
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
-        Assert.IsNull(docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual(0, docModel[0].Children[0].PostfixCommentLength);
         Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
     }
@@ -193,7 +193,7 @@ public class ParserTests
         Assert.AreEqual(2, docModel[0].Children.Count);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("/*b*/", docModel[0].Children[0].PostfixComment);
-        Assert.IsNull(docModel[0].Children[1].PrefixComment);
+        Assert.AreEqual(0, docModel[0].Children[1].PrefixCommentLength);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
     }
 
@@ -328,7 +328,7 @@ public class ParserTests
         var foundPropNames = docModel[0].Children.Select(ch => ch.Name).ToArray();
         CollectionAssert.AreEqual(expectedPropNames, foundPropNames);
         
-        var expectedText = new[] { "5.2", "false", "null", "true", null, null,  "\"a string\"" };
+        var expectedText = new[] { "5.2", "false", "null", "true", string.Empty, string.Empty,  "\"a string\"" };
         var foundText = docModel[0].Children.Select(ch => ch.Value).ToArray();
         CollectionAssert.AreEqual(expectedText, foundText);
     }
@@ -430,9 +430,9 @@ public class ParserTests
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
-        Assert.IsNull(docModel[0].Children[0].PrefixComment);
+        Assert.AreEqual(0, docModel[0].Children[0].PrefixCommentLength);
         Assert.AreEqual("/*a*/\n//b\n", docModel[0].Children[0].MiddleComment);
-        Assert.IsNull(docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual(0, docModel[0].Children[0].PostfixCommentLength);
     }
 
     [TestMethod]
@@ -460,9 +460,9 @@ public class ParserTests
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
-        Assert.IsNull(docModel[0].Children[0].PrefixComment);
+        Assert.AreEqual(string.Empty,docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("/*a*/\n/*b*/", docModel[0].Children[0].MiddleComment);
-        Assert.IsNull(docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual(string.Empty, docModel[0].Children[0].PostfixComment);
     }
 
     [TestMethod]
@@ -491,9 +491,9 @@ public class ParserTests
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(1, docModel[0].Children.Count);
-        Assert.IsNull(docModel[0].Children[0].PrefixComment);
+        Assert.AreEqual(string.Empty, docModel[0].Children[0].PrefixComment);
         Assert.AreEqual("//a\n/*b*/", docModel[0].Children[0].MiddleComment);
-        Assert.IsNull(docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual(string.Empty, docModel[0].Children[0].PostfixComment);
     }
 
     [TestMethod]
@@ -522,11 +522,11 @@ public class ParserTests
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(4, docModel[0].Children.Count);
-        Assert.IsNull(docModel[0].Children[0].PrefixComment);
+        Assert.AreEqual(0, docModel[0].Children[0].PrefixCommentLength);
         Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
         Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
         Assert.AreEqual("/*c*/", docModel[0].Children[1].PostfixComment);
-        Assert.IsNull(docModel[0].Children[2].PrefixComment);
+        Assert.AreEqual(0, docModel[0].Children[2].PrefixCommentLength);
         Assert.AreEqual("/*d*/", docModel[0].Children[2].PostfixComment);
     }
 

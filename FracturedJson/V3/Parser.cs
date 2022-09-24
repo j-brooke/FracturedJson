@@ -420,7 +420,7 @@ public class Parser
 
     private static bool IsMultilineComment(JsonItem item)
     {
-        return item.Type == JsonItemType.BlockComment && item.Value != null && item.Value.Contains('\n');
+        return item.Type == JsonItemType.BlockComment && item.Value.Contains('\n');
     }
 
     private static JsonToken GetNextTokenOrThrown(IEnumerator<JsonToken> enumerator, InputPosition startPosition)

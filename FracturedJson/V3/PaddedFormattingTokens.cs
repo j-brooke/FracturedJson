@@ -136,6 +136,12 @@ public class PaddedFormattingTokens
 
         return _indentStrings[level];
     }
+
+    public string Spaces(int quantity)
+    {
+        // todo - make smarter
+        return new string(' ', quantity);
+    }
     
     private readonly string[] _arrStart;
     private readonly string[] _arrEnd;

@@ -48,34 +48,27 @@ public class Formatter
         foreach(var child in item.Children)
             ComputeItemLengths(child);
 
-        item.NameLength = NullSafeStringLength(item.Name);
-        item.ValueLength = NullSafeStringLength(item.Value);
-        item.PrefixCommentLength = NullSafeStringLength(item.PrefixComment);
-        item.MiddleCommentLength = NullSafeStringLength(item.MiddleComment);
-        item.PostfixCommentLength = NullSafeStringLength(item.PostfixComment);
+        item.NameLength = StringLengthFunc(item.Name);
+        item.ValueLength = StringLengthFunc(item.Value);
+        item.PrefixCommentLength = StringLengthFunc(item.PrefixComment);
+        item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
+        item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
         item.RequiresMultipleLines =
             (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment) 
             || item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
-            || (item.PrefixComment != null && item.PrefixComment.Contains(newline)) 
-            || (item.MiddleComment != null && item.MiddleComment.Contains(newline)) 
-            || (item.PostfixComment != null && item.PostfixComment.Contains(newline)) 
-            || (item.Value != null && item.Value.Contains(newline));
+            || item.PrefixComment.Contains(newline)
+            || item.MiddleComment.Contains(newline) 
+            || item.PostfixComment.Contains(newline) 
+            || item.Value.Contains(newline);
 
-        var bracketLengths = 0;
-        switch (item.Type)
+        if (item.Type is JsonItemType.Array or JsonItemType.Object)
         {
-            case JsonItemType.Array:
-            {
-                var padType = GetPaddingType(item);
-                bracketLengths = _pads.ArrStartLen(padType) + _pads.ArrEndLen(padType);
-                break;
-            }
-            case JsonItemType.Object:
-            {
-                var padType = GetPaddingType(item);
-                bracketLengths = _pads.ObjStartLen(padType) + _pads.ObjEndLen(padType);
-                break;
-            }
+            var padType = GetPaddingType(item);
+            item.ValueLength = 
+                _pads.StartLen(item.Type, padType)
+                + _pads.EndLen(item.Type, padType)
+                + item.Children.Sum(ch => ch.MinimumTotalLength)
+                + Math.Max(0, _pads.CommaLen * (item.Children.Count - 1));
         }
 
         // Note that we're not considering this item's own trailing comma, if any.  But we are considering
@@ -85,15 +78,7 @@ public class Formatter
             + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0)
             + item.MiddleCommentLength
             + item.ValueLength
-            + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0)
-            + bracketLengths
-            + item.Children.Sum(ch => ch.MinimumTotalLength)
-            + Math.Max(0, _pads.CommaLen * (item.Children.Count - 1));
-    }
-
-    private int NullSafeStringLength(string? s)
-    {
-        return (s == null) ? 0 : StringLengthFunc(s);
+            + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
     }
 
     /// <summary>
@@ -199,8 +184,44 @@ public class Formatter
 
     private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
     {
-        // TODO: Implement
-        return false;
+        if (item.Complexity > Options.MaxInlineComplexity + 1)
+            return false;
+        
+        var template = new TableTemplate();
+        template.AssessTableRoot(item);
+        if (!template.CanBeUsedInTable)
+            return false;
+
+        var availableSpace = AvailableLineSpace(depth + 1);
+        if (template.ComputeSize(_pads) > availableSpace)
+            return false;
+
+        var depthAfterColon = StandardFormatStart(item, depth);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+
+        for (var i=0; i<item.Children.Count; ++i)
+        {
+            var rowItem = item.Children[i];
+            if (rowItem.Type is JsonItemType.BlankLine)
+            {
+                FormatBlankLine();
+                continue;
+            }
+            if (rowItem.Type is JsonItemType.LineComment or JsonItemType.BlockComment)
+            {
+                FormatStandaloneComment(rowItem, depthAfterColon+1);
+                continue;
+            }
+            
+            _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
+            InlineTableRowSegment(_buffer, template, rowItem, (i<item.Children.Count-1));
+            _buffer.Add(_pads.EOL);
+        }
+        
+        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StandardFormatEnd(item, includeTrailingComma);
+
+        return true;
     }
     
 
@@ -211,14 +232,12 @@ public class Formatter
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
         var depthAfterColon = StandardFormatStart(item, depth);
-
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
         
         for (var i=0; i<item.Children.Count; ++i)
             FormatItem(item.Children[i], depthAfterColon+1, (i<item.Children.Count-1));
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
-
         StandardFormatEnd(item, includeTrailingComma);
     }
 
@@ -226,13 +245,13 @@ public class Formatter
     {
         // Everything is straightforward until the colon
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        if (item.PrefixComment != null)
+        if (item.PrefixCommentLength > 0)
             _buffer.Add(item.PrefixComment, _pads.Comment);
         
-        if (item.Name != null)
+        if (item.NameLength > 0)
             _buffer.Add(item.Name, _pads.Colon);
         
-        if (item.MiddleComment == null)
+        if (item.MiddleCommentLength == 0)
             return depth;
 
         // If there's a middle comment, we write it on the same line and move along.  Easy.
@@ -257,7 +276,7 @@ public class Formatter
     {
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
-        if (item.PostfixComment != null)
+        if (item.PostfixCommentLength > 0)
             _buffer.Add(_pads.Comment, item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
@@ -275,15 +294,26 @@ public class Formatter
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
         
-        if (item.PrefixComment != null)
+        if (item.PrefixCommentLength > 0)
             buffer.Add(item.PrefixComment, _pads.Comment);
         
-        if (item.Name != null)
+        if (item.NameLength > 0)
             buffer.Add(item.Name, _pads.Colon);
 
-        if (item.MiddleComment != null)
-            buffer.Add(item.MiddleComment);
+        buffer.Add(item.MiddleComment);
 
+        InlineElementValue(buffer, item);
+
+        if (includeTrailingComma && item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+        if (item.PostfixCommentLength > 0)
+            buffer.Add(_pads.Comment, item.PostfixComment);
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+    }
+
+    private void InlineElementValue(IBuffer buffer, JsonItem item)
+    {
         if (item.Type == JsonItemType.Array)
         {
             var padType = GetPaddingType(item);
@@ -304,15 +334,101 @@ public class Formatter
             
             buffer.Add(_pads.ObjEnd(padType));
         }
-        else if (item.Value != null)
+        else
+        {
             buffer.Add(item.Value);
+        }
+    }
 
+    private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma)
+    {
+        if (template.PrefixCommentLength > 0)
+            buffer.Add(item.PrefixComment, 
+                _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength), 
+                _pads.Comment);
+        
+        if (template.NameLength > 0)
+            buffer.Add(item.Name,
+                _pads.Spaces(template.NameLength - item.NameLength),
+                _pads.Colon);
+
+        if (template.MiddleCommentLength > 0)
+            buffer.Add(item.MiddleComment, 
+                _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength));
+
+        if (template.Children.Count > 0)
+        {
+            if (template.Type is JsonItemType.Array)
+                InlineTableRawArray(buffer, template, item);
+            else
+                InlineTableRawObject(buffer, template, item);
+        }
+        else
+        {
+            InlineElementValue(buffer, item);
+            buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
+        }
+        
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
-        if (item.PostfixComment != null)
-            buffer.Add(_pads.Comment, item.PostfixComment);
+        if (template.PostfixCommentLength > 0)
+            buffer.Add(_pads.Comment, 
+                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength),
+                item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
+    }
+
+    private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
+    {
+        buffer.Add(_pads.ArrStart(BracketPaddingType.Complex));
+        for (var i = 0; i < template.Children.Count; ++i)
+        {
+            var subTemplate = template.Children[i];
+            if (i == item.Children.Count-1)
+            {
+                InlineTableRowSegment(buffer, subTemplate, item.Children[i], false);
+            }
+            else if (i < item.Children.Count-1)
+            {
+                InlineTableRowSegment(buffer, subTemplate, item.Children[i], true);
+            }
+            else
+            {
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)), 
+                    _pads.Spaces(_pads.CommaLen));
+            }
+        }
+        buffer.Add(_pads.ArrEnd(BracketPaddingType.Complex));
+    }
+
+    private void InlineTableRawObject(IBuffer buffer, TableTemplate template, JsonItem item)
+    {
+        JsonItem? MatchingChild(TableTemplate temp) =>
+            item.Children.FirstOrDefault(ch => ch.Name == temp.LocationInParent);
+
+        var matches = template.Children.Select(sub => (sub, MatchingChild(sub)))
+            .ToArray();
+        var lastNonNullIdx = matches.Length - 1;
+        while (lastNonNullIdx>=0 && matches[lastNonNullIdx].Item2 == null)
+            lastNonNullIdx -= 1;
+
+        buffer.Add(_pads.ObjStart(BracketPaddingType.Complex));
+        for (var i = 0; i < matches.Length; ++i)
+        {
+            var subTemplate = matches[i].sub;
+            var subItem = matches[i].Item2;
+            if (subItem != null)
+            {
+                var isNotLastItem = (i < lastNonNullIdx);
+                InlineTableRowSegment(buffer, subTemplate, subItem, isNotLastItem );
+            }
+            else
+            {
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)), _pads.Spaces(_pads.CommaLen));
+            }
+        }
+        buffer.Add(_pads.ObjEnd(BracketPaddingType.Complex));
     }
 
     /// <summary>
@@ -320,7 +436,7 @@ public class Formatter
     /// </summary>
     private void FormatStandaloneComment(JsonItem item, int depth)
     {
-        if (item.Value == null)
+        if (item.ValueLength == 0)
             return;
 
         var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
@@ -347,8 +463,7 @@ public class Formatter
     private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
     {
         StandardFormatStart(item, depth);
-        if (item.Value!=null)
-            _buffer.Add(item.Value);
+        _buffer.Add(item.Value);
         StandardFormatEnd(item, includeTrailingComma);
     }
 
