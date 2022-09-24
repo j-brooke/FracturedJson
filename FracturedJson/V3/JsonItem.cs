@@ -68,8 +68,14 @@ public class JsonItem
     public int MinimumTotalLength { get; set; }
     
     /// <summary>
-    /// True if this item can't be written on a single line.
+    /// True if this item can't be written on a single line.  
     /// </summary>
+    /// <remarks>
+    /// For example, an item ending in a postfix line comment
+    /// (like // ) can often be written on a single line, because the comment is the last thing.  But if it's a
+    /// container with such an item inside it, it's impossible to inline the container, because there's no way to
+    /// write the line comment and then a closing bracket.
+    /// </remarks>
     public bool RequiresMultipleLines { get; set; }
     
     /// <summary>

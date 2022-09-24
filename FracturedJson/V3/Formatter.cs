@@ -40,7 +40,7 @@ public class Formatter
     /// <summary>
     /// Runs StringLengthFunc on every part of every item and stores the value.  Also computes the total minimum
     /// length, which for arrays and objects includes their child lengths.  We're going to use these values a lot,
-    /// and we don't know if StringLengthFunc is costly.
+    /// and we don't want to run StringLengthFunc more than needed in case it's expensive.
     /// </summary>
     private void ComputeItemLengths(JsonItem item)
     {
@@ -82,7 +82,8 @@ public class Formatter
     }
 
     /// <summary>
-    /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.
+    /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.  This
+    /// could span multiple lines.
     /// </summary>
     private void FormatItem(JsonItem item, int depth, bool includeTrailingComma)
     {
@@ -124,8 +125,8 @@ public class Formatter
     }
 
     /// <summary>
-    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
-    /// if the array/object qualifies.
+    /// Tries to add the representation for an array or object to the buffer, including all necessary indents, newlines, 
+    /// etc., if the array/object qualifies.
     /// </summary>
     /// <returns>True if the content was added.</returns>
     private bool FormatContainerInline(JsonItem item, int depth, bool includeTrailingComma)
@@ -143,6 +144,11 @@ public class Formatter
         return true;
     }
 
+    /// <summary>
+    /// Tries to add the representation of this array to the buffer, including indents and things, spanning multiple 
+    /// lines but with each child written inline.
+    /// </summary>
+    /// <returns>True if the content was added</returns>
     private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
     {
         if (item.Type != JsonItemType.Array)
@@ -189,16 +195,27 @@ public class Formatter
         return true;
     }
 
+    /// <summary>
+    /// Tries to format this array/object as a table.  That is, each of this JsonItem's children are each written
+    /// as a single line, with their pieces formatted to line up.  This only works if the structures and types
+    /// are consistent for all rows.
+    /// </summary>
+    /// <returns>True if the content was added</returns>
     private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
     {
+        // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxInlineComplexity + 1)
             return false;
         
+        // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
+        // similar, CanBeUsedInTable will be false.
         var template = new TableTemplate();
-        template.AssessTableRoot(item);
+        template.MeasureTableRoot(item);
         if (!template.CanBeUsedInTable)
             return false;
 
+        // If the lines would be too long if formatted as a table, give up.
+        // TODO: Try to adapt by dropping sub-templates, maybe?
         var availableSpace = AvailableLineSpace(depth + 1);
         if (template.ComputeSize(_pads) > availableSpace)
             return false;
@@ -234,7 +251,7 @@ public class Formatter
 
     /// <summary>
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
-    /// broken out on separate lines.
+    /// broken out on separate lines.  This is the most general case that always works.
     /// </summary>
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
@@ -248,6 +265,11 @@ public class Formatter
         StandardFormatEnd(item, includeTrailingComma);
     }
 
+    /// <summary>
+    /// Do the stuff that's the same for the start of every formatted item, like indents and prefix comments.
+    /// </summary>
+    /// <returns>Depth number to be used for everything after this.  In some cases, we print a prop label
+    /// on one line, and then the value on another, at a greater indentation level.</returns>
     private int StandardFormatStart(JsonItem item, int depth)
     {
         // Everything is straightforward until the colon
@@ -279,6 +301,10 @@ public class Formatter
         return depth + 1;
     }
 
+    /// <summary>
+    /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
+    /// comments.
+    /// </summary>
     private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
     {
         if (includeTrailingComma && item.IsPostCommentLineStyle)
@@ -293,7 +319,7 @@ public class Formatter
 
     /// <summary>
     /// Adds the inline representation of this item to the buffer.  This includes all of this element's
-    /// comments and children when appropriate.  It doesn't include indentation, newlines, or any of that.  This
+    /// comments and children when appropriate.  It DOES NOT include indentation, newlines, or any of that.  This
     /// should only be called if item.RequiresMultipleLines is false.
     /// </summary>
     private void InlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
@@ -319,6 +345,10 @@ public class Formatter
             buffer.Add(_pads.Comma);
     }
 
+    /// <summary>
+    /// Adds just this element's value to be buffer, inlined.  (Possibly recursively.)  This does not include
+    /// the item's comments (although it could include child elements' comments), or indentation.
+    /// </summary>
     private void InlineElementValue(IBuffer buffer, JsonItem item)
     {
         if (item.Type == JsonItemType.Array)
@@ -347,6 +377,9 @@ public class Formatter
         }
     }
 
+    /// <summary>
+    /// Adds this item's representation to the buffer inlined, formatted according to the given TableTemplate.
+    /// </summary>
     private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma)
     {
         if (template.PrefixCommentLength > 0)
@@ -467,6 +500,10 @@ public class Formatter
         _buffer.Add(_pads.EOL);
     }
 
+    /// <summary>
+    /// Adds an item to the buffer, including comments and indents and such, where a comment between the
+    /// prop name and prop value needs to span multiple lines.
+    /// </summary>
     private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
     {
         StandardFormatStart(item, depth);
