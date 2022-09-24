@@ -34,7 +34,7 @@ public class TableTemplate
     public int PrefixCommentLength { get; set; }
     public int MiddleCommentLength { get; set; }
     public int PostfixCommentLength { get; set; }
-    public BracketPaddingType PadType { get; set; } = BracketPaddingType.Empty;
+    public BracketPaddingType PadType { get; set; } = BracketPaddingType.Simple;
     
     /// <summary>
     /// If this TableTemplate corresponds to an object or array, Children contains sub-templates
@@ -73,8 +73,8 @@ public class TableTemplate
         if (Children.Count>0)
             actualValueSize = Children.Sum(ch => ch.ComputeSize(pads)) 
                         + Math.Max(0, pads.CommaLen * (Children.Count - 1))
-                        + pads.ArrStartLen(BracketPaddingType.Complex)
-                        + pads.ArrEndLen(BracketPaddingType.Complex);
+                        + pads.ArrStartLen(PadType)
+                        + pads.ArrEndLen(PadType);
         return ((PrefixCommentLength > 0) ? PrefixCommentLength + pads.CommentLen : 0)
                + ((NameLength > 0) ? NameLength + pads.ColonLen : 0)
                + MiddleCommentLength
@@ -146,6 +146,9 @@ public class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegChild);
             }
         }
+
+        if (rowSegment.Complexity >= 2)
+            PadType = BracketPaddingType.Complex;
     }
 
     /// <summary>

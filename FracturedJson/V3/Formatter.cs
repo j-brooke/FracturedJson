@@ -347,7 +347,7 @@ public class Formatter
 
         buffer.Add(item.MiddleComment);
 
-        InlineElementValue(buffer, item);
+        InlineElementRaw(buffer, item);
 
         if (includeTrailingComma && item.IsPostCommentLineStyle)
             buffer.Add(_pads.Comma);
@@ -361,7 +361,7 @@ public class Formatter
     /// Adds just this element's value to be buffer, inlined.  (Possibly recursively.)  This does not include
     /// the item's comments (although it could include child elements' comments), or indentation.
     /// </summary>
-    private void InlineElementValue(IBuffer buffer, JsonItem item)
+    private void InlineElementRaw(IBuffer buffer, JsonItem item)
     {
         if (item.Type == JsonItemType.Array)
         {
@@ -417,7 +417,7 @@ public class Formatter
         }
         else
         {
-            InlineElementValue(buffer, item);
+            InlineElementRaw(buffer, item);
             buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
         }
         
@@ -433,7 +433,7 @@ public class Formatter
 
     private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
     {
-        buffer.Add(_pads.ArrStart(BracketPaddingType.Complex));
+        buffer.Add(_pads.ArrStart(template.PadType));
         for (var i = 0; i < template.Children.Count; ++i)
         {
             var isLastInTemplate = (i == template.Children.Count - 1);
@@ -454,7 +454,7 @@ public class Formatter
                     buffer.Add(_pads.DummyComma());
             }
         }
-        buffer.Add(_pads.ArrEnd(BracketPaddingType.Complex));
+        buffer.Add(_pads.ArrEnd(template.PadType));
     }
 
     private void InlineTableRawObject(IBuffer buffer, TableTemplate template, JsonItem item)
@@ -468,7 +468,7 @@ public class Formatter
         while (lastNonNullIdx>=0 && matches[lastNonNullIdx].Item2 == null)
             lastNonNullIdx -= 1;
 
-        buffer.Add(_pads.ObjStart(BracketPaddingType.Complex));
+        buffer.Add(_pads.ObjStart(template.PadType));
         for (var i = 0; i < matches.Length; ++i)
         {
             var subTemplate = matches[i].sub;
@@ -488,7 +488,7 @@ public class Formatter
                     buffer.Add(_pads.DummyComma());
             }
         }
-        buffer.Add(_pads.ObjEnd(BracketPaddingType.Complex));
+        buffer.Add(_pads.ObjEnd(template.PadType));
     }
 
     /// <summary>
