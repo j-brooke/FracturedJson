@@ -323,6 +323,8 @@ public class Parser
                         break;
                     if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         break;
+                    childList.AddRange(beforePropComments);
+                    beforePropComments.Clear();                        
                     childList.Add(ParseSimple(token));
                     break;
                 case TokenType.BlockComment:
