@@ -164,6 +164,10 @@ public class Formatter
         var avgItemWidth = item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count;
         if (avgItemWidth * 3 > likelyAvailableLineSpace)
             return false;
+
+        var template = new TableTemplate();
+        template.MeasureTableRoot(item);
+        var templateSize = template.ComputeSize(_pads);
         
         var depthAfterColon = StandardFormatStart(item, depth);
 
@@ -175,15 +179,22 @@ public class Formatter
         for (var i=0; i<item.Children.Count; ++i)
         {
             // Figure out whether the next item fits on the current line.  If not, start a new one.
+            var child = item.Children[i];
             var needsComma = (i < item.Children.Count - 1);
-            var spaceNeededForNext = item.Children[i].MinimumTotalLength + ((needsComma) ? _pads.CommaLen : 0);
+            var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) + 
+                                     ((template.CanBeUsedInTable) ? templateSize : child.MinimumTotalLength);
+
             if (remainingLineSpace < spaceNeededForNext)
             {
                 _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon+1));
                 remainingLineSpace = availableLineSpace;
             }
             
-            InlineElement(_buffer, item.Children[i], needsComma);
+            // Write it out
+            if (template.CanBeUsedInTable)
+                InlineTableRowSegment(_buffer, template, child, needsComma);
+            else
+                InlineElement(_buffer, child, needsComma);
             remainingLineSpace -= spaceNeededForNext;
         }
 
