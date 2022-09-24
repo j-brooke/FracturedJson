@@ -165,9 +165,9 @@ public class Formatter
         if (avgItemWidth * 3 > likelyAvailableLineSpace)
             return false;
 
-        var template = new TableTemplate();
+        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
-        var templateSize = template.ComputeSize(_pads);
+        var templateSize = template.ComputeSize();
         
         var depthAfterColon = StandardFormatStart(item, depth);
 
@@ -220,7 +220,7 @@ public class Formatter
         
         // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
         // similar, CanBeUsedInTable will be false.
-        var template = new TableTemplate();
+        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
         if (!template.CanBeUsedInTable)
             return false;
@@ -228,7 +228,7 @@ public class Formatter
         // If the lines would be too long if formatted as a table, give up.
         // TODO: Try to adapt by dropping sub-templates, maybe?
         var availableSpace = AvailableLineSpace(depth + 1);
-        var templateSize = template.ComputeSize(_pads) + _pads.CommaLen;
+        var templateSize = template.ComputeSize() + _pads.CommaLen;
         if (templateSize > availableSpace)
             return false;
 
@@ -416,6 +416,10 @@ public class Formatter
             else
                 InlineTableRawObject(buffer, template, item);
         }
+        else if (template.IsFormattableNumber && item.Type != JsonItemType.Null)
+        {
+            buffer.Add(template.FormatNumber(item.Value));
+        }
         else
         {
             InlineElementRaw(buffer, item);
@@ -462,7 +466,7 @@ public class Formatter
 
             if (isPastEndOfArray)
             {
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
                 if (!isLastInTemplate)
                     buffer.Add(_pads.DummyComma);
             }
@@ -502,7 +506,7 @@ public class Formatter
             }
             else
             {
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize(_pads)));
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
                 if (!isLastInTemplate)
                     buffer.Add(_pads.DummyComma);
             }

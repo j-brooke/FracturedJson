@@ -41,6 +41,11 @@ public record struct FracturedJsonOptions
     /// If true, spaces are included between prefix and postfix comments and their content.
     /// </summary>
     public bool CommentPadding { get; set; } = true;
+    
+    /// <summary>
+    /// If true, numbers won't be right-aligned with matching precision.
+    /// </summary>
+    public bool DontJustifyNumbers { get; set; } = false;
 
     /// <summary>
     /// Number of spaces to use per indent level (unless UseTabToIndent is true)
