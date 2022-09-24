@@ -65,7 +65,7 @@ public class TableTemplate
         if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
         {
             CanBeUsedInTable = (Type is JsonItemType.True or JsonItemType.Null);
-            Type = rowSegment.Type;
+            Type = JsonItemType.True;
         }
         else if (rowSegment.Type is not JsonItemType.Null)
         {

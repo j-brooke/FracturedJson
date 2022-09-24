@@ -18,10 +18,10 @@ namespace FracturedJsonCli
                 {
                     CommentPolicy = CommentPolicy.Preserve,
                     PreserveBlankLines = true,
-                    MaxTotalLineLength = 800,
-                    MaxInlineLength = 110,
+                    MaxTotalLineLength = 120,
+                    MaxInlineLength = 800,
                     MaxInlineComplexity = 2,
-                    MaxCompactArrayComplexity = 1,
+                    MaxCompactArrayComplexity = 2,
                 };
                 var formatter = new Formatter() { Options = options };
                 var formattedDoc = formatter.Reformat(inputText, 0);

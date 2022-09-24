@@ -152,6 +152,13 @@ public class Formatter
         if (item.RequiresMultipleLines)
             return false;
         
+        // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
+        // be better.
+        var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
+        var avgItemWidth = item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count;
+        if (avgItemWidth * 3 > likelyAvailableLineSpace)
+            return false;
+        
         var depthAfterColon = StandardFormatStart(item, depth);
 
         // Starting bracket (with no EOL).
