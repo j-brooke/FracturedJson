@@ -28,7 +28,7 @@ public class TableTemplate
     /// Assessment of whether this is a viable column.  The main qualifying factor is that all corresponding pieces
     /// of each row are the same type.
     /// </summary>
-    public bool CanBeUsedInTable { get; private set; } = true;
+    public bool IsRowDataCompatible { get; private set; } = true;
     public int RowCount { get; private set; }
     
     public int NameLength { get; private set; }
@@ -58,8 +58,8 @@ public class TableTemplate
     /// </summary>
     public void MeasureTableRoot(JsonItem tableRoot)
     {
-        CanBeUsedInTable = (tableRoot.Type is JsonItemType.Array or JsonItemType.Object);
-        if (!CanBeUsedInTable)
+        IsRowDataCompatible = (tableRoot.Type is JsonItemType.Array or JsonItemType.Object);
+        if (!IsRowDataCompatible)
             return;
         
         // For each row of the potential table, measure it and its children, making room for everything.
@@ -67,10 +67,22 @@ public class TableTemplate
         foreach(var child in tableRoot.Children)
             MeasureRowSegment(child);
 
-        PruneUnusableSegments();
+        PruneUnusableSegments(int.MaxValue);
 
         // If there are fewer than 2 actual data rows (i.e., not standalone comments), no point making a table.
-        CanBeUsedInTable &= (RowCount >= 2);
+        IsRowDataCompatible &= (RowCount >= 2);
+    }
+
+    public bool TryToFit(int maximumLength)
+    {
+        for (var complexity = GetTemplateComplexity(); complexity > 0; --complexity)
+        {
+            if (ComputeSize() <= maximumLength)
+                return true;
+            PruneUnusableSegments(complexity-1);
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -125,10 +137,6 @@ public class TableTemplate
 
     private void MeasureRowSegment(JsonItem rowSegment)
     {
-        // If we're already disqualified, skip further logic.
-        if (!CanBeUsedInTable)
-            return;
-        
         // Comments and blank lines don't figure into template measurements
         if (rowSegment.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
             return;
@@ -137,13 +145,13 @@ public class TableTemplate
         // compatible with everything.
         if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
         {
-            CanBeUsedInTable = (Type is JsonItemType.True or JsonItemType.Null);
+            IsRowDataCompatible = (Type is JsonItemType.True or JsonItemType.Null);
             Type = JsonItemType.True;
             IsFormattableNumber = false;
         }
         else if (rowSegment.Type is JsonItemType.Number)
         {
-            CanBeUsedInTable = (Type is JsonItemType.Number or JsonItemType.Null);
+            IsRowDataCompatible = (Type is JsonItemType.Number or JsonItemType.Null);
             Type = JsonItemType.Number;
         }
         else if (rowSegment.Type is JsonItemType.Null)
@@ -152,17 +160,15 @@ public class TableTemplate
         }
         else
         {
-            CanBeUsedInTable = (Type == rowSegment.Type || Type == JsonItemType.Null);
-            Type = rowSegment.Type;
+            IsRowDataCompatible = (Type == rowSegment.Type || Type == JsonItemType.Null);
+            if (Type is JsonItemType.Null)
+                Type = rowSegment.Type;
             IsFormattableNumber = false;
         }
 
         // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
-        CanBeUsedInTable &= !rowSegment.RequiresMultipleLines;
-        
-        if (!CanBeUsedInTable)
-            return;
-        
+        IsRowDataCompatible &= !rowSegment.RequiresMultipleLines;
+
         // Looks good.  Update the numbers.
         RowCount += 1;
         NameLength = Math.Max(NameLength, rowSegment.NameLength);
@@ -173,6 +179,9 @@ public class TableTemplate
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
+
+        if (!IsRowDataCompatible)
+            return;
         
         if (rowSegment.Type == JsonItemType.Array)
         {
@@ -218,12 +227,22 @@ public class TableTemplate
     /// <summary>
     /// If our sub-templates aren't viable, get rid of them.
     /// </summary>
-    private void PruneUnusableSegments()
+    private void PruneUnusableSegments(int maxAllowedComplexity)
     {
-        foreach(var subTemplate in Children)
-            subTemplate.PruneUnusableSegments();
-        var hasUnusable = !Children.All(ch => ch.CanBeUsedInTable);
-        if (hasUnusable)
+        if (maxAllowedComplexity<=0)
             Children.Clear();
+        
+        foreach(var subTemplate in Children)
+            subTemplate.PruneUnusableSegments(maxAllowedComplexity-1);
+        
+        if (!IsRowDataCompatible)
+            Children.Clear();
+    }
+
+    private int GetTemplateComplexity()
+    {
+        if (Children.Count == 0)
+            return 0;
+        return 1 + Children.Max(ch => ch.GetTemplateComplexity());
     }
 }

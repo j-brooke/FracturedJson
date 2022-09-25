@@ -182,7 +182,7 @@ public class Formatter
             var child = item.Children[i];
             var needsComma = (i < item.Children.Count - 1);
             var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) + 
-                                     ((template.CanBeUsedInTable) ? templateSize : child.MinimumTotalLength);
+                                     ((template.IsRowDataCompatible) ? templateSize : child.MinimumTotalLength);
 
             if (remainingLineSpace < spaceNeededForNext)
             {
@@ -191,7 +191,7 @@ public class Formatter
             }
             
             // Write it out
-            if (template.CanBeUsedInTable)
+            if (template.IsRowDataCompatible)
                 InlineTableRowSegment(_buffer, template, child, needsComma, false);
             else
                 InlineElement(_buffer, child, needsComma);
@@ -218,18 +218,16 @@ public class Formatter
         if (item.Complexity > Options.MaxInlineComplexity + 1)
             return false;
         
+        var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
+
         // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
         // similar, CanBeUsedInTable will be false.
         var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
-        if (!template.CanBeUsedInTable)
+        if (!template.IsRowDataCompatible)
             return false;
 
-        // If the lines would be too long if formatted as a table, give up.
-        // TODO: Try to adapt by dropping sub-templates, maybe?
-        var availableSpace = AvailableLineSpace(depth + 1);
-        var templateSize = template.ComputeSize() + _pads.CommaLen;
-        if (templateSize > availableSpace)
+        if (!template.TryToFit(availableSpace))
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth);
