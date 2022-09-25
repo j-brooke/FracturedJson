@@ -7,6 +7,7 @@ public record struct FracturedJsonOptions
     public int MaxTotalLineLength { get; set; } = 120;
     public int MaxInlineComplexity { get; set; } = 2;
     public int MaxCompactArrayComplexity { get; set; } = 1;
+    public int MaxTableRowComplexity { get; set; } = 2;
     
     /// <summary>
     /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true

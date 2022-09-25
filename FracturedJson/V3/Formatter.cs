@@ -215,7 +215,7 @@ public class Formatter
     private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
     {
         // If this element's children are too complex to be written inline, don't bother.
-        if (item.Complexity > Options.MaxInlineComplexity + 1)
+        if (item.Complexity > Options.MaxTableRowComplexity + 1)
             return false;
         
         var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
