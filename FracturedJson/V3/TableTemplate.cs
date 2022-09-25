@@ -105,9 +105,10 @@ public class TableTemplate
             if (_dataContainsNull && actualValueSize < 4)
                 actualValueSize = 4;
         }
+
         return ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
                + ((NameLength > 0) ? NameLength + _pads.ColonLen : 0)
-               + MiddleCommentLength
+               + ((MiddleCommentLength > 0) ? MiddleCommentLength + _pads.CommentLen : 0)
                + actualValueSize
                + ((PostfixCommentLength > 0) ? PostfixCommentLength + _pads.CommentLen : 0);
     }

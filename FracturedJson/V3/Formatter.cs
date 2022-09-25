@@ -76,7 +76,7 @@ public class Formatter
         item.MinimumTotalLength =
             ((item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0)
             + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0)
-            + item.MiddleCommentLength
+            + ((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
             + item.ValueLength
             + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
     }
@@ -296,7 +296,7 @@ public class Formatter
         // If there's a middle comment, we write it on the same line and move along.  Easy.
         if (!item.MiddleComment.Contains('\n'))
         {
-            _buffer.Add(item.MiddleComment);
+            _buffer.Add(item.MiddleComment, _pads.Comment);
             return depth;
         }
 
@@ -343,7 +343,8 @@ public class Formatter
         if (item.NameLength > 0)
             buffer.Add(item.Name, _pads.Colon);
 
-        buffer.Add(item.MiddleComment);
+        if (item.MiddleCommentLength > 0)
+            buffer.Add(item.MiddleComment, _pads.Comment);
 
         InlineElementRaw(buffer, item);
 
@@ -405,7 +406,8 @@ public class Formatter
 
         if (template.MiddleCommentLength > 0)
             buffer.Add(item.MiddleComment, 
-                _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength));
+                _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
+                _pads.Comment);
 
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
