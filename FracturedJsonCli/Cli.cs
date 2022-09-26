@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using FracturedJson.V3;
@@ -25,6 +26,7 @@ namespace FracturedJsonCli
                 string? fileName = null;
                 var noPadding = false;
                 var allowComments = false;
+                var speedTest = false;
 
                 var cliOpts = new OptionSet()
                 {
@@ -49,6 +51,7 @@ namespace FracturedJsonCli
                     { "t|tab", "use tabs for indentation", _ => options.UseTabToIndent = true },
                     { "u|unix", "use Unix line endings (LF)", v => options.JsonEolStyle = EolStyle.Lf },
                     { "w|windows", "use Windows line endings (CRLF)", v => options.JsonEolStyle = EolStyle.Crlf },
+                    { "z|speed-test", "write timer data instead of JSON output", v => speedTest = (v != null) },
                 };
 
                 cliOpts.Parse(args);
@@ -89,9 +92,18 @@ namespace FracturedJsonCli
                     return 1;
                 }
 
+                var timer = Stopwatch.StartNew();
+
                 var formatter = new Formatter() { Options = options };
                 var formattedDoc = formatter.Reformat(inputText, 0);
-                Console.WriteLine(formattedDoc);
+
+                timer.Stop();
+
+                if (speedTest)
+                    Console.WriteLine($"Processing time: {timer.Elapsed.TotalSeconds} sec");
+                else
+                    Console.WriteLine(formattedDoc);
+
                 return 0;
             }
             catch (Exception ex)

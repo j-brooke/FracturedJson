@@ -12,11 +12,12 @@ public class Formatter
 
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, false);
         foreach(var item in docModel)
         {
-            Preprocess(item);
+            ComputeItemLengths(item);
             FormatItem(item, startingDepth, false);
         }
 
@@ -30,12 +31,6 @@ public class Formatter
 
     private readonly IBuffer _buffer = new StringBuilderBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
-    
-    private void Preprocess(JsonItem root)
-    {
-        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
-        ComputeItemLengths(root);
-    }
 
     /// <summary>
     /// Runs StringLengthFunc on every part of every item and stores the value.  Also computes the total minimum
