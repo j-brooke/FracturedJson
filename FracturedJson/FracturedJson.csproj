@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
         <Description>A library for formatting JSON, producing user-readable but compact output.</Description>
@@ -23,9 +23,5 @@
 
     <ItemGroup>
         <None Include="packageIcon.png" Pack="true" PackagePath="" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Wcwidth" Version="0.4.0" />
     </ItemGroup>
 </Project>
