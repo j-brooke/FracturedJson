@@ -3,8 +3,19 @@ using FracturedJson.V3;
 
 namespace Tests;
 
+/// <summary>
+/// Tests that should pass with ANY input and ANY settings, within a few constraints:
+/// <list type="bullet">
+///     <item>The input is valid JSON</item>
+///     <item>Input strings may not contain any of []{}:,\n</item>
+///     <item>Values given to PrefixString" may only contain whitespace.</item>
+/// </list>
+///
+/// Those rules exist to make the output easy to test without understanding the grammar.  Other files might contain
+/// tests that don't impose these restrictions.
+/// </summary>
 [TestClass]
-public class V3UniversalFormatterTests
+public class V3UniversalPureJsonTests
 {
     /// <summary>
     /// Generates combos of input JSON and Formatter options to feed to all of the tests.
@@ -21,21 +32,25 @@ public class V3UniversalFormatterTests
     }
 
     /// <summary>
-    /// Generates Formatters with a wide variety of property settings.  We can't test every permutation of settings,
-    /// but hopefully we can provide enough to make it hard for bugs to stay hidden.
+    /// Generates formatter options with a wide variety of property settings.  We can't test every permutation of
+    /// settings, but hopefully we can provide enough to make it hard for bugs to stay hidden.
     /// </summary>
     private static IEnumerable<FracturedJsonOptions> GenerateOptions()
     {
-        yield return new FracturedJsonOptions();
-        yield return new FracturedJsonOptions() { MaxInlineComplexity = 10000 };
-        yield return new FracturedJsonOptions() { MaxCompactArrayComplexity = 2 };
-        yield return new FracturedJsonOptions() { MaxCompactArrayComplexity = -1 };
-        yield return new FracturedJsonOptions() { MaxInlineLength = int.MaxValue };
-        yield return new FracturedJsonOptions() { MaxInlineLength = 20 };
-        yield return new FracturedJsonOptions() { MaxInlineComplexity = 3, MaxInlineLength = 150, JsonEolStyle = EolStyle.Crlf };
-        yield return new FracturedJsonOptions() { MaxInlineComplexity = 3, MaxInlineLength = 150, JsonEolStyle = EolStyle.Lf };
-        yield return new FracturedJsonOptions() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 2, MaxInlineLength = 150 };
-        yield return new FracturedJsonOptions()
+        yield return new();
+        yield return new() { MaxInlineComplexity = 10000 };
+        yield return new() { MaxInlineLength = int.MaxValue };
+        yield return new() { MaxInlineLength = 23 };
+        yield return new() { MaxInlineLength = 59 };
+        yield return new() { MaxTotalLineLength = 59 };
+        yield return new() { JsonEolStyle = EolStyle.Crlf };
+        yield return new() { JsonEolStyle = EolStyle.Lf };
+        yield return new() { JsonEolStyle = EolStyle.Default };
+        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
+        yield return new() { MaxInlineComplexity = 2, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
+        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 2, MaxTableRowComplexity = 0 };
+        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 2 };
+        yield return new()
         {
             NestedBracketPadding = false,
             SimpleBracketPadding = true,
@@ -58,34 +73,28 @@ public class V3UniversalFormatterTests
     }
 
     /// <summary>
-    /// Returns the object key (if any) and the content of a single line.  Content here means skipping over
-    /// any PrefixStrings, indentation, and the key if this is an object KVP.
+    /// Returns the line, absent the prefix and indentation.
     /// </summary>
-    private static (string,string) LineContent(FracturedJsonOptions options, string line)
+    private static string LineValueAfterColon(FracturedJsonOptions options, string line)
     {
         // Skip past the prefix string and whitespace.
         if (!line.StartsWith(options.PrefixString))
             throw new Exception("Output line does not begin with prefix string");
         var lineAfterPrefix = line.Substring(options.PrefixString.Length).TrimStart();
 
-        if (lineAfterPrefix.Length==0)
-            return (string.Empty, string.Empty);
+        if (lineAfterPrefix.StartsWith('"'))
+        {
+            var indexOfSecondQuote = lineAfterPrefix.IndexOf('"', 1);
 
-        // If the first character is anything other than a quote, the line isn't an object key/value pair,
-        // so it's just content.
-        if (lineAfterPrefix[0] != '"')
-            return (string.Empty, lineAfterPrefix);
+            if (indexOfSecondQuote < 0)
+                throw new Exception("Mismatched quotes or something");
 
-        // If the first character was a quote, look for a colon.  For these tests we require that strings
-        // never have colons in them, so it must be structural, and it must be after the starting string,
-        // if it exists.
-        var firstColonPos = lineAfterPrefix.IndexOf(':');
-        if (firstColonPos < 0)
-            return (string.Empty, lineAfterPrefix);
+            var indexOfColon = lineAfterPrefix.IndexOf(':', indexOfSecondQuote + 1);
+            if (indexOfColon >= 0)
+                lineAfterPrefix = lineAfterPrefix.Substring(indexOfColon + 1).TrimStart();
+        }
 
-        var tag = lineAfterPrefix.Substring(0, firstColonPos);
-        var content = lineAfterPrefix.Substring(firstColonPos + 1).TrimStart();
-        return (tag, content);
+        return lineAfterPrefix;
     }
 
     /// <summary>
@@ -149,7 +158,7 @@ public class V3UniversalFormatterTests
 
         foreach (var line in outputLines)
         {
-            var (_, content) = LineContent(options, line);
+            var content = LineValueAfterColon(options, line);
 
             // If the content is shorter than the max, it's all good.
             if (content.Length <= options.MaxInlineLength)
@@ -177,7 +186,7 @@ public class V3UniversalFormatterTests
         // Look at each line of the output separately, counting the nesting level in each.
         foreach (var line in outputLines)
         {
-            var (_, content) = LineContent(options, line);
+            var content = LineValueAfterColon(options, line);
 
             // Keep a running total of opens vs closes.  Since Formatter treats empty arrays and objects as complexity
             // zero just like primitives, we don't update nestLevel until we see something other than an empty.
@@ -218,9 +227,10 @@ public class V3UniversalFormatterTests
                 return;
             }
 
-            // Otherwise, we can't actually tell if it's a compact array or inline by looking at just the one line.
+            // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one line.
             Assert.IsTrue(nestLevel <= options.MaxInlineComplexity
-                          || nestLevel <= options.MaxCompactArrayComplexity);
+                          || nestLevel <= options.MaxCompactArrayComplexity
+                          || nestLevel <= options.MaxTableRowComplexity);
         }
     }
 }
