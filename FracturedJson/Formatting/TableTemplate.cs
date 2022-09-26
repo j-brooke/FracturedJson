@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using FracturedJson.Tokenizer;
+using FracturedJson.Tokenizing;
 
-namespace FracturedJson.V3;
+namespace FracturedJson.Formatting;
 
 /// <summary>
 /// Collects spacing information about the columns of a potential table.  Each TableTemplate corresponds do
@@ -16,7 +16,7 @@ namespace FracturedJson.V3;
 /// we'd like to line up all of their children, too, recursively.  This only works as long as the structure/types
 /// are consistent.</para>
 /// </remarks>
-public class TableTemplate
+internal class TableTemplate
 {
     /// <summary>
     /// The property name in the table that this segment matches up with. 

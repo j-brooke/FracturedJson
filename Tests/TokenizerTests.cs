@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
-using FracturedJson.Tokenizer;
+using FracturedJson;
+using FracturedJson.Tokenizing;
 
 namespace Tests;
 

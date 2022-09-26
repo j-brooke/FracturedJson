@@ -1,4 +1,4 @@
-﻿namespace FracturedJson.V3;
+﻿namespace FracturedJson;
 
 /// <summary>
 /// Specifies what sort of line endings to use.

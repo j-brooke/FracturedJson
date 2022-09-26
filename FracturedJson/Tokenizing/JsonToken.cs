@@ -1,4 +1,4 @@
-namespace FracturedJson.Tokenizer;
+namespace FracturedJson.Tokenizing;
 
 /// <summary>
 /// A piece of JSON text that makes sense to treat as a whole thing when analyzing a document's structure.

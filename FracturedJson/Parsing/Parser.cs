@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using FracturedJson.Tokenizer;
+using FracturedJson.Tokenizing;
 
-namespace FracturedJson.V3;
+namespace FracturedJson.Parsing;
 
 /// <summary>
 /// Class that takes JSON input (possibly with comments) and converts it to a forrest of <see cref="JsonItem"/> objects

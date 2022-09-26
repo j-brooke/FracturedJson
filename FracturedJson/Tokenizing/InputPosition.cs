@@ -1,4 +1,4 @@
-namespace FracturedJson.Tokenizer;
+namespace FracturedJson.Tokenizing;
 
 /// <summary>
 /// Structure representing a location in an input stream.

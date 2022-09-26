@@ -1,6 +1,7 @@
 using System;
+using FracturedJson.Tokenizing;
 
-namespace FracturedJson.Tokenizer;
+namespace FracturedJson;
 
 /// <summary>
 /// Exception indicating something went wrong while processing JSON data.

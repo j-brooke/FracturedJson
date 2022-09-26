@@ -2,12 +2,12 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace FracturedJson.Tokenizer;
+namespace FracturedJson.Tokenizing;
 
 /// <summary>
 /// Class for keeping track of info while scanning text into JSON tokens.
 /// </summary>
-public class ScannerState
+internal class ScannerState
 {
     public StringBuilder Buffer { get; } = new();
     public InputPosition CurrentPosition { get; private set; }

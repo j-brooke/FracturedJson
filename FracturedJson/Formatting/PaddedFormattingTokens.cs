@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FracturedJson.V3;
+namespace FracturedJson.Formatting;
 
-public class PaddedFormattingTokens
+internal class PaddedFormattingTokens
 {
     public string Comma { get; }
     public string Colon { get; }

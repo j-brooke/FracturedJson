@@ -1,5 +1,5 @@
 using System.Text.Json;
-using FracturedJson.V3;
+using FracturedJson;
 
 namespace Tests;
 

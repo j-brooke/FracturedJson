@@ -1,1015 +1,604 @@
-/*
- * FracturedJson
- * FracturedJson is a library for formatting JSON documents that produces human-readable but fairly compact output.
- *
- * Copyright (c) 2021 Jesse Brooke
- * Project site: https://github.com/j-brooke/FracturedJson
- * License: https://github.com/j-brooke/FracturedJson/blob/main/LICENSE
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using Wcwidth;
+using FracturedJson.Formatting;
+using FracturedJson.Parsing;
 
-namespace FracturedJson
+namespace FracturedJson;
+
+/// <summary>
+/// Class that writes JSON data in a human-friendly format.  Comments are optionally supported.  While many options
+/// are supported through <see cref="FracturedJsonOptions"/>, generally this class should "just work", producing
+/// reasonable output for any JSON doc.
+/// </summary>
+public class Formatter
 {
-    /// <summary>
-    /// Specifies what sort of line endings to use.
-    /// </summary>
-    public enum EolStyle
+    public FracturedJsonOptions Options { get; set; } = new();
+    public Func<string,int> StringLengthFunc { get; set; } = StringLengthByCharCount;
+
+    public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
-        /// <summary>
-        /// The native environment's line endings will be used.
-        /// </summary>
-        Default,
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        var parser = new Parser() { Options = Options };
+        var docModel = parser.ParseTopLevel(jsonText, false);
+        foreach(var item in docModel)
+        {
+            ComputeItemLengths(item);
+            FormatItem(item, startingDepth, false);
+        }
 
-        /// <summary>
-        /// Carriage Return, followed by a line feed.  Windows-style.
-        /// </summary>
-        Crlf,
+        return _buffer.AsString();
+    }
 
-        /// <summary>
-        /// Just a line feed.  Unix-style (including Mac).
-        /// </summary>
-        Lf,
+    public static int StringLengthByCharCount(string s)
+    {
+        return s.Length;
+    }
+
+    private readonly IBuffer _buffer = new StringBuilderBuffer();
+    private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
+
+    /// <summary>
+    /// Runs StringLengthFunc on every part of every item and stores the value.  Also computes the total minimum
+    /// length, which for arrays and objects includes their child lengths.  We're going to use these values a lot,
+    /// and we don't want to run StringLengthFunc more than needed in case it's expensive.
+    /// </summary>
+    private void ComputeItemLengths(JsonItem item)
+    {
+        const char newline = '\n';
+        foreach(var child in item.Children)
+            ComputeItemLengths(child);
+
+        item.NameLength = StringLengthFunc(item.Name);
+        item.ValueLength = StringLengthFunc(item.Value);
+        item.PrefixCommentLength = StringLengthFunc(item.PrefixComment);
+        item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
+        item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
+        item.RequiresMultipleLines =
+            (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment) 
+            || item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
+            || item.PrefixComment.Contains(newline)
+            || item.MiddleComment.Contains(newline) 
+            || item.PostfixComment.Contains(newline) 
+            || item.Value.Contains(newline);
+
+        if (item.Type is JsonItemType.Array or JsonItemType.Object)
+        {
+            var padType = GetPaddingType(item);
+            item.ValueLength = 
+                _pads.StartLen(item.Type, padType)
+                + _pads.EndLen(item.Type, padType)
+                + item.Children.Sum(ch => ch.MinimumTotalLength)
+                + Math.Max(0, _pads.CommaLen * (item.Children.Count - 1));
+        }
+
+        // Note that we're not considering this item's own trailing comma, if any.  But we are considering
+        // commas between children.
+        item.MinimumTotalLength =
+            ((item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0)
+            + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0)
+            + ((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
+            + item.ValueLength
+            + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
     }
 
     /// <summary>
-    /// Class that outputs JSON formatted in a compact, user-readable way.  Any given container is formatted in one
-    /// of three ways:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description>Arrays or objects will be written on a single line, if their contents aren't too complex
-    ///     and the resulting line wouldn't be too long.</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Arrays can be written on multiple lines, with multiple items per line, as long as those
-    ///     items aren't too complex.</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Otherwise, each object property or array item is written beginning on its own line, indented
-    ///     one step deeper than its parent.</description>
-    ///   </item>
-    /// </list>
-    /// "Complexity" here refers to the nesting level, measured from the leaf nodes.  A simple type has a complexity
-    /// of 0, as do empty arrays and objects.  A non-empty array or object has a complexity 1 greater than its most
-    /// complex child.
+    /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.  This
+    /// could span multiple lines.
     /// </summary>
-    public class Formatter
+    private void FormatItem(JsonItem item, int depth, bool includeTrailingComma)
     {
-        /// <summary>
-        /// Dictates what sort of line endings to use.
-        /// </summary>
-        public EolStyle JsonEolStyle { get; set; } = EolStyle.Default;
-
-        /// <summary>
-        /// Maximum length of a complex element on a single line.  This includes only the data for the inlined element,
-        /// not indentation or leading property names.
-        /// </summary>
-        public int MaxInlineLength { get; set; } = 80;
-
-        /// <summary>
-        /// Maximum nesting level that can be displayed on a single line.  A primitive type or an empty
-        /// array or object has a complexity of 0.  An object or array has a complexity of 1 greater than
-        /// its most complex child.
-        /// </summary>
-        public int MaxInlineComplexity { get; set; } = 2;
-
-        /// <summary>
-        /// Maximum nesting level that can be arranged spanning multiple lines, with multiple items per line.
-        /// </summary>
-        public int MaxCompactArrayComplexity { get; set; } = 1;
-
-        /// <summary>
-        /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
-        /// will include spaces inside the outer brackets.
-        /// <seealso cref="SimpleBracketPadding"/>
-        /// </summary>
-        /// <remarks>
-        /// Example: <br/>
-        /// true: [ [1, 2, 3], [4] ] <br/>
-        /// false: [[1, 2, 3], [4]] <br/>
-        /// </remarks>
-        public bool NestedBracketPadding { get; set; } = true;
-
-        /// <summary>
-        /// If an inlined array or object does NOT contain other arrays/objects, setting SimpleBracketPadding to true
-        /// will include spaces inside the brackets.
-        /// <seealso cref="NestedBracketPadding"/>
-        /// </summary>
-        public bool SimpleBracketPadding { get; set; } = false;
-
-        /// <summary>
-        /// If true, includes a space after property colons.
-        /// </summary>
-        public bool ColonPadding { get; set; } = true;
-
-        /// <summary>
-        /// If true, includes a space after commas separating array items and object properties.
-        /// </summary>
-        public bool CommaPadding { get; set; } = true;
-
-        /// <summary>
-        /// Depth at which lists/objects are always fully expanded, regardless of other settings.
-        /// -1 = none; 0 = root node only; 1 = root node and its children.
-        /// </summary>
-        public int AlwaysExpandDepth { get; set; } = -1;
-
-        /// <summary>
-        /// Number of spaces to use per indent level (unless UseTabToIndent is true)
-        /// </summary>
-        public int IndentSpaces { get; set; } = 4;
-
-        /// <summary>
-        /// Uses a single tab per indent level, instead of spaces.
-        /// </summary>
-        public bool UseTabToIndent { get; set; } = false;
-
-        /// <summary>
-        /// Value from 0 to 100 indicating how similar collections of inline objects need to be to be formatted as
-        /// a table.  A group of objects that don't have any property names in common has a similarity of zero.  A
-        /// group of objects that all contain the exact same property names has a similarity of 100.  Setting this
-        /// to a value &gt;100 disables table formatting with objects as rows.
-        /// </summary>
-        public double TableObjectMinimumSimilarity { get; set; } = 75.0;
-
-        /// <summary>
-        /// Value from 0 to 100 indicating how similar collections of inline arrays need to be to be formatted as
-        /// a table.  Similarity for arrays refers to how similar they are in length; if they all have the same
-        /// length their similarity is 100.  Setting this to a value &gt;100 disables table formatting with arrays as
-        /// rows.
-        /// </summary>
-        public double TableArrayMinimumSimilarity { get; set; } = 75.0;
-
-        /// <summary>
-        /// If true, property names of expanded objects are padded to the same size.
-        /// </summary>
-        public bool AlignExpandedPropertyNames { get; set; } = false;
-
-        /// <summary>
-        /// If true, numbers won't be right-aligned with matching precision.
-        /// </summary>
-        public bool DontJustifyNumbers { get; set; } = false;
-
-        /// <summary>
-        /// String attached to the beginning of every line, before regular indentation.
-        /// </summary>
-        public string PrefixString { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Options to pass on to the underlying system parser.
-        /// </summary>
-        public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions()
+        switch (item.Type)
         {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
+            case JsonItemType.Array:
+            case JsonItemType.Object:
+                FormatContainer(item, depth, includeTrailingComma);
+                break;
+            case JsonItemType.BlankLine:
+                FormatBlankLine();
+                break;
+            case JsonItemType.BlockComment:
+            case JsonItemType.LineComment:
+                FormatStandaloneComment(item, depth);
+                break;
+            default:
+                if (item.RequiresMultipleLines)
+                    FormatSplitKeyValue(item, depth, includeTrailingComma);
+                else
+                    FormatInlineElement(item, depth, includeTrailingComma);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.
+    /// The array/object might be formatted inline, compact multiline, table, or expanded, according to circumstances.
+    /// </summary>
+    private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        if (FormatContainerInline(item, depth, includeTrailingComma))
+            return;
+        if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
+            return;
+        if (FormatContainerTable(item, depth, includeTrailingComma))
+            return;
+        FormatContainerExpanded(item, depth, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Tries to add the representation for an array or object to the buffer, including all necessary indents, newlines, 
+    /// etc., if the array/object qualifies.
+    /// </summary>
+    /// <returns>True if the content was added.</returns>
+    private bool FormatContainerInline(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        if (item.RequiresMultipleLines)
+            return false;
+        var lengthToConsider = item.MinimumTotalLength + ((includeTrailingComma) ? _pads.CommaLen : 0);
+        if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
+            return false;
+
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        InlineElement(_buffer, item, includeTrailingComma);
+        _buffer.Add(_pads.EOL);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Tries to add the representation of this array to the buffer, including indents and things, spanning multiple 
+    /// lines but with each child written inline.
+    /// </summary>
+    /// <returns>True if the content was added</returns>
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        if (item.Type != JsonItemType.Array)
+            return false;
+        if (item.Complexity > Options.MaxCompactArrayComplexity)
+            return false;
+        if (item.RequiresMultipleLines)
+            return false;
         
-        /// <summary>
-        /// Function that returns the visual width of strings measured in characters.  This is used to line
-        /// columns up when formatting objects/arrays as tables.  You can use the static methods
-        /// <see cref="StringWidthByCharacterCount"/>, <see cref="StringWidthWithEastAsian"/>, or supply your own.
-        /// </summary>
-        /// <remarks>
-        /// For most Western symbols, a monospaced font will render them all with the same width.  But Unicode
-        /// "fullwidth" characters are rendered as being twice as wide as others
-        /// </remarks>
-        public Func<string, int> StringWidthFunc { get; set; } = StringWidthWithEastAsian;
+        // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
+        // be better.
+        var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
+        var avgItemWidth = item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count;
+        if (avgItemWidth * 3 > likelyAvailableLineSpace)
+            return false;
 
+        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
+        template.MeasureTableRoot(item);
+        var templateSize = template.ComputeSize();
+        
+        var depthAfterColon = StandardFormatStart(item, depth);
 
-        /// <summary>
-        /// Returns the JSON documented formatted as a string, with simpler collections written in single
-        /// lines where possible.
-        /// </summary>
-        public string Serialize(JsonDocument document)
+        // Starting bracket (with no EOL).
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+
+        var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
+        var remainingLineSpace = -1;
+        for (var i=0; i<item.Children.Count; ++i)
         {
-            InitInternals();
-            return PrefixString + FormatElement(0, document.RootElement).Value;
-        }
+            // Figure out whether the next item fits on the current line.  If not, start a new one.
+            var child = item.Children[i];
+            var needsComma = (i < item.Children.Count - 1);
+            var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) + 
+                                     ((template.IsRowDataCompatible) ? templateSize : child.MinimumTotalLength);
 
-        /// <summary>
-        /// Returns a reformatted version of the given JSON string.
-        /// </summary>
-        public string Serialize(string jsonData)
-        {
-            var parserOpts = new JsonDocumentOptions() {CommentHandling = JsonCommentHandling.Skip};
-            var jsonDoc = JsonDocument.Parse(jsonData, parserOpts);
-            return Serialize(jsonDoc);
-        }
-
-        /// <summary>
-        /// Returns the given object serialized to JSON and then formatted with simpler collections written in
-        /// single lines where possible.
-        /// </summary>
-        public string Serialize<T>(T obj)
-        {
-            var doc = JsonSerializer.Serialize(obj, JsonSerializerOptions);
-            return Serialize(doc);
-        }
-
-        /// <summary>
-        /// Returns the character count of the string (just like the String.length property).
-        /// <seealso cref="StringWidthFunc"/>
-        /// </summary>
-        public static int StringWidthByCharacterCount(string str)
-        {
-            return str.Length;
-        }
-
-        /// <summary>
-        /// Returns a width, where some East Asian symbols are treated as twice as wide as Latin symbols.
-        /// <seealso cref="StringWidthFunc"/>
-        /// </summary>
-        public static int StringWidthWithEastAsian(string str)
-        {
-            return str.EnumerateRunes().Sum(rune => UnicodeCalculator.GetWidth(rune.Value));
-        }
-
-        // We reuse this same StringBuilder throughout all levels of recursion.  It's important, therefore,
-        // not to recurse while we're actually using it.
-        private readonly StringBuilder _buff = new StringBuilder();
-
-        private string _eolStr = string.Empty;
-        private string _indentStr = string.Empty;
-        private string _paddedCommaStr = string.Empty;
-        private string _paddedColonStr = string.Empty;
-
-        /// <summary>
-        /// Set up some intermediate fields for efficiency.
-        /// </summary>
-        private void InitInternals()
-        {
-            _eolStr = JsonEolStyle switch
+            if (remainingLineSpace < spaceNeededForNext)
             {
-                EolStyle.Crlf => "\r\n",
-                EolStyle.Lf => "\n",
-                _ => Environment.NewLine,
-            };
-
-            _indentStr = (UseTabToIndent) ? "\t" : new string(' ', IndentSpaces);
-            _paddedCommaStr = (CommaPadding) ? ", " : ",";
-            _paddedColonStr = (ColonPadding) ? ": " : ":";
-        }
-
-        /// <summary>
-        /// Base of recursion.  Nearly everything comes through here.
-        /// </summary>
-        private FormattedNode FormatElement(int depth, JsonElement element)
-        {
-            var formattedItem = element.ValueKind switch
-            {
-                JsonValueKind.Array => FormatArray(depth, element),
-                JsonValueKind.Object => FormatObject(depth, element),
-                _ => FormatSimple(depth, element)
-            };
-
-            // Get rid of nested data that we don't need any more.
-            Cleanup(formattedItem);
-            return formattedItem;
-        }
-
-        /// <summary>
-        /// Formats a JSON element other than an array or object.
-        /// </summary>
-        private FormattedNode FormatSimple(int depth, JsonElement element)
-        {
-            // Return the existing text of the item.  Since it's not an array or object, there won't be any ambiguous
-            // whitespace in it.
-            return new FormattedNode()
-            {
-                Value = element.GetRawText(),
-                ValueLength = StringWidthFunc(element.GetRawText()),
-                Depth = depth,
-                Format = Format.Inline,
-                Kind = element.ValueKind
-            };
-        }
-
-        private FormattedNode FormatArray(int depth, JsonElement element)
-        {
-            // Recursively format all of this array's elements.
-            var items = element.EnumerateArray()
-                .Select(child => FormatElement(depth + 1, child))
-                .ToArray();
-
-            if (!items.Any())
-                return EmptyArray(depth);
-
-            var thisItem = new FormattedNode()
-            {
-                Kind = JsonValueKind.Array,
-                Complexity = items.Max(fn => fn.Complexity) + 1,
-                Depth = depth,
-                Children = items,
-            };
-
-            if (thisItem.Depth > AlwaysExpandDepth)
-            {
-                if (FormatArrayInline(thisItem))
-                    return thisItem;
+                _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon+1));
+                remainingLineSpace = availableLineSpace;
             }
-
-            // If this is an array of numbers, try to format them with uniform precision and padding.
-            JustifyParallelNumbers(thisItem.Children);
-
-            if (thisItem.Depth > AlwaysExpandDepth)
-            {
-                if (FormatArrayMultilineCompact(thisItem))
-                    return thisItem;
-            }
-
-            if (FormatTableArrayObject(thisItem))
-                return thisItem;
-
-            if (FormatTableArrayArray(thisItem))
-                return thisItem;
-
-            FormatArrayExpanded(thisItem);
-            return thisItem;
-        }
-
-        private FormattedNode FormatObject(int depth, JsonElement element)
-        {
-            // Recursively format all of this object's property values.
-            var items = new List<FormattedNode>();
-            foreach (var child in element.EnumerateObject())
-            {
-                var elem = FormatElement(depth + 1, child.Value);
-                elem.Name = JsonSerializer.Serialize(child.Name, JsonSerializerOptions);
-                elem.NameLength = StringWidthFunc(elem.Name);
-                items.Add(elem);
-            }
-
-            if (!items.Any())
-                return EmptyObject(depth);
-
-            var thisItem = new FormattedNode()
-            {
-                Kind = JsonValueKind.Object,
-                Complexity = items.Max(fn => fn.Complexity) + 1,
-                Depth = depth,
-                Children = items,
-            };
-
-            if (thisItem.Depth > AlwaysExpandDepth)
-            {
-                if (FormatObjectInline(thisItem))
-                    return thisItem;
-            }
-
-            if (FormatTableObjectObject(thisItem))
-                return thisItem;
-
-            if (FormatTableObjectArray(thisItem))
-                return thisItem;
-
-            FormatObjectExpanded(thisItem, false);
-            return thisItem;
-        }
-
-        private FormattedNode EmptyArray(int depth)
-        {
-            return new FormattedNode()
-            {
-                Value = "[]",
-                ValueLength = 2,
-                Complexity = 0,
-                Depth = depth,
-                Kind = JsonValueKind.Array,
-                Format = Format.Inline,
-            };
-        }
-
-        /// <summary>
-        /// Try to format this array in a single line, if possible.
-        /// </summary>
-        private bool FormatArrayInline(FormattedNode thisItem)
-        {
-            if (thisItem.Complexity > MaxInlineComplexity)
-                return false;
-
-            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
-                return false;
-
-            var useBracketPadding = (thisItem.Complexity >= 2) ? NestedBracketPadding : SimpleBracketPadding;
-            var lineLength = 2 + (useBracketPadding ? 2 : 0) +                       // outer brackets
-                             (thisItem.Children.Count - 1) * _paddedCommaStr.Length +   // commas
-                             thisItem.Children.Sum(fn => fn.ValueLength);  // values
-            if (lineLength > MaxInlineLength)
-                return false;
-
-            _buff.Clear();
-            _buff.Append('[');
-
-            if (useBracketPadding)
-                _buff.Append(' ');
-
-            var firstElem = true;
-            foreach (var child in thisItem.Children)
-            {
-                if (!firstElem)
-                    _buff.Append(_paddedCommaStr);
-                _buff.Append(child.Value);
-                firstElem = false;
-            }
-
-            if (useBracketPadding)
-                _buff.Append(' ');
-            _buff.Append(']');
-
-            thisItem.Value = _buff.ToString();
-            thisItem.ValueLength = lineLength;
-            thisItem.Format = Format.Inline;
-            return true;
-        }
-
-        /// <summary>
-        /// Try to format this array, spanning multiple lines, but with several items per line, if possible.
-        /// </summary>
-        private bool FormatArrayMultilineCompact(FormattedNode thisItem)
-        {
-            if (thisItem.Complexity > MaxCompactArrayComplexity)
-                return false;
-
-            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
-                return false;
             
-            _buff.Clear();
-            _buff.Append('[').Append(_eolStr);
-            Indent(_buff, thisItem.Depth + 1);
-
-            var lineLengthSoFar = 0;
-            var childIndex = 0;
-            while (childIndex < thisItem.Children.Count)
-            {
-                var notLastItem = childIndex < thisItem.Children.Count - 1;
-
-                var itemLength = thisItem.Children[childIndex].ValueLength;
-                var segmentLength = itemLength + ((notLastItem) ? _paddedCommaStr.Length : 0);
-                if (lineLengthSoFar + segmentLength > MaxInlineLength && lineLengthSoFar > 0)
-                {
-                    _buff.Append(_eolStr);
-                    Indent(_buff, thisItem.Depth + 1);
-                    lineLengthSoFar = 0;
-                }
-
-                _buff.Append(thisItem.Children[childIndex].Value);
-                if (notLastItem)
-                    _buff.Append(_paddedCommaStr);
-
-                childIndex += 1;
-                lineLengthSoFar += segmentLength;
-            }
-
-            _buff.Append(_eolStr);
-            Indent(_buff, thisItem.Depth);
-            _buff.Append(']');
-
-            thisItem.Value = _buff.ToString();
-            thisItem.Format = Format.MultilineCompact;
-            return true;
+            // Write it out
+            if (template.IsRowDataCompatible)
+                InlineTableRowSegment(_buffer, template, child, needsComma, false);
+            else
+                InlineElement(_buffer, child, needsComma);
+            remainingLineSpace -= spaceNeededForNext;
         }
 
-        /// <summary>
-        /// Format this array with one child object per line, and those objects padded to line up nicely.
-        /// </summary>
-        private bool FormatTableArrayObject(FormattedNode thisItem)
-        {
-            if (TableObjectMinimumSimilarity > 100.5)
-                return false;
-
-            // Gather stats about our children's property order and width, if they're eligible objects.
-            var columnStats = GetPropertyStats(thisItem);
-            if (columnStats == null)
-                return false;
-
-            // Reformat our immediate children using the width info we've computed.  Their children aren't
-            // recomputed, so this part isn't recursive.
-            foreach (var child in thisItem.Children)
-                FormatObjectTableRow(child, columnStats);
-
-            return FormatArrayExpanded(thisItem);
-        }
-
-        /// <summary>
-        /// Format this array with one child array per line, and those arrays padded to line up nicely.
-        /// </summary>
-        private bool FormatTableArrayArray(FormattedNode thisItem)
-        {
-            if (TableArrayMinimumSimilarity > 100.5)
-                return false;
-
-            // Gather stats about our children's item widths, if they're eligible arrays.
-            var columnStats = GetArrayStats(thisItem);
-            if (columnStats == null)
-                return false;
-
-            // Reformat our immediate children using the width info we've computed.  Their children aren't
-            // recomputed, so this part isn't recursive.
-            foreach (var child in thisItem.Children)
-                FormatArrayTableRow(child, columnStats);
-
-            return FormatArrayExpanded(thisItem);
-        }
-
-        /// <summary>
-        /// Format this array in a single line, with padding to line up with siblings.
-        /// </summary>
-        private void FormatArrayTableRow(FormattedNode thisItem, ColumnStats[] columnStatsArray)
-        {
-            _buff.Clear();
-            _buff.Append("[ ");
-
-            // Write the elements that actually exist in this array.
-            for (var index = 0; index < thisItem.Children.Count; ++index)
-            {
-                if (index != 0)
-                    _buff.Append(_paddedCommaStr);
-
-                var columnStats = columnStatsArray[index];
-                if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
-                {
-                    _buff.Append(string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
-                        double.Parse(thisItem.Children[index].Value)));
-                }
-                else
-                {
-                    var padSize = columnStats.MaxValueSize - thisItem.Children[index].ValueLength;
-                    _buff.Append(thisItem.Children[index].Value).Append(' ', padSize);
-                }
-            }
-
-            // Write padding for elements that exist in siblings but not this array.
-            for (var index = thisItem.Children.Count; index < columnStatsArray.Length; ++index)
-            {
-                var padSize = columnStatsArray[index].MaxValueSize
-                              + ((index == 0) ? 0 : _paddedCommaStr.Length);
-                _buff.Append(' ', padSize);
-            }
-
-            _buff.Append(" ]");
-
-            thisItem.Value = _buff.ToString();
-            thisItem.Format = Format.InlineTabular;
-        }
-
-        /// <summary>
-        /// Write this array with each element starting on its own line.  (They might be multiple lines themselves.)
-        /// </summary>
-        private bool FormatArrayExpanded(FormattedNode thisItem)
-        {
-            _buff.Clear();
-            _buff.Append('[').Append(_eolStr);
-            var firstElem = true;
-            foreach (var child in thisItem.Children)
-            {
-                if (!firstElem)
-                    _buff.Append(',').Append(_eolStr);
-                Indent(_buff, child.Depth).Append(child.Value);
-                firstElem = false;
-            }
-
-            _buff.Append(_eolStr);
-            Indent(_buff, thisItem.Depth).Append(']');
-
-            thisItem.Value = _buff.ToString();
-            thisItem.Format = Format.Expanded;
-            return true;
-        }
-
-        private FormattedNode EmptyObject(int depth)
-        {
-            return new FormattedNode()
-            {
-                Value = "{}",
-                ValueLength = 2,
-                Complexity = 0,
-                Depth = depth,
-                Kind = JsonValueKind.Object,
-                Format = Format.Inline,
-            };
-        }
-
-        /// <summary>
-        /// Format this object as a single line, if possible.
-        /// </summary>
-        private bool FormatObjectInline(FormattedNode thisItem)
-        {
-            if (thisItem.Complexity > MaxInlineComplexity)
-                return false;
-
-            if (thisItem.Children.Any(fn => fn.Format != Format.Inline))
-                return false;
-            
-            var useBracketPadding = (thisItem.Complexity >= 2) ? NestedBracketPadding : SimpleBracketPadding;
-
-            var lineLength = 2 + (useBracketPadding ? 2 : 0)                             // outer brackets
-                               + thisItem.Children.Count * _paddedColonStr.Length           // colons
-                               + (thisItem.Children.Count - 1) * _paddedCommaStr.Length     // commas
-                               + thisItem.Children.Sum(fn => fn.NameLength)    // prop names
-                               + thisItem.Children.Sum(fn => fn.ValueLength);  // values
-            if (lineLength > MaxInlineLength)
-                return false;
-
-            _buff.Clear();
-            _buff.Append('{');
-
-            if (useBracketPadding)
-                _buff.Append(' ');
-
-            var firstElem = true;
-            foreach (var prop in thisItem.Children)
-            {
-                if (!firstElem)
-                    _buff.Append(_paddedCommaStr);
-                _buff.Append(prop.Name).Append(_paddedColonStr).Append(prop.Value);
-                firstElem = false;
-            }
-
-            if (useBracketPadding)
-                _buff.Append(' ');
-            _buff.Append('}');
-
-            thisItem.Value = _buff.ToString();
-            thisItem.ValueLength = lineLength;
-            thisItem.Format = Format.Inline;
-            return true;
-        }
-
-        /// <summary>
-        /// Format this object with one child object per line, and those objects padded to line up nicely.
-        /// </summary>
-        private bool FormatTableObjectObject(FormattedNode thisItem)
-        {
-            if (TableObjectMinimumSimilarity > 100.5)
-                return false;
-
-            // Gather stats about our children's property order and width, if they're eligible objects.
-            var propStats = GetPropertyStats(thisItem);
-            if (propStats == null)
-                return false;
-
-            // Reformat our immediate children using the width info we've computed.  Their children aren't
-            // recomputed, so this part isn't recursive.
-            foreach (var child in thisItem.Children)
-                FormatObjectTableRow(child, propStats);
-
-            return FormatObjectExpanded(thisItem, true);
-        }
-
-        /// <summary>
-        /// Format this object with one child array per line, and those arrays padded to line up nicely.
-        /// </summary>
-        private bool FormatTableObjectArray(FormattedNode thisItem)
-        {
-            if (TableArrayMinimumSimilarity > 100.5)
-                return false;
-
-            // Gather stats about our children's widths, if they're eligible arrays.
-            var columnStats = GetArrayStats(thisItem);
-            if (columnStats == null)
-                return false;
-
-            // Reformat our immediate children using the width info we've computed.  Their children aren't
-            // recomputed, so this part isn't recursive.
-            foreach (var child in thisItem.Children)
-                FormatArrayTableRow(child, columnStats);
-
-            return FormatObjectExpanded(thisItem, true);
-        }
-
-        /// <summary>
-        /// Format this object in a single line, with padding to line up with siblings.
-        /// </summary>
-        private void FormatObjectTableRow(FormattedNode thisItem, ColumnStats[] columnStatsArray)
-        {
-            // Bundle up each property name, value, quotes, colons, etc., or equivalent empty space.
-            var highestNonBlankIndex = -1;
-            var propSegmentStrings = new string?[columnStatsArray.Length];
-            for (var colIndex = 0; colIndex < columnStatsArray.Length; ++colIndex)
-            {
-                _buff.Clear();
-                var columnStats = columnStatsArray[colIndex];
-                var propNode = thisItem.Children.FirstOrDefault(fn => fn.Name == columnStats.PropName);
-                if (propNode == null)
-                {
-                    // This object doesn't have this particular property.  Pad it out.
-                    var skipLength = columnStats.PropNameLength
-                                     + _paddedColonStr.Length
-                                     + columnStats.MaxValueSize;
-                    _buff.Append(' ', skipLength);
-                }
-                else
-                {
-                    var valuePadLength = columnStats.MaxValueSize - propNode.ValueLength;
-                    _buff.Append(columnStats.PropName).Append(_paddedColonStr);
-
-                    if (columnStats.NumericFormatStr != null && !DontJustifyNumbers)
-                        _buff.Append(string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
-                            double.Parse(propNode.Value)));
-                    else
-                        _buff.Append(propNode.Value).Append(' ', valuePadLength);
-                    highestNonBlankIndex = colIndex;
-                }
-
-                propSegmentStrings[colIndex] = _buff.ToString();
-            }
-
-            _buff.Clear();
-            _buff.Append("{ ");
-
-            // Put them all together with commas in the right places.
-            var firstElem = true;
-            var needsComma = false;
-            for (var segmentIndex = 0; segmentIndex < propSegmentStrings.Length; ++segmentIndex)
-            {
-                if (needsComma && segmentIndex <= highestNonBlankIndex)
-                    _buff.Append(_paddedCommaStr);
-                else if (!firstElem)
-                    _buff.Append(' ', _paddedCommaStr.Length);
-                _buff.Append(propSegmentStrings[segmentIndex]);
-                needsComma = !string.IsNullOrWhiteSpace(propSegmentStrings[segmentIndex]);
-                firstElem = false;
-            }
-
-            _buff.Append(" }");
-
-            thisItem.Value = _buff.ToString();
-            thisItem.Format = Format.InlineTabular;
-        }
-
-        /// <summary>
-        /// Write this object with each element starting on its own line.  (They might be multiple lines
-        /// themselves.)
-        /// </summary>
-        private bool FormatObjectExpanded(FormattedNode thisItem, bool forceExpandPropNames)
-        {
-            var maxPropNameLength = thisItem.Children.Max(fn => fn.NameLength);
-            _buff.Clear();
-
-            _buff.Append('{').Append(_eolStr);
-
-            var firstItem = true;
-            foreach (var prop in thisItem.Children)
-            {
-                if (!firstItem)
-                    _buff.Append(',').Append(_eolStr);
-                Indent(_buff, prop.Depth).Append(prop.Name);
-
-                if (AlignExpandedPropertyNames || forceExpandPropNames)
-                    _buff.Append(' ', maxPropNameLength - prop.NameLength);
-
-                _buff.Append(_paddedColonStr).Append(prop.Value);
-                firstItem = false;
-            }
-
-            _buff.Append(_eolStr);
-            Indent(_buff, thisItem.Depth).Append('}');
-
-            thisItem.Value = _buff.ToString();
-            thisItem.Format = Format.Expanded;
-            return true;
-        }
-
-        /// <summary>
-        /// If the given nodes are all numbers and not too big or small, format them to the same precision and width.
-        /// </summary>
-        private void JustifyParallelNumbers(IList<FormattedNode> itemList)
-        {
-            if (itemList.Count < 2 || DontJustifyNumbers)
-                return;
-
-            var columnStats = new ColumnStats();
-            foreach (var propNode in itemList)
-                columnStats.Update(propNode, 0);
-
-            columnStats.MakeNumericFormatString();
-            if (columnStats.NumericFormatStr == null)
-                return;
-
-            foreach (var propNode in itemList)
-            {
-                propNode.Value = string.Format(CultureInfo.InvariantCulture, columnStats.NumericFormatStr,
-                    double.Parse(propNode.Value));
-                propNode.ValueLength = columnStats.MaxValueSize;
-            }
-        }
-
-        /// <summary>
-        /// Add the appropriate number of tabs or spaces for the given depth.
-        /// </summary>
-        private StringBuilder Indent(StringBuilder buff, int depth)
-        {
-            _buff.Append(PrefixString);
-            for (var i = 0; i < depth; ++i)
-                buff.Append(_indentStr);
-            return buff;
-        }
-
-        /// <summary>
-        /// Deleted data we don't need any more, to possibly ease memory pressure.
-        /// </summary>
-        private void Cleanup(FormattedNode thisItem)
-        {
-            // We need to keep the children of inlined nodes, in case we decide to reformat them as a table.
-            // Everything else can go.
-            if (thisItem.Format != Format.Inline)
-                thisItem.Children = Array.Empty<FormattedNode>();
-            foreach (var child in thisItem.Children)
-                child.Children = Array.Empty<FormattedNode>();
-        }
-
-        /// <summary>
-        /// Check if this node's object children can be formatted as a table, and if so, return stats about
-        /// their properties, such as max width.  Returns null if they're not eligible.
-        /// </summary>
-        private ColumnStats[]? GetPropertyStats(FormattedNode thisItem)
-        {
-            if (thisItem.Children.Count < 2)
-                return null;
-
-            // Record every property across all objects, count them, tabulate their order, and find the longest.
-            var props = new Dictionary<string, ColumnStats>();
-            foreach (var child in thisItem.Children)
-            {
-                if (child.Kind != JsonValueKind.Object || child.Format != Format.Inline)
-                    return null;
-
-                for (var index = 0; index < child.Children.Count; ++index)
-                {
-                    var propNode = child.Children[index];
-                    props.TryGetValue(propNode.Name, out var propStats);
-                    if (propStats == null)
-                    {
-                        propStats = new ColumnStats()
-                        {
-                            PropName = propNode.Name,
-                            PropNameLength = propNode.NameLength,
-                        };
-                        props.Add(propStats.PropName, propStats);
-                    }
-
-                    propStats.Update(propNode, index);
-                }
-            }
-
-            // Decide the order of the properties by sorting by the average index.  It's a crude metric,
-            // but it should handle the occasional missing property well enough.
-            var orderedProps = props.Values
-                .OrderBy(cs => (cs.OrderSum / (double) cs.Count))
-                .ToArray();
-
-            // Calculate a score based on how many of all possible properties are present.  If the score is too
-            // low, these objects are too different to try to line up as a table.
-            var score = 100.0 * orderedProps.Sum(cs => cs.Count)
-                        / (orderedProps.Length * thisItem.Children.Count);
-            if (score < TableObjectMinimumSimilarity)
-                return null;
-
-            foreach (var propStats in orderedProps.Where(cs => cs.IsQualifiedNumeric && !DontJustifyNumbers))
-                propStats.MakeNumericFormatString();
-
-            // If the formatted lines would be too long, bail out.
-            var lineLength = 4                                                          // outer brackets & spaces
-                             + orderedProps.Sum(cs => cs.PropNameLength)  // prop names
-                             + _paddedColonStr.Length * orderedProps.Length                // colons
-                             + orderedProps.Sum(cs => cs.MaxValueSize)    // values
-                             + _paddedCommaStr.Length * (orderedProps.Length - 1);         // commas
-            if (lineLength > MaxInlineLength)
-                return null;
-
-            return orderedProps;
-        }
-
-        /// <summary>
-        /// Check if this node's array children can be formatted as a table, and if so, gather stats like max width.
-        /// Returns null if they're not eligible.
-        /// </summary>
-        private ColumnStats[]? GetArrayStats(FormattedNode thisItem)
-        {
-            if (thisItem.Children.Count < 2)
-                return null;
-
-            var valid = thisItem.Children.All(fn => fn.Kind == JsonValueKind.Array && fn.Format == Format.Inline);
-            if (!valid)
-                return null;
-
-            var numberOfColumns = thisItem.Children.Max(fn => fn.Children.Count);
-            var colStatsArray = new ColumnStats[numberOfColumns];
-            for (int i = 0; i < colStatsArray.Length; ++i)
-                colStatsArray[i] = new ColumnStats();
-
-            foreach (var rowNode in thisItem.Children)
-            {
-                for (var index = 0; index < rowNode.Children.Count; ++index)
-                    colStatsArray[index].Update(rowNode.Children[index], index);
-            }
-
-            // Calculate a score based on how rectangular the arrays are.  If they differ too much in length,
-            // it probably doesn't make sense to format them together.
-            var similarity = 100.0 * thisItem.Children.Sum(fn => fn.Children.Count)
-                             / (thisItem.Children.Count * numberOfColumns);
-            if (similarity < TableArrayMinimumSimilarity)
-                return null;
-
-            foreach (var colStats in colStatsArray)
-                colStats.MakeNumericFormatString();
-
-            // If the formatted lines would be too long, bail out.
-            var lineLength = 4                                                        // outer brackets
-                             + colStatsArray.Sum(cs => cs.MaxValueSize) // values
-                             + (colStatsArray.Length - 1) * _paddedCommaStr.Length;      // commas
-            if (lineLength > MaxInlineLength)
-                return null;
-
-            return colStatsArray;
-        }
-    }
-
-    internal enum Format
-    {
-        Inline,
-        InlineTabular,
-        MultilineCompact,
-        Expanded,
+        // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
+        _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon),
+            _pads.End(item.Type, BracketPaddingType.Empty));
+
+        StandardFormatEnd(item, includeTrailingComma);
+        return true;
     }
 
     /// <summary>
-    /// Used in figuring out how to format properties/array items as columns in a table format.
+    /// Tries to format this array/object as a table.  That is, each of this JsonItem's children are each written
+    /// as a single line, with their pieces formatted to line up.  This only works if the structures and types
+    /// are consistent for all rows.
     /// </summary>
-    internal class ColumnStats
+    /// <returns>True if the content was added</returns>
+    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
     {
-        public string PropName { get; set; } = string.Empty;
-        public int PropNameLength { get; set; }
-        public int OrderSum { get; set; }
-        public int Count { get; set; }
-        public int MaxValueSize { get; set; }
-        public bool IsQualifiedNumeric { get; set; } = true;
-        public int CharsBeforeDec { get; set; }
-        public int CharsAfterDec { get; set; }
-        public string? NumericFormatStr { get; set; }
+        // If this element's children are too complex to be written inline, don't bother.
+        if (item.Complexity > Options.MaxTableRowComplexity + 1)
+            return false;
+        
+        var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
 
-        /// <summary>
-        /// Add stats about this FormattedNode to this PropertyStats.
-        /// </summary>
-        public void Update(FormattedNode propNode, int index)
+        // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
+        // similar, CanBeUsedInTable will be false.
+        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
+        template.MeasureTableRoot(item);
+        if (!template.IsRowDataCompatible)
+            return false;
+
+        if (!template.TryToFit(availableSpace))
+            return false;
+
+        var depthAfterColon = StandardFormatStart(item, depth);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+
+        for (var i=0; i<item.Children.Count; ++i)
         {
-            OrderSum += index;
-            Count += 1;
-            MaxValueSize = Math.Max(MaxValueSize, propNode.ValueLength);
-            IsQualifiedNumeric &= (propNode.Kind == JsonValueKind.Number);
-
-            if (!IsQualifiedNumeric)
-                return;
-
-            // Gather extra stats about numbers, if appropriate
-            var normalizedNum = double.Parse(propNode.Value).ToString(CultureInfo.InvariantCulture);
-            IsQualifiedNumeric &= (!normalizedNum.Contains('e') && !normalizedNum.Contains('E'));
-
-            if (!IsQualifiedNumeric)
-                return;
-
-            var decIndex = normalizedNum.IndexOf('.');
-            if (decIndex < 0)
+            var rowItem = item.Children[i];
+            if (rowItem.Type is JsonItemType.BlankLine)
             {
-                CharsBeforeDec = Math.Max(CharsBeforeDec, normalizedNum.Length);
+                FormatBlankLine();
+                continue;
+            }
+            if (rowItem.Type is JsonItemType.LineComment or JsonItemType.BlockComment)
+            {
+                FormatStandaloneComment(rowItem, depthAfterColon+1);
+                continue;
+            }
+            
+            _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
+            InlineTableRowSegment(_buffer, template, rowItem, (i<item.Children.Count-1), true);
+            _buffer.Add(_pads.EOL);
+        }
+        
+        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StandardFormatEnd(item, includeTrailingComma);
+
+        return true;
+    }
+    
+
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
+    /// broken out on separate lines.  This is the most general case that always works.
+    /// </summary>
+    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        var depthAfterColon = StandardFormatStart(item, depth);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        
+        for (var i=0; i<item.Children.Count; ++i)
+            FormatItem(item.Children[i], depthAfterColon+1, (i<item.Children.Count-1));
+
+        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Do the stuff that's the same for the start of every formatted item, like indents and prefix comments.
+    /// </summary>
+    /// <returns>Depth number to be used for everything after this.  In some cases, we print a prop label
+    /// on one line, and then the value on another, at a greater indentation level.</returns>
+    private int StandardFormatStart(JsonItem item, int depth)
+    {
+        // Everything is straightforward until the colon
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        if (item.PrefixCommentLength > 0)
+            _buffer.Add(item.PrefixComment, _pads.Comment);
+        
+        if (item.NameLength > 0)
+            _buffer.Add(item.Name, _pads.Colon);
+        
+        if (item.MiddleCommentLength == 0)
+            return depth;
+
+        // If there's a middle comment, we write it on the same line and move along.  Easy.
+        if (!item.MiddleComment.Contains('\n'))
+        {
+            _buffer.Add(item.MiddleComment, _pads.Comment);
+            return depth;
+        }
+
+        // If the middle comment requires multiple lines, start a new line and indent everything after this.
+        var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
+        _buffer.Add(_pads.EOL);
+        
+        foreach (var row in commentRows)
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row, _pads.EOL);
+        
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth+1));
+        return depth + 1;
+    }
+
+    /// <summary>
+    /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
+    /// comments.
+    /// </summary>
+    private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
+    {
+        if (includeTrailingComma && item.IsPostCommentLineStyle)
+            _buffer.Add(_pads.Comma);
+        if (item.PostfixCommentLength > 0)
+            _buffer.Add(_pads.Comment, item.PostfixComment);
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
+            _buffer.Add(_pads.Comma);
+        _buffer.Add(_pads.EOL);
+    }
+    
+
+    /// <summary>
+    /// Adds the inline representation of this item to the buffer.  This includes all of this element's
+    /// comments and children when appropriate.  It DOES NOT include indentation, newlines, or any of that.  This
+    /// should only be called if item.RequiresMultipleLines is false.
+    /// </summary>
+    private void InlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    {
+        if (item.RequiresMultipleLines)
+            throw new FracturedJsonException("Logic error - trying to inline invalid element");
+        
+        if (item.PrefixCommentLength > 0)
+            buffer.Add(item.PrefixComment, _pads.Comment);
+        
+        if (item.NameLength > 0)
+            buffer.Add(item.Name, _pads.Colon);
+
+        if (item.MiddleCommentLength > 0)
+            buffer.Add(item.MiddleComment, _pads.Comment);
+
+        InlineElementRaw(buffer, item);
+
+        if (includeTrailingComma && item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+        if (item.PostfixCommentLength > 0)
+            buffer.Add(_pads.Comment, item.PostfixComment);
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
+            buffer.Add(_pads.Comma);
+    }
+
+    /// <summary>
+    /// Adds just this element's value to be buffer, inlined.  (Possibly recursively.)  This does not include
+    /// the item's comments (although it could include child elements' comments), or indentation.
+    /// </summary>
+    private void InlineElementRaw(IBuffer buffer, JsonItem item)
+    {
+        if (item.Type == JsonItemType.Array)
+        {
+            var padType = GetPaddingType(item);
+            buffer.Add(_pads.ArrStart(padType));
+            
+            for (var i=0; i<item.Children.Count; ++i)
+                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+            
+            buffer.Add(_pads.ArrEnd(padType));
+        }
+        else if (item.Type == JsonItemType.Object)
+        {
+            var padType = GetPaddingType(item);
+            buffer.Add(_pads.ObjStart(padType));
+            
+            for (var i=0; i<item.Children.Count; ++i)
+                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+            
+            buffer.Add(_pads.ObjEnd(padType));
+        }
+        else
+        {
+            buffer.Add(item.Value);
+        }
+    }
+
+    /// <summary>
+    /// Adds this item's representation to the buffer inlined, formatted according to the given TableTemplate.
+    /// </summary>
+    private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma,
+        bool isWholeRow)
+    {
+        if (template.PrefixCommentLength > 0)
+            buffer.Add(item.PrefixComment, 
+                _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength), 
+                _pads.Comment);
+        
+        if (template.NameLength > 0)
+            buffer.Add(item.Name,
+                _pads.Spaces(template.NameLength - item.NameLength),
+                _pads.Colon);
+
+        if (template.MiddleCommentLength > 0)
+            buffer.Add(item.MiddleComment, 
+                _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
+                _pads.Comment);
+
+        if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
+        {
+            if (template.Type is JsonItemType.Array)
+                InlineTableRawArray(buffer, template, item);
+            else
+                InlineTableRawObject(buffer, template, item);
+        }
+        else if (template.IsFormattableNumber && item.Type != JsonItemType.Null)
+        {
+            buffer.Add(template.FormatNumber(item.Value));
+        }
+        else
+        {
+            InlineElementRaw(buffer, item);
+            buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
+        }
+
+        // If there's a postfix line comment, the comma needs to happen first.  For block comments,
+        // it would be better to put the comma after the comment.
+        var commaGoesBeforeComment = item.IsPostCommentLineStyle || item.PostfixCommentLength == 0;
+        if (commaGoesBeforeComment)
+        {
+            // For internal row segments, there won't be trailing comments for any of the rows.  But
+            // if this item represents the entire row, then they'll all have commas except the last.
+            // the isWholeRow param lets up put in padding to line that up right.
+            if (includeTrailingComma)
+                buffer.Add(_pads.Comma);
+            else if (isWholeRow)
+                buffer.Add(_pads.DummyComma);
+        }
+        
+        if (template.PostfixCommentLength > 0)
+            buffer.Add(_pads.Comment, 
+                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength),
+                item.PostfixComment);
+        
+        if (!commaGoesBeforeComment)
+        {
+            if (includeTrailingComma)
+                buffer.Add(_pads.Comma);
+            else if (isWholeRow)
+                buffer.Add(_pads.DummyComma);
+        }
+    }
+
+    private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
+    {
+        buffer.Add(_pads.ArrStart(template.PadType));
+        for (var i = 0; i < template.Children.Count; ++i)
+        {
+            var isLastInTemplate = (i == template.Children.Count - 1);
+            var isLastInArray = (i == item.Children.Count - 1);
+            var isPastEndOfArray = (i >= item.Children.Count);
+            var subTemplate = template.Children[i];
+
+            if (isPastEndOfArray)
+            {
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                if (!isLastInTemplate)
+                    buffer.Add(_pads.DummyComma);
             }
             else
             {
-                CharsBeforeDec = Math.Max(CharsBeforeDec, decIndex);
-                CharsAfterDec = Math.Max(CharsAfterDec, normalizedNum.Length - decIndex - 1);
+                InlineTableRowSegment(buffer, subTemplate, item.Children[i], !isLastInArray, false);
+                if (isLastInArray && !isLastInTemplate)
+                    buffer.Add(_pads.DummyComma);
             }
         }
+        buffer.Add(_pads.ArrEnd(template.PadType));
+    }
 
-        /// <summary>
-        /// Create a format string (for string.format) to format this column as a number, if appropriate.
-        /// </summary>
-        public void MakeNumericFormatString()
+    private void InlineTableRawObject(IBuffer buffer, TableTemplate template, JsonItem item)
+    {
+        JsonItem? MatchingChild(TableTemplate temp) =>
+            item.Children.FirstOrDefault(ch => ch.Name == temp.LocationInParent);
+
+        var matches = template.Children.Select(sub => (sub, MatchingChild(sub)))
+            .ToArray();
+        var lastNonNullIdx = matches.Length - 1;
+        while (lastNonNullIdx>=0 && matches[lastNonNullIdx].Item2 == null)
+            lastNonNullIdx -= 1;
+
+        buffer.Add(_pads.ObjStart(template.PadType));
+        for (var i = 0; i < matches.Length; ++i)
         {
-            if (!IsQualifiedNumeric)
-                return;
-            MaxValueSize = CharsBeforeDec + CharsAfterDec + ((CharsAfterDec > 0) ? 1 : 0);
-            NumericFormatStr = "{" + $"0,{MaxValueSize}:f{CharsAfterDec}" + "}";
+            var subTemplate = matches[i].sub;
+            var subItem = matches[i].Item2;
+            var isLastInObject = (i == lastNonNullIdx);
+            var isLastInTemplate = (i == matches.Length - 1);
+            if (subItem != null)
+            {
+                InlineTableRowSegment(buffer, subTemplate, subItem, !isLastInObject, false);
+                if (isLastInObject && !isLastInTemplate)
+                    buffer.Add(_pads.DummyComma);
+            }
+            else
+            {
+                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                if (!isLastInTemplate)
+                    buffer.Add(_pads.DummyComma);
+            }
         }
+        buffer.Add(_pads.ObjEnd(template.PadType));
     }
 
     /// <summary>
-    /// Data about a JSON element and how we've formatted it.
+    /// Adds a (possibly multiline) standalone comment to the buffer, with indents and newlines on each line.
     /// </summary>
-    internal class FormattedNode
+    private void FormatStandaloneComment(JsonItem item, int depth)
     {
-        public string Name { get; set; } = string.Empty;
-        public int NameLength { get; set; }
-        public string Value { get; set; } = String.Empty;
-        public int ValueLength { get; set; }
-        public int Complexity { get; set; }
-        public int Depth { get; set; }
-        public JsonValueKind Kind { get; set; } = JsonValueKind.Undefined;
-        public Format Format { get; set; } = Format.Inline;
-        public IList<FormattedNode> Children { get; set; } = Array.Empty<FormattedNode>();
+        if (item.ValueLength == 0)
+            return;
+
+        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
+        
+        foreach (var line in commentRows)
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
+    }
+
+    private void FormatBlankLine()
+    {
+        _buffer.Add(_pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
+    /// </summary>
+    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        InlineElement(_buffer, item, includeTrailingComma);
+        _buffer.Add(_pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds an item to the buffer, including comments and indents and such, where a comment between the
+    /// prop name and prop value needs to span multiple lines.
+    /// </summary>
+    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        StandardFormatStart(item, depth);
+        _buffer.Add(item.Value);
+        StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
+    {
+        if (arrOrObj.Children.Count == 0)
+            return BracketPaddingType.Empty;
+
+        return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
+    }
+
+    /// <summary>
+    /// Figures out how much room is allowed for inlining at this indentation level, considering
+    /// <see cref="FracturedJsonOptions.MaxTotalLineLength"/> and <see cref="FracturedJsonOptions.MaxInlineLength"/>.
+    /// </summary>
+    private int AvailableLineSpace(int depth)
+    {
+        return Math.Min(Options.MaxInlineLength,
+            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
+    }
+
+    private static string[] NormalizeMultilineComment(string comment, int firstLineColumn)
+    {
+        // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
+        // line endings that the user wants ourselves.
+        var normalized = comment.Replace("\r", string.Empty);
+        var commentRows = normalized.Split('\n')
+            .Where(line => line.Length>0)
+            .ToArray();
+        
+        /*
+         * The first line doesn't include any leading whitespace, but subsequent lines probably do.
+         * We want to remove leading whitespace from those rows, but only up to where the first line began.
+         * The idea is to preserve spaces used to line up comments, like the ones before the asterisks
+         * in THIS VERY COMMENT that you're reading RIGHT NOW.
+         */
+        for (var i = 1; i < commentRows.Length; ++i)
+        {
+            var line = commentRows[i];
+
+            var nonWsIdx = 0;
+            while (nonWsIdx < line.Length && nonWsIdx < firstLineColumn && char.IsWhiteSpace(line[nonWsIdx]))
+                nonWsIdx += 1;
+
+            commentRows[i] = line.Substring(nonWsIdx);
+        }
+
+        return commentRows;
     }
 }

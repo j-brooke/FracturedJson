@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using FracturedJson.Tokenizer;
+using FracturedJson.Tokenizing;
 
-namespace FracturedJson.V3;
+namespace FracturedJson;
 
 /// <summary>
 /// A distinct thing that can be where ever JSON values are expected in a JSON-with-comments doc.  This could be an 

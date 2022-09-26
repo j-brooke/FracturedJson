@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using FracturedJson.V3;
+using FracturedJson;
 using Mono.Options;
 
 namespace FracturedJsonCli

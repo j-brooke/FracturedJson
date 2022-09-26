@@ -1,4 +1,4 @@
-namespace FracturedJson.Tokenizer;
+namespace FracturedJson.Tokenizing;
 
 /// <summary>
 /// Types of tokens that can be read from a stream of JSON text.  Comments aren't part of the official JSON

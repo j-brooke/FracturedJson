@@ -1,4 +1,4 @@
-﻿using FracturedJson.V3;
+﻿using FracturedJson;
 
 namespace Tests;
 

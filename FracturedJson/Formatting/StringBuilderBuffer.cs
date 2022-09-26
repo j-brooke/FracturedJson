@@ -1,12 +1,12 @@
 ﻿using System.Text;
 
-namespace FracturedJson.V3;
+namespace FracturedJson.Formatting;
 
 /// <summary>
 /// A place where strings are piled up sequentially to eventually make one big string, implemented with a
 /// good old .NET StringBuilder.
 /// </summary>
-public class StringBuilderBuffer : IBuffer
+internal class StringBuilderBuffer : IBuffer
 {
     public void Clear()
     {

@@ -1,5 +1,6 @@
-﻿using FracturedJson.Tokenizer;
-using FracturedJson.V3;
+﻿using FracturedJson;
+using FracturedJson.Parsing;
+using FracturedJson.Tokenizing;
 
 namespace Tests;
 

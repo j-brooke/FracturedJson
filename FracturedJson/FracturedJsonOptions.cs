@@ -1,4 +1,4 @@
-﻿namespace FracturedJson.V3;
+﻿namespace FracturedJson;
 
 public record struct FracturedJsonOptions
 {
