@@ -15,7 +15,7 @@ namespace Tests;
 /// tests that don't impose these restrictions.
 /// </summary>
 [TestClass]
-public class V3UniversalPureJsonTests
+public class UniversalPureJsonTests
 {
     /// <summary>
     /// Generates combos of input JSON and Formatter options to feed to all of the tests.

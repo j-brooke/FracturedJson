@@ -3,7 +3,7 @@
 namespace Tests;
 
 [TestClass]
-public class V3FormatterTests
+public class FormatterTests
 {
 
     [TestMethod]
