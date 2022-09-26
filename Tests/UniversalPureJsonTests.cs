@@ -143,8 +143,7 @@ public class UniversalPureJsonTests
 
 
     /// <summary>
-    /// Makes sure that the <see cref="FracturedJson.Formatter.MaxInlineLength"/> property is respected.  Note that
-    /// that property refers only to the content of the line, not indentation or object keys.
+    /// Makes sure that the length restriction properties are respected.
     /// </summary>
     [DataTestMethod]
     [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]

@@ -3,7 +3,7 @@
 public record struct FracturedJsonOptions
 {
     public EolStyle JsonEolStyle { get; set; } = EolStyle.Default;
-    public int MaxInlineLength { get; set; } = 80;
+    public int MaxInlineLength { get; set; } = int.MaxValue;
     public int MaxTotalLineLength { get; set; } = 120;
     public int MaxInlineComplexity { get; set; } = 2;
     public int MaxCompactArrayComplexity { get; set; } = 1;
