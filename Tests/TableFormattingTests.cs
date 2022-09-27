@@ -36,6 +36,7 @@ public class TableFormattingTests
         StringAssert.Contains(outputLines[2], "22.00,");
     }
 
+
     [TestMethod]
     public void NestedElementsCompactWhenNeeded()
     {
@@ -64,6 +65,7 @@ public class TableFormattingTests
         StringAssert.Contains(outputLines[2], "22,");
     }
 
+
     [TestMethod]
     public void FallBackOnInlineIfNeeded()
     {
@@ -91,6 +93,41 @@ public class TableFormattingTests
         Assert.AreNotEqual(outputLines[1].IndexOf("position", StringComparison.Ordinal),
             outputLines[2].IndexOf("position", StringComparison.Ordinal));
     }
+
+
+    [TestMethod]
+    public void TablesWithCommentsLineUp()
+    {
+        var inputLines = new[]
+        {
+            "{",
+            "'Firetruck': /* red */ { 'color': '#CC0000' }, ",
+            "'Dumptruck': /* yellow */ { 'color': [255, 255, 0] }, ",
+            "'Godzilla': /* green */  { 'color': '#336633' },  // Not a truck",
+            "/* ! */ 'F150': { 'color': null } ",
+            "}"
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        // Need to be wide enough and allow comments.
+        var opts = new FracturedJsonOptions() { MaxTotalLineLength = 100, CommentPolicy = CommentPolicy.Preserve,
+            JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // All rows should be inlined, so a total of 5 rows.
+        Assert.AreEqual(6, outputLines.Length);
+
+        // Lots of stuff to line up here.
+        TestInstancesLineUp(outputLines, "\"");
+        TestInstancesLineUp(outputLines, ":");
+        TestInstancesLineUp(outputLines, " {");
+        TestInstancesLineUp(outputLines, " }");
+        TestInstancesLineUp(outputLines, "color");
+    }
+
 
     private void TestInstancesLineUp(string[] lines, string substring)
     {
