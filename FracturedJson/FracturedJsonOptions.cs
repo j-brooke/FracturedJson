@@ -8,7 +8,8 @@ public record struct FracturedJsonOptions
     public int MaxInlineComplexity { get; set; } = 2;
     public int MaxCompactArrayComplexity { get; set; } = 1;
     public int MaxTableRowComplexity { get; set; } = 2;
-    
+    public int MinimumCompactArrayRowItems { get; set; } = 3;
+
     /// <summary>
     /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
     /// will include spaces inside the outer brackets.

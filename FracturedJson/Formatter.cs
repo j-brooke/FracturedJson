@@ -158,18 +158,22 @@ public class Formatter
             return false;
         if (item.RequiresMultipleLines)
             return false;
-        
-        // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
-        // be better.
-        var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
-        var avgItemWidth = item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count;
-        if (avgItemWidth * 3 > likelyAvailableLineSpace)
-            return false;
 
+        // If all items are alike, we'll want to format each element as if it were a table row.
         var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
         var templateSize = template.ComputeSize();
-        
+
+        // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
+        // be better.
+        var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
+        var avgItemWidth = _pads.CommaLen
+                           + ((template.IsRowDataCompatible)
+                               ? templateSize
+                               : item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count);
+        if (avgItemWidth * Options.MinimumCompactArrayRowItems > likelyAvailableLineSpace)
+            return false;
+
         var depthAfterColon = StandardFormatStart(item, depth);
 
         // Starting bracket (with no EOL).
