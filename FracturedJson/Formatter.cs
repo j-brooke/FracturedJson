@@ -18,6 +18,7 @@ public class Formatter
 
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
+        _buffer.Clear();
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, false);
