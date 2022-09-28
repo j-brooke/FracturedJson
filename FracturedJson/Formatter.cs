@@ -16,6 +16,9 @@ public class Formatter
     public FracturedJsonOptions Options { get; set; } = new();
     public Func<string,int> StringLengthFunc { get; set; } = StringLengthByCharCount;
 
+    /// <summary>
+    /// Reads in JSON text (or JSON-with-comments), and writes it back out formatted nicely.
+    /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
         _buffer.Clear();
@@ -31,6 +34,10 @@ public class Formatter
         return _buffer.AsString();
     }
 
+    /// <summary>
+    /// Default method for determining the length of strings for alignment purposes.  This usually works fine for Latin
+    /// characters with a monospaced font, but it doesn't handle East Asian characters appropriately.
+    /// </summary>
     public static int StringLengthByCharCount(string s)
     {
         return s.Length;
@@ -148,7 +155,7 @@ public class Formatter
 
     /// <summary>
     /// Tries to add the representation of this array to the buffer, including indents and things, spanning multiple 
-    /// lines but with each child written inline.
+    /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
     private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
@@ -175,9 +182,9 @@ public class Formatter
         if (avgItemWidth * Options.MinCompactArrayRowItems > likelyAvailableLineSpace)
             return false;
 
-        var depthAfterColon = StandardFormatStart(item, depth);
 
-        // Starting bracket (with no EOL).
+        // Add prefixString, indent, prefix comment, starting bracket (with no EOL).
+        var depthAfterColon = StandardFormatStart(item, depth);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
 
         var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
@@ -227,12 +234,25 @@ public class Formatter
         var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
 
         // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
-        // similar, CanBeUsedInTable will be false.
+        // similar, IsRowDataCompatible will be false.
         var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
         if (!template.IsRowDataCompatible)
             return false;
 
+        // If the rows won't fit with everything (including descendents) tabular, try dropping the columns for
+        // the deepest nested items, repeatedly, until it either fits or we give up.
+        //
+        // For instance, here's an example of what fully tabular would look like:
+        // [
+        //     { "a":   3, "b": { "x": 19, "y":  -4           } },
+        //     { "a": 147, "b": {          "y": 111, "z": -99 } }
+        // ]
+        // If that doesn't work, we try this:
+        // [
+        //     { "a":   3, "b": { "x": 19, "y": -4 }   },
+        //     { "a": 147, "b": { "y": 111, "z": -99 } }
+        // ]
         if (!template.TryToFit(availableSpace))
             return false;
 
@@ -288,7 +308,7 @@ public class Formatter
         var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
 
         foreach (var line in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL);
     }
 
     private void FormatBlankLine()
@@ -400,7 +420,7 @@ public class Formatter
 
     /// <summary>
     /// Adds just this element's value to be buffer, inlined.  (Possibly recursively.)  This does not include
-    /// the item's comments (although it could include child elements' comments), or indentation.
+    /// the item's comments (although it will include child elements' comments), or indentation.
     /// </summary>
     private void InlineElementRaw(IBuffer buffer, JsonItem item)
     {
@@ -474,8 +494,9 @@ public class Formatter
         if (commaGoesBeforeComment)
         {
             // For internal row segments, there won't be trailing comments for any of the rows.  But
-            // if this item represents the entire row, then they'll all have commas except the last.
-            // the isWholeRow param lets up put in padding to line that up right.
+            // if this is a whole row, then there will be commas after all but the last one.  So,
+            // if this is a whole row and it doesn't need a comma, then it needs padding to match
+            // the ones above.
             if (includeTrailingComma)
                 buffer.Add(_pads.Comma);
             else if (isWholeRow)
@@ -496,6 +517,9 @@ public class Formatter
         }
     }
 
+    /// <summary>
+    /// Adds just this ARRAY's value inlined, not worrying about comments and prop names and stuff.
+    /// </summary>
     private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
     {
         buffer.Add(_pads.ArrStart(template.PadType));
@@ -508,6 +532,7 @@ public class Formatter
 
             if (isPastEndOfArray)
             {
+                // We're done writing this array's children out.  Now we just need to add space to line up with others.
                 buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
                 if (!isLastInTemplate)
                     buffer.Add(_pads.DummyComma);
@@ -522,13 +547,19 @@ public class Formatter
         buffer.Add(_pads.ArrEnd(template.PadType));
     }
 
+    /// <summary>
+    /// Adds just this OBJECT's value inlined, not worrying about comments and prop names and stuff.
+    /// </summary>
     private void InlineTableRawObject(IBuffer buffer, TableTemplate template, JsonItem item)
     {
         JsonItem? MatchingChild(TableTemplate temp) =>
             item.Children.FirstOrDefault(ch => ch.Name == temp.LocationInParent);
 
+        // For every property in the template, find the corresponding element in this object, if any.
         var matches = template.Children.Select(sub => (sub, MatchingChild(sub)))
             .ToArray();
+
+        // We need to know the last item in the sequence that has a real value, in order to make the commas work out.
         var lastNonNullIdx = matches.Length - 1;
         while (lastNonNullIdx>=0 && matches[lastNonNullIdx].Item2 == null)
             lastNonNullIdx -= 1;
@@ -574,6 +605,10 @@ public class Formatter
             Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
     }
 
+    /// <summary>
+    /// Returns a multiline comment string as an array of strings where newlines have been removed and leading space
+    /// on each line has been trimmed as smartly as possible.
+    /// </summary>
     private static string[] NormalizeMultilineComment(string comment, int firstLineColumn)
     {
         // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
