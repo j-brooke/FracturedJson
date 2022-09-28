@@ -263,7 +263,6 @@ public class Formatter
 
         return true;
     }
-    
 
     /// <summary>
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
@@ -278,6 +277,43 @@ public class Formatter
             FormatItem(item.Children[i], depthAfterColon+1, (i<item.Children.Count-1));
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Adds a (possibly multiline) standalone comment to the buffer, with indents and newlines on each line.
+    /// </summary>
+    private void FormatStandaloneComment(JsonItem item, int depth)
+    {
+        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
+
+        foreach (var line in commentRows)
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
+    }
+
+    private void FormatBlankLine()
+    {
+        _buffer.Add(Options.PrefixString, _pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
+    /// </summary>
+    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        InlineElement(_buffer, item, includeTrailingComma);
+        _buffer.Add(_pads.EOL);
+    }
+
+    /// <summary>
+    /// Adds an item to the buffer, including comments and indents and such, where a comment between the
+    /// prop name and prop value needs to span multiple lines.
+    /// </summary>
+    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        StandardFormatStart(item, depth);
+        _buffer.Add(item.Value);
         StandardFormatEnd(item, includeTrailingComma);
     }
 
@@ -518,43 +554,6 @@ public class Formatter
             }
         }
         buffer.Add(_pads.ObjEnd(template.PadType));
-    }
-
-    /// <summary>
-    /// Adds a (possibly multiline) standalone comment to the buffer, with indents and newlines on each line.
-    /// </summary>
-    private void FormatStandaloneComment(JsonItem item, int depth)
-    {
-        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
-        
-        foreach (var line in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL );
-    }
-
-    private void FormatBlankLine()
-    {
-        _buffer.Add(Options.PrefixString, _pads.EOL);
-    }
-
-    /// <summary>
-    /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
-    /// </summary>
-    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
-    {
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        InlineElement(_buffer, item, includeTrailingComma);
-        _buffer.Add(_pads.EOL);
-    }
-
-    /// <summary>
-    /// Adds an item to the buffer, including comments and indents and such, where a comment between the
-    /// prop name and prop value needs to span multiple lines.
-    /// </summary>
-    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
-    {
-        StandardFormatStart(item, depth);
-        _buffer.Add(item.Value);
-        StandardFormatEnd(item, includeTrailingComma);
     }
 
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
