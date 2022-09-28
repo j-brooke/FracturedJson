@@ -103,10 +103,7 @@ public class Formatter
                 FormatStandaloneComment(item, depth);
                 break;
             default:
-                if (item.RequiresMultipleLines)
-                    FormatSplitKeyValue(item, depth, includeTrailingComma);
-                else
-                    FormatInlineElement(item, depth, includeTrailingComma);
+                FormatInlineElement(item, depth, includeTrailingComma);
                 break;
         }
     }
@@ -547,17 +544,6 @@ public class Formatter
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         InlineElement(_buffer, item, includeTrailingComma);
         _buffer.Add(_pads.EOL);
-    }
-
-    /// <summary>
-    /// Adds an item to the buffer, including comments and indents and such, where a comment between the
-    /// prop name and prop value needs to span multiple lines.
-    /// </summary>
-    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
-    {
-        StandardFormatStart(item, depth);
-        _buffer.Add(item.Value);
-        StandardFormatEnd(item, includeTrailingComma);
     }
 
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)

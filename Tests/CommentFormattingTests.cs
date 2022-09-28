@@ -109,7 +109,7 @@ public class CommentFormattingTests
     }
 
     [TestMethod]
-    public void SplitWhenMiddleCommentRequiresBreak()
+    public void SplitWhenMiddleCommentRequiresBreak1()
     {
         var inputLines = new[]
         {
@@ -132,5 +132,57 @@ public class CommentFormattingTests
         Assert.AreEqual(4, outputLines[1].IndexOf("\"a\"", StringComparison.Ordinal));
         Assert.AreEqual(8, outputLines[2].IndexOf("//1", StringComparison.Ordinal));
         Assert.AreEqual(8, outputLines[3].IndexOf("[", StringComparison.Ordinal));
+    }
+
+
+    [TestMethod]
+    public void SplitWhenMiddleCommentRequiresBreak2()
+    {
+        var inputLines = new[]
+        {
+            "{'a': /*1",
+            "2*/ [true,true]}",
+        };
+
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve, JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // Since there's a comment that requires a line break between the property name and its value, the
+        // comment gets put on a new line with an extra indent level, and the value is written as expanded,
+        // also with the extra indent level
+        Assert.AreEqual(9, outputLines.Length);
+        Assert.AreEqual(4, outputLines[1].IndexOf("\"a\"", StringComparison.Ordinal));
+        Assert.AreEqual(8, outputLines[2].IndexOf("/*1", StringComparison.Ordinal));
+        Assert.AreEqual(8, outputLines[4].IndexOf("[", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void MultilineCommentsPreserveRelativeSpace()
+    {
+        var inputLines = new[]
+        {
+            "[ 1,",
+            "  /* +",
+            "     +",
+            "     + */",
+            "  2]",
+        };
+
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve, JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // The +'s should stay lined up in the output.
+        Assert.AreEqual(7, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, "+");
     }
 }

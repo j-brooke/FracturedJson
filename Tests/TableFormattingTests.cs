@@ -26,11 +26,11 @@ public class TableFormattingTests
         var outputLines = output.TrimEnd().Split('\n');
 
         // Everything should line up.
-        TestInstancesLineUp(outputLines, "x");
-        TestInstancesLineUp(outputLines, "y");
-        TestInstancesLineUp(outputLines, "z");
-        TestInstancesLineUp(outputLines, "position");
-        TestInstancesLineUp(outputLines, "color");
+        TestHelpers.TestInstancesLineUp(outputLines, "x");
+        TestHelpers.TestInstancesLineUp(outputLines, "y");
+        TestHelpers.TestInstancesLineUp(outputLines, "z");
+        TestHelpers.TestInstancesLineUp(outputLines, "position");
+        TestHelpers.TestInstancesLineUp(outputLines, "color");
 
         // The numbers of the y column will be justified.
         StringAssert.Contains(outputLines[2], "22.00,");
@@ -58,8 +58,8 @@ public class TableFormattingTests
         var outputLines = output.TrimEnd().Split('\n');
 
         // Since the available size is reduced, x,y,z will no longer line up, but position and color will.
-        TestInstancesLineUp(outputLines, "position");
-        TestInstancesLineUp(outputLines, "color");
+        TestHelpers.TestInstancesLineUp(outputLines, "position");
+        TestHelpers.TestInstancesLineUp(outputLines, "color");
 
         // The numbers of the y column aren't justified, so the input value is used.
         StringAssert.Contains(outputLines[2], "22,");
@@ -121,22 +121,39 @@ public class TableFormattingTests
         Assert.AreEqual(6, outputLines.Length);
 
         // Lots of stuff to line up here.
-        TestInstancesLineUp(outputLines, "\"");
-        TestInstancesLineUp(outputLines, ":");
-        TestInstancesLineUp(outputLines, " {");
-        TestInstancesLineUp(outputLines, " }");
-        TestInstancesLineUp(outputLines, "color");
+        TestHelpers.TestInstancesLineUp(outputLines, "\"");
+        TestHelpers.TestInstancesLineUp(outputLines, ":");
+        TestHelpers.TestInstancesLineUp(outputLines, " {");
+        TestHelpers.TestInstancesLineUp(outputLines, " }");
+        TestHelpers.TestInstancesLineUp(outputLines, "color");
     }
 
-
-    private void TestInstancesLineUp(string[] lines, string substring)
+    [TestMethod]
+    public void TablesWithBlankLinesLineUp()
     {
-        var indices = lines.Select(str => str.IndexOf(substring, StringComparison.Ordinal))
-            .ToArray();
-        var indexCount = indices
-            .Where(num => num >= 0)
-            .Distinct()
-            .Count();
-        Assert.AreEqual(1, indexCount);
+        var inputLines = new[]
+        {
+            "{'a': [7,8],",
+            "",
+            "//1",
+            "'b': [9,10]}",
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        // Need to be wide enough and allow comments.
+        var opts = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true, JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // All rows should be inlined, so a total of 5 rows.
+        Assert.AreEqual(6, outputLines.Length);
+
+        // Lots of stuff to line up here.
+        TestHelpers.TestInstancesLineUp(outputLines, ":");
+        TestHelpers.TestInstancesLineUp(outputLines, "[");
+        TestHelpers.TestInstancesLineUp(outputLines, "]");
     }
 }

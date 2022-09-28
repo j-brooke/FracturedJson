@@ -31,8 +31,8 @@ public class EastAsianWideCharactersTests
 
         // With the default StringLengthFunc, all characters are treated as having the same width as space, so
         // String.IndexOf should give the same number for each row.
-        TestInstancesLineUp(outputLines, "Job");
-        TestInstancesLineUp(outputLines, "Born");
+        TestHelpers.TestInstancesLineUp(outputLines, "Job");
+        TestHelpers.TestInstancesLineUp(outputLines, "Born");
 
         formatter.StringLengthFunc = WideCharStringLength;
         output = formatter.Reformat(input, 0);
@@ -44,16 +44,6 @@ public class EastAsianWideCharactersTests
         Assert.AreEqual(26, outputLines[3].IndexOf("Job", StringComparison.Ordinal));
     }
 
-    private void TestInstancesLineUp(string[] lines, string substring)
-    {
-        var indices = lines.Select(str => str.IndexOf(substring, StringComparison.Ordinal))
-            .ToArray();
-        var indexCount = indices
-            .Where(num => num >= 0)
-            .Distinct()
-            .Count();
-        Assert.AreEqual(1, indexCount);
-    }
     public static int WideCharStringLength(string str)
     {
         return str.EnumerateRunes().Sum(rune => UnicodeCalculator.GetWidth(rune.Value));
