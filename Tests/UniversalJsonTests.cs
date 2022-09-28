@@ -31,7 +31,7 @@ public class UniversalJsonTests
         }
 
         var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
-        foreach (var file in commentTestFilesDir.EnumerateDirectories("*.jsonc"))
+        foreach (var file in commentTestFilesDir.EnumerateFiles("*.jsonc"))
         {
             var fileData = File.ReadAllText(file.FullName);
             foreach (var options in GenerateOptions())
@@ -123,7 +123,10 @@ public class UniversalJsonTests
         var outputText = formatter.Reformat(inputText, 0);
 
         // Parse will throw an exception if its input (Formatter output) isn't well-formed.
-        var _ = JsonDocument.Parse(outputText);
+        var sysOpts = new JsonDocumentOptions();
+        if (options.CommentPolicy != CommentPolicy.TreatAsError)
+            sysOpts.CommentHandling = JsonCommentHandling.Skip;
+        var _ = JsonDocument.Parse(outputText, sysOpts);
     }
 
 
@@ -234,8 +237,9 @@ public class UniversalJsonTests
                 }
             }
 
-            // If there were multiple top-level items on the line, this must be a compact array case.
-            if (multipleTopLevelItems)
+            // If there were multiple top-level items on the line, this must be a compact array case.  Comments mess
+            // with the "top level" heuristic though.
+            if (multipleTopLevelItems && options.CommentPolicy != CommentPolicy.Preserve)
             {
                 Assert.IsTrue(nestLevel <= options.MaxCompactArrayComplexity);
                 return;

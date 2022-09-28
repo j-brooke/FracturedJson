@@ -60,6 +60,9 @@
       <None Update="FilesWithComments\1.jsonc">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <None Update="FilesWithComments\0.jsonc">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
