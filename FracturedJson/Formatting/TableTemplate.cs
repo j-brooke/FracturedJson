@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using FracturedJson.Tokenizing;
 
 namespace FracturedJson.Formatting;
 
@@ -87,7 +86,8 @@ internal class TableTemplate
 
     /// <summary>
     /// Returns the of the table-formatted items.  It's a method rather than a precomputed static value because
-    /// we might want to remove sub-templates before we're finished.
+    /// we might want to remove sub-templates before we're finished.  This is only valid after
+    /// <see cref="MeasureTableRoot"/> has been called.
     /// </summary>
     public int ComputeSize()
     {
@@ -198,6 +198,17 @@ internal class TableTemplate
         }
         else if (rowSegment.Type == JsonItemType.Object)
         {
+            // If this object has multiple children with the same property name, which is allowed by the JSON standard
+            // although it's hard to imagine anyone would deliberately do it, we can't format it as part of a table.
+            var distinctChildKeyCount = rowSegment.Children.Select(item => item.Name)
+                .Distinct()
+                .Count();
+            if (distinctChildKeyCount != rowSegment.Children.Count)
+            {
+                IsRowDataCompatible = false;
+                return;
+            }
+
             // For each property in rowSegment, check whether there's sub-template with the same name.  If not
             // found, create one.  Then measure recursively.
             foreach (var rowSegChild in rowSegment.Children)

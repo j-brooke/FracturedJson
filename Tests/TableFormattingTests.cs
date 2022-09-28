@@ -160,4 +160,34 @@ public class TableFormattingTests
         TestHelpers.TestInstancesLineUp(outputLines, "[");
         TestHelpers.TestInstancesLineUp(outputLines, "]");
     }
+
+    [TestMethod]
+    public void RejectObjectsWithDuplicateKeys()
+    {
+        // Here we have an object with duplicate 'z' keys.  This is legal in JSON, even though it's hard to imagine
+        // any case where it would actually happen.  Still, we want to reproduce the data faithfully, so
+        // we mustn't try to format it as a table.
+        var inputLines = new[]
+        {
+            "[ { 'x': 1, 'y': 2, 'z': 3 },",
+            "{ 'y': 44, 'z': 55, 'z': 66 } ]",
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions() { JsonEolStyle = EolStyle.Lf, MaxInlineComplexity = 1 };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // The brackets and each object get their own rows.
+        Assert.AreEqual(4, outputLines.Length);
+
+        // We don't expect the y's to line up.
+        Assert.IsTrue(outputLines[1].IndexOf('y') != outputLines[2].IndexOf('y'));
+
+        // There should be 3 z's in the output, just like in the input.
+        var zCount = output.Count(ch => ch == 'z');
+        Assert.AreEqual(3, zCount);
+    }
 }
