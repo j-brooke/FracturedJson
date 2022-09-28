@@ -3,11 +3,15 @@
 namespace Tests;
 
 /// <summary>
-/// Unit tests for complexity and length settings
+/// Unit tests for complexity and length settings.
 /// </summary>
 [TestClass]
 public class LengthAndComplexityTests
 {
+    /// <summary>
+    /// Test a specific piece of input with a variety of MaxInlineComplexity settings, and compare
+    /// the number of lines in the output to the expected values.
+    /// </summary>
     [DataTestMethod]
     [DataRow(4, 1)] // All on one line
     [DataRow(3, 3)] // Outer-most brackets on their own lines
@@ -37,6 +41,9 @@ public class LengthAndComplexityTests
         Assert.AreEqual(expectedNumberOfLines, outputLines.Length);
     }
 
+    /// <summary>
+    /// Tests a known piece of input against multiple values of MaxCompactArrayComplexity.
+    /// </summary>
     [DataTestMethod]
     [DataRow(2, 5)] // 3 formatted columns across 3 lines plus the outer []
     [DataRow(1, 9)] // Each subarray gets its own line, plus the outer []
@@ -63,6 +70,10 @@ public class LengthAndComplexityTests
         Assert.AreEqual(expectedNumberOfLines, outputLines.Length);
     }
 
+    /// <summary>
+    /// Tests a single piece of sample data with multiple length settings, and compares the number of output
+    /// lines with the expected output.
+    /// </summary>
     [DataTestMethod]
     [DataRow(120, 100, 3, 1)] // All on one line
     [DataRow(120, 90, 3, 4)] // Two row compact multiline array, + two for []

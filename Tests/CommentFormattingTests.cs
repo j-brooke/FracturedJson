@@ -2,6 +2,9 @@
 
 namespace Tests;
 
+/// <summary>
+/// Tests having to do with formatting with comments.
+/// </summary>
 [TestClass]
 public class CommentFormattingTests
 {

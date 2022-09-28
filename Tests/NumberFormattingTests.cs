@@ -2,10 +2,12 @@
 
 namespace Tests;
 
+/// <summary>
+/// Tests that numbers are formatted as expected - or left alone when appropriate.
+/// </summary>
 [TestClass]
 public class NumberFormattingTests
 {
-
     [TestMethod]
     public void InlineArrayDoesntJustifyNumbers()
     {
@@ -111,8 +113,8 @@ public class NumberFormattingTests
         const string input = "[1, 2, null, -99]";
         const string expectedOutput = "[\n       1,    2, null,  -99\n]";
 
-        // Here, it's formatted as a compact multiline array (but not really multiline).  All elements are formatted
-        // alike, which means padding spaces on the left and zeros on the right.
+        // In general, if an array contains stuff other than numbers, we don't try to justify them.  Null is an
+        // exception though: an array of numbers and nulls should be justified as numbers.
         var opts = new FracturedJsonOptions() { MaxInlineComplexity = -1, JsonEolStyle = EolStyle.Lf };
 
         var formatter = new Formatter() { Options = opts };

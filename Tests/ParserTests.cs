@@ -1,9 +1,11 @@
 ﻿using FracturedJson;
 using FracturedJson.Parsing;
-using FracturedJson.Tokenizing;
 
 namespace Tests;
 
+/// <summary>
+/// Tests for the Parser class
+/// </summary>
 [TestClass]
 public class ParserTests
 {

@@ -2,6 +2,10 @@
 
 namespace Tests;
 
+/// <summary>
+/// Tests about formatting things in tables, so that corresponding properties and array positions are neatly
+/// lined up, when possible.
+/// </summary>
 [TestClass]
 public class TableFormattingTests
 {
@@ -18,7 +22,7 @@ public class TableFormattingTests
         };
         var input = string.Join("\n", inputLines).Replace('\'', '"');
 
-        // With default options (except EOF, this will be neatly formatted as a table.
+        // With default options (except EOF), this will be neatly formatted as a table.
         var opts = new FracturedJsonOptions() { JsonEolStyle = EolStyle.Lf };
 
         var formatter = new Formatter() { Options = opts };
@@ -151,7 +155,7 @@ public class TableFormattingTests
         // All rows should be inlined, so a total of 5 rows.
         Assert.AreEqual(6, outputLines.Length);
 
-        // Lots of stuff to line up here.
+        // The presence of comments and blank lines shouldn't prevent table formatting.
         TestHelpers.TestInstancesLineUp(outputLines, ":");
         TestHelpers.TestInstancesLineUp(outputLines, "[");
         TestHelpers.TestInstancesLineUp(outputLines, "]");

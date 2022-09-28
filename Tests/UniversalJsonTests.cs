@@ -4,15 +4,19 @@ using FracturedJson;
 namespace Tests;
 
 /// <summary>
-/// Tests that should pass with ANY input and ANY settings, within a few constraints:
+/// <para>Tests that should pass with ANY input and ANY settings, within a few constraints.  These aren't particularly
+/// focused tests.  The idea is to throw a variety of inputs with a wide variety of settings and make sure
+/// nothing horribly unexpected happens.</para>
+///
+/// <para>Constraints:</para>
 /// <list type="bullet">
 ///     <item>The input is valid JSON</item>
 ///     <item>Input strings may not contain any of []{}:,\n</item>
 ///     <item>Values given to PrefixString" may only contain whitespace.</item>
 /// </list>
 ///
-/// Those rules exist to make the output easy to test without understanding the grammar.  Other files might contain
-/// tests that don't impose these restrictions.
+/// <para>Those rules exist to make the output easy to test without understanding the grammar.  Other files might contain
+/// tests that don't impose these restrictions.</para>
 /// </summary>
 [TestClass]
 public class UniversalJsonTests

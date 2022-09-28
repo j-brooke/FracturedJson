@@ -1,5 +1,8 @@
 namespace Tests;
 
+/// <summary>
+/// Utility functions to help with unit tests
+/// </summary>
 public static class TestHelpers
 {
     public static void TestInstancesLineUp(string[] lines, string substring)

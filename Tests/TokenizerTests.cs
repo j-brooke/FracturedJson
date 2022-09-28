@@ -4,6 +4,9 @@ using FracturedJson.Tokenizing;
 
 namespace Tests;
 
+/// <summary>
+/// Tests for the TokenScanner class.
+/// </summary>
 [TestClass]
 [SuppressMessage("ReSharper", "StringLiteralTypo")]
 public class TokenizerTests
