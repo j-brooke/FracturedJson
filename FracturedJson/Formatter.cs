@@ -172,7 +172,7 @@ public class Formatter
                            + ((template.IsRowDataCompatible)
                                ? templateSize
                                : item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count);
-        if (avgItemWidth * Options.MinimumCompactArrayRowItems > likelyAvailableLineSpace)
+        if (avgItemWidth * Options.MinCompactArrayRowItems > likelyAvailableLineSpace)
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth);

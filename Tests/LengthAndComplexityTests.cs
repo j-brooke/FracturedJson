@@ -102,7 +102,7 @@ public class LengthAndComplexityTests
             MaxInlineComplexity = 2,
             MaxCompactArrayComplexity = 2,
             MaxTableRowComplexity = 2,
-            MinimumCompactArrayRowItems = minItemsPerRow,
+            MinCompactArrayRowItems = minItemsPerRow,
         };
 
         var formatter = new Formatter() { Options = opts };

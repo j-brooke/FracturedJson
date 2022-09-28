@@ -10,6 +10,10 @@ namespace FracturedJson;
 /// a blank line or standalone comment.  In some cases, comments won't be stand-alone JsonItems, but will instead
 /// be attached to elements to which they seem to belong.
 /// </summary>
+/// <remarks>
+/// Much of this data is produced by the <see cref="Parsing.Parser"/>, but some of the properties - like all of the
+/// length ones - are not set by Parser, but rather, provided for use by <see cref="Formatter"/>,
+/// </remarks>
 public class JsonItem
 {
     public JsonItemType Type { get; set; }
@@ -85,8 +89,9 @@ public class JsonItem
 
     public override string ToString()
     {
-        var shortName = (Name.Length <= 10) ? Name : Name[..7] + "...";
-        var shortVal = (Value.Length <= 10) ? Value : Value[..7] + "...";
+        // Intended for use by debuggers.
+        var shortName = (Name.Length <= 15) ? Name : Name[..12] + "...";
+        var shortVal = (Value.Length <= 15) ? Value : Value[..12] + "...";
         return $"{{ Name = {shortName}, Value = {shortVal} }}";
     }
 }
