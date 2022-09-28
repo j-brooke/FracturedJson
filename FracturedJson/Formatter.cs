@@ -522,9 +522,6 @@ public class Formatter
     /// </summary>
     private void FormatStandaloneComment(JsonItem item, int depth)
     {
-        if (item.ValueLength == 0)
-            return;
-
         var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
         
         foreach (var line in commentRows)

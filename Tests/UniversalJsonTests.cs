@@ -15,7 +15,7 @@ namespace Tests;
 /// tests that don't impose these restrictions.
 /// </summary>
 [TestClass]
-public class UniversalPureJsonTests
+public class UniversalJsonTests
 {
     /// <summary>
     /// Generates combos of input JSON and Formatter options to feed to all of the tests.
@@ -26,8 +26,23 @@ public class UniversalPureJsonTests
         foreach (var file in testFilesDir.EnumerateFiles("*.json"))
         {
             var fileData = File.ReadAllText(file.FullName);
-            foreach (var formatter in GenerateOptions())
-                yield return new object[] { fileData, formatter };
+            foreach (var options in GenerateOptions())
+                yield return new object[] { fileData, options };
+        }
+
+        var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
+        foreach (var file in commentTestFilesDir.EnumerateDirectories("*.jsonc"))
+        {
+            var fileData = File.ReadAllText(file.FullName);
+            foreach (var options in GenerateOptions())
+            {
+                var moddedOpts = options with
+                {
+                    CommentPolicy = CommentPolicy.Preserve,
+                    PreserveBlankLines = true,
+                };
+                yield return new object[] { fileData, moddedOpts };
+            }
         }
     }
 

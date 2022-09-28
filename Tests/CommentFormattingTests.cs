@@ -106,6 +106,12 @@ public class CommentFormattingTests
         // so the whole thing can be written inline.
         Assert.AreEqual(1, outputLines.Length);
         StringAssert.Contains(outputLines[0], "/*1*/");
+
+        // If we disallow inlining, it'll be handled as a compact multiline array.
+        formatter.Options = opts with { MaxInlineComplexity = 0 };
+        output = formatter.Reformat(input, 0);
+        outputLines = output.TrimEnd().Split('\n');
+        StringAssert.Contains(outputLines[1], "\"a\": /*1*/ [" );
     }
 
     [TestMethod]
