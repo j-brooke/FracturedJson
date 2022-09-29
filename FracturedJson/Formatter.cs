@@ -147,7 +147,7 @@ public class Formatter
             return false;
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        InlineElement(_buffer, item, includeTrailingComma);
+        InlineElement(item, includeTrailingComma);
         _buffer.Add(_pads.EOL);
 
         return true;
@@ -205,9 +205,9 @@ public class Formatter
             
             // Write it out
             if (template.IsRowDataCompatible)
-                InlineTableRowSegment(_buffer, template, child, needsComma, false);
+                InlineTableRowSegment(template, child, needsComma, false);
             else
-                InlineElement(_buffer, child, needsComma);
+                InlineElement(child, needsComma);
             remainingLineSpace -= spaceNeededForNext;
         }
 
@@ -274,7 +274,7 @@ public class Formatter
             }
             
             _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
-            InlineTableRowSegment(_buffer, template, rowItem, (i<item.Children.Count-1), true);
+            InlineTableRowSegment(template, rowItem, (i<item.Children.Count-1), true);
             _buffer.Add(_pads.EOL);
         }
         
@@ -322,7 +322,7 @@ public class Formatter
     private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
     {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        InlineElement(_buffer, item, includeTrailingComma);
+        InlineElement(item, includeTrailingComma);
         _buffer.Add(_pads.EOL);
     }
 
@@ -394,98 +394,98 @@ public class Formatter
     /// comments and children when appropriate.  It DOES NOT include indentation, newlines, or any of that.  This
     /// should only be called if item.RequiresMultipleLines is false.
     /// </summary>
-    private void InlineElement(IBuffer buffer, JsonItem item, bool includeTrailingComma)
+    private void InlineElement(JsonItem item, bool includeTrailingComma)
     {
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
         
         if (item.PrefixCommentLength > 0)
-            buffer.Add(item.PrefixComment, _pads.Comment);
+            _buffer.Add(item.PrefixComment, _pads.Comment);
         
         if (item.NameLength > 0)
-            buffer.Add(item.Name, _pads.Colon);
+            _buffer.Add(item.Name, _pads.Colon);
 
         if (item.MiddleCommentLength > 0)
-            buffer.Add(item.MiddleComment, _pads.Comment);
+            _buffer.Add(item.MiddleComment, _pads.Comment);
 
-        InlineElementRaw(buffer, item);
+        InlineElementRaw(item);
 
         if (includeTrailingComma && item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
+            _buffer.Add(_pads.Comma);
         if (item.PostfixCommentLength > 0)
-            buffer.Add(_pads.Comment, item.PostfixComment);
+            _buffer.Add(_pads.Comment, item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
-            buffer.Add(_pads.Comma);
+            _buffer.Add(_pads.Comma);
     }
 
     /// <summary>
     /// Adds just this element's value to be buffer, inlined.  (Possibly recursively.)  This does not include
     /// the item's comments (although it will include child elements' comments), or indentation.
     /// </summary>
-    private void InlineElementRaw(IBuffer buffer, JsonItem item)
+    private void InlineElementRaw(JsonItem item)
     {
         if (item.Type == JsonItemType.Array)
         {
             var padType = GetPaddingType(item);
-            buffer.Add(_pads.ArrStart(padType));
+            _buffer.Add(_pads.ArrStart(padType));
             
             for (var i=0; i<item.Children.Count; ++i)
-                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+                InlineElement(item.Children[i], (i<item.Children.Count-1));
             
-            buffer.Add(_pads.ArrEnd(padType));
+            _buffer.Add(_pads.ArrEnd(padType));
         }
         else if (item.Type == JsonItemType.Object)
         {
             var padType = GetPaddingType(item);
-            buffer.Add(_pads.ObjStart(padType));
+            _buffer.Add(_pads.ObjStart(padType));
             
             for (var i=0; i<item.Children.Count; ++i)
-                InlineElement(buffer, item.Children[i], (i<item.Children.Count-1));
+                InlineElement(item.Children[i], (i<item.Children.Count-1));
             
-            buffer.Add(_pads.ObjEnd(padType));
+            _buffer.Add(_pads.ObjEnd(padType));
         }
         else
         {
-            buffer.Add(item.Value);
+            _buffer.Add(item.Value);
         }
     }
 
     /// <summary>
     /// Adds this item's representation to the buffer inlined, formatted according to the given TableTemplate.
     /// </summary>
-    private void InlineTableRowSegment(IBuffer buffer, TableTemplate template, JsonItem item, bool includeTrailingComma,
+    private void InlineTableRowSegment(TableTemplate template, JsonItem item, bool includeTrailingComma,
         bool isWholeRow)
     {
         if (template.PrefixCommentLength > 0)
-            buffer.Add(item.PrefixComment, 
+            _buffer.Add(item.PrefixComment,
                 _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength), 
                 _pads.Comment);
         
         if (template.NameLength > 0)
-            buffer.Add(item.Name,
+            _buffer.Add(item.Name,
                 _pads.Spaces(template.NameLength - item.NameLength),
                 _pads.Colon);
 
         if (template.MiddleCommentLength > 0)
-            buffer.Add(item.MiddleComment, 
+            _buffer.Add(item.MiddleComment,
                 _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
                 _pads.Comment);
 
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
             if (template.Type is JsonItemType.Array)
-                InlineTableRawArray(buffer, template, item);
+                InlineTableRawArray(template, item);
             else
-                InlineTableRawObject(buffer, template, item);
+                InlineTableRawObject(template, item);
         }
         else if (template.IsFormattableNumber && item.Type != JsonItemType.Null)
         {
-            buffer.Add(template.FormatNumber(item.Value));
+            _buffer.Add(template.FormatNumber(item.Value));
         }
         else
         {
-            InlineElementRaw(buffer, item);
-            buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
+            InlineElementRaw(item);
+            _buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
         }
 
         // If there's a postfix line comment, the comma needs to happen first.  For block comments,
@@ -498,31 +498,31 @@ public class Formatter
             // if this is a whole row and it doesn't need a comma, then it needs padding to match
             // the ones above.
             if (includeTrailingComma)
-                buffer.Add(_pads.Comma);
+                _buffer.Add(_pads.Comma);
             else if (isWholeRow)
-                buffer.Add(_pads.DummyComma);
+                _buffer.Add(_pads.DummyComma);
         }
         
         if (template.PostfixCommentLength > 0)
-            buffer.Add(_pads.Comment, 
+            _buffer.Add(_pads.Comment,
                 _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength),
                 item.PostfixComment);
         
         if (!commaGoesBeforeComment)
         {
             if (includeTrailingComma)
-                buffer.Add(_pads.Comma);
+                _buffer.Add(_pads.Comma);
             else if (isWholeRow)
-                buffer.Add(_pads.DummyComma);
+                _buffer.Add(_pads.DummyComma);
         }
     }
 
     /// <summary>
     /// Adds just this ARRAY's value inlined, not worrying about comments and prop names and stuff.
     /// </summary>
-    private void InlineTableRawArray(IBuffer buffer, TableTemplate template, JsonItem item)
+    private void InlineTableRawArray(TableTemplate template, JsonItem item)
     {
-        buffer.Add(_pads.ArrStart(template.PadType));
+        _buffer.Add(_pads.ArrStart(template.PadType));
         for (var i = 0; i < template.Children.Count; ++i)
         {
             var isLastInTemplate = (i == template.Children.Count - 1);
@@ -533,24 +533,24 @@ public class Formatter
             if (isPastEndOfArray)
             {
                 // We're done writing this array's children out.  Now we just need to add space to line up with others.
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                _buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
                 if (!isLastInTemplate)
-                    buffer.Add(_pads.DummyComma);
+                    _buffer.Add(_pads.DummyComma);
             }
             else
             {
-                InlineTableRowSegment(buffer, subTemplate, item.Children[i], !isLastInArray, false);
+                InlineTableRowSegment(subTemplate, item.Children[i], !isLastInArray, false);
                 if (isLastInArray && !isLastInTemplate)
-                    buffer.Add(_pads.DummyComma);
+                    _buffer.Add(_pads.DummyComma);
             }
         }
-        buffer.Add(_pads.ArrEnd(template.PadType));
+        _buffer.Add(_pads.ArrEnd(template.PadType));
     }
 
     /// <summary>
     /// Adds just this OBJECT's value inlined, not worrying about comments and prop names and stuff.
     /// </summary>
-    private void InlineTableRawObject(IBuffer buffer, TableTemplate template, JsonItem item)
+    private void InlineTableRawObject(TableTemplate template, JsonItem item)
     {
         JsonItem? MatchingChild(TableTemplate temp) =>
             item.Children.FirstOrDefault(ch => ch.Name == temp.LocationInParent);
@@ -564,7 +564,7 @@ public class Formatter
         while (lastNonNullIdx>=0 && matches[lastNonNullIdx].Item2 == null)
             lastNonNullIdx -= 1;
 
-        buffer.Add(_pads.ObjStart(template.PadType));
+        _buffer.Add(_pads.ObjStart(template.PadType));
         for (var i = 0; i < matches.Length; ++i)
         {
             var subTemplate = matches[i].sub;
@@ -573,18 +573,18 @@ public class Formatter
             var isLastInTemplate = (i == matches.Length - 1);
             if (subItem != null)
             {
-                InlineTableRowSegment(buffer, subTemplate, subItem, !isLastInObject, false);
+                InlineTableRowSegment(subTemplate, subItem, !isLastInObject, false);
                 if (isLastInObject && !isLastInTemplate)
-                    buffer.Add(_pads.DummyComma);
+                    _buffer.Add(_pads.DummyComma);
             }
             else
             {
-                buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                _buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
                 if (!isLastInTemplate)
-                    buffer.Add(_pads.DummyComma);
+                    _buffer.Add(_pads.DummyComma);
             }
         }
-        buffer.Add(_pads.ObjEnd(template.PadType));
+        _buffer.Add(_pads.ObjEnd(template.PadType));
     }
 
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
