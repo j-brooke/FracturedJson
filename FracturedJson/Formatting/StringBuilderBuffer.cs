@@ -8,11 +8,6 @@ namespace FracturedJson.Formatting;
 /// </summary>
 internal class StringBuilderBuffer : IBuffer
 {
-    public void Clear()
-    {
-        _buff.Clear();
-    }
-
     public void Add(string value)
     {
         _buff.Append(value);
@@ -21,14 +16,6 @@ internal class StringBuilderBuffer : IBuffer
     public void Add(params string[] values)
     {
         _buff.AppendJoin(string.Empty, values);
-    }
-
-    public void Add(IBuffer valueBuffer)
-    {
-        if (valueBuffer is StringBuilderBuffer builderBuffer)
-            _buff.Append(builderBuffer);
-        else
-            _buff.Append(valueBuffer.AsString());
     }
 
     public string AsString()

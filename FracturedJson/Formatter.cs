@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FracturedJson.Formatting;
 using FracturedJson.Parsing;
@@ -21,7 +22,26 @@ public class Formatter
     /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
-        _buffer.Clear();
+        _buffer = new StringBuilderBuffer();
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        var parser = new Parser() { Options = Options };
+        var docModel = parser.ParseTopLevel(jsonText, false);
+
+        foreach(var item in docModel)
+        {
+            ComputeItemLengths(item);
+            FormatItem(item, startingDepth, false);
+        }
+
+        var output = _buffer.AsString();
+        _buffer = new NullBuffer();
+
+        return output;
+    }
+
+    public void Reformat(IEnumerable<char> jsonText, int startingDepth, TextWriter writer)
+    {
+        _buffer = new TextWriterBuffer(writer);
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, false);
@@ -31,7 +51,8 @@ public class Formatter
             FormatItem(item, startingDepth, false);
         }
 
-        return _buffer.AsString();
+        writer.Flush();
+        _buffer = new NullBuffer();
     }
 
     /// <summary>
@@ -43,7 +64,7 @@ public class Formatter
         return s.Length;
     }
 
-    private readonly IBuffer _buffer = new StringBuilderBuffer();
+    private IBuffer _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
 
     /// <summary>

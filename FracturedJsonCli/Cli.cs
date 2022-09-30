@@ -27,21 +27,27 @@ namespace FracturedJsonCli
                 var noPadding = false;
                 var allowComments = false;
                 var speedTest = false;
+                string? outFileName = null;
 
                 var cliOpts = new OptionSet()
                 {
-                    { "a|allow", "allow comments and trailing commas", v => allowComments = (v != null) },
+                    { "a|allow", "allow comments and trailing commas", _ => allowComments = true },
                     { "c|complexity=", "maximum inline complexity", (int n) => options.MaxInlineComplexity = n },
                     { "f|file=", "input from file instead of stdin", s => fileName = s },
-                    { "h|help", "show this help info and exit", v => showHelp = (v != null) },
-                    { "j|no-justify", "don't justify parallel numbers", v => options.DontJustifyNumbers = true },
-                    { "l|length=", "maximum total line length", (int n) => options.MaxTotalLineLength = n },
+                    { "h|help", "show this help info and exit", _ => showHelp = true },
+                    { "j|no-justify", "don't justify parallel numbers", _ => options.DontJustifyNumbers = true },
+                    {
+                        "l|length=",
+                        "maximum total line length when inlining",
+                        (int n) => options.MaxTotalLineLength = n
+                    },
                     {
                         "m|multiline=",
                         "maximum multi-line array complexity",
                         (int n) => options.MaxCompactArrayComplexity = n
                     },
-                    { "p|no-padding", "don't include padding spaces", v => noPadding = (v != null) },
+                    { "o|outfile=", "write output to file", s => outFileName = s },
+                    { "p|no-padding", "don't include padding spaces", _ => noPadding = true },
                     {
                         "s|space=",
                         "use this many spaces per indent level",
@@ -49,9 +55,9 @@ namespace FracturedJsonCli
                     },
                     { "r|row=", "maximum table row complexity", (int n) => options.MaxTableRowComplexity = n },
                     { "t|tab", "use tabs for indentation", _ => options.UseTabToIndent = true },
-                    { "u|unix", "use Unix line endings (LF)", v => options.JsonEolStyle = EolStyle.Lf },
-                    { "w|windows", "use Windows line endings (CRLF)", v => options.JsonEolStyle = EolStyle.Crlf },
-                    { "z|speed-test", "write timer data instead of JSON output", v => speedTest = (v != null) },
+                    { "u|unix", "use Unix line endings (LF)", _ => options.JsonEolStyle = EolStyle.Lf },
+                    { "w|windows", "use Windows line endings (CRLF)", _ => options.JsonEolStyle = EolStyle.Crlf },
+                    { "z|speed-test", "write timer data instead of JSON output", _ => speedTest = true },
                 };
 
                 cliOpts.Parse(args);
@@ -94,15 +100,22 @@ namespace FracturedJsonCli
 
                 var timer = Stopwatch.StartNew();
 
-                var formatter = new Formatter() { Options = options };
-                var formattedDoc = formatter.Reformat(inputText, 0);
+                if (outFileName == null)
+                {
+                    var formatter = new Formatter() { Options = options };
+                    formatter.Reformat(inputText, 0, Console.Out);
+                }
+                else
+                {
+                    var formatter = new Formatter() { Options = options };
+                    using var writer = File.CreateText(outFileName);
+                    formatter.Reformat(inputText, 0, writer);
+                }
 
                 timer.Stop();
 
                 if (speedTest)
                     Console.WriteLine($"Processing time: {timer.Elapsed.TotalSeconds} sec");
-                else
-                    Console.WriteLine(formattedDoc);
 
                 return 0;
             }
