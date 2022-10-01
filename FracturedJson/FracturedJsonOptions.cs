@@ -55,6 +55,12 @@ public record struct FracturedJsonOptions
     public int MinCompactArrayRowItems { get; set; } = 3;
 
     /// <summary>
+    /// Depth at which lists/objects are always fully expanded, regardless of other settings.
+    /// -1 = none; 0 = root node only; 1 = root node and its children.
+    /// </summary>
+    public int AlwaysExpandDepth { get; set; } = -1;
+
+    /// <summary>
     /// If an inlined array or object contains other arrays or objects, setting NestedBracketPadding to true
     /// will include spaces inside the outer brackets.
     /// <seealso cref="SimpleBracketPadding"/>

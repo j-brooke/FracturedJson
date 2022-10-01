@@ -154,12 +154,15 @@ public class Formatter
     /// </summary>
     private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma)
     {
-        if (FormatContainerInline(item, depth, includeTrailingComma))
-            return;
-        if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
-            return;
-        if (FormatContainerTable(item, depth, includeTrailingComma))
-            return;
+        if (depth > Options.AlwaysExpandDepth)
+        {
+            if (FormatContainerInline(item, depth, includeTrailingComma))
+                return;
+            if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
+                return;
+            if (FormatContainerTable(item, depth, includeTrailingComma))
+                return;
+        }
         FormatContainerExpanded(item, depth, includeTrailingComma);
     }
 
