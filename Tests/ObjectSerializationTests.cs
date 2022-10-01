@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FracturedJson;
 
 namespace Tests;
@@ -11,12 +12,17 @@ public class ObjectSerializationTests
     public void TestSerializeCalendar()
     {
         var input = CultureInfo.InvariantCulture.Calendar;
-        var opts = new FracturedJsonOptions();
+        var fracturedJsonOptions = new FracturedJsonOptions();
+        var serialOptions = new JsonSerializerOptions()
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
 
-        var formatter = new Formatter() { Options = opts };
-        var output = formatter.Serialize(input, 0);
+        var formatter = new Formatter() { Options = fracturedJsonOptions };
+        var output = formatter.Serialize(input, 0, serialOptions);
 
         StringAssert.Contains(output, "\"Eras\": [1]");
+        StringAssert.Contains(output, "SolarCalendar");
     }
 
     [TestMethod]
