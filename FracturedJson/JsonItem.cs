@@ -90,8 +90,8 @@ public class JsonItem
     public override string ToString()
     {
         // Intended for use by debuggers.
-        var shortName = (Name.Length <= 15) ? Name : Name[..12] + "...";
-        var shortVal = (Value.Length <= 15) ? Value : Value[..12] + "...";
+        var shortName = (Name.Length <= 15) ? Name : Name.Substring(0, 12) + "...";
+        var shortVal = (Value.Length <= 15) ? Value : Value.Substring(0, 12) + "...";
         return $"{{ Name = {shortName}, Value = {shortVal} }}";
     }
 }

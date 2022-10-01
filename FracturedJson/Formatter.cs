@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using FracturedJson.Formatting;
 using FracturedJson.Parsing;
 
@@ -22,37 +23,31 @@ public class Formatter
     /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
-        _buffer = new StringBuilderBuffer();
-        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        var buffer = new StringBuilderBuffer();
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, false);
+        FormatTopLevel(docModel, startingDepth, buffer);
 
-        foreach(var item in docModel)
-        {
-            ComputeItemLengths(item);
-            FormatItem(item, startingDepth, false);
-        }
-
-        var output = _buffer.AsString();
-        _buffer = new NullBuffer();
-
-        return output;
+        return buffer.AsString();
     }
 
     public void Reformat(IEnumerable<char> jsonText, int startingDepth, TextWriter writer)
     {
-        _buffer = new TextWriterBuffer(writer);
-        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        var buffer = new TextWriterBuffer(writer);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, false);
-        foreach(var item in docModel)
-        {
-            ComputeItemLengths(item);
-            FormatItem(item, startingDepth, false);
-        }
+        FormatTopLevel(docModel, startingDepth, buffer);
 
         writer.Flush();
-        _buffer = new NullBuffer();
+    }
+
+    public string Serialize<T>(T obj, int startingDepth, JsonSerializerOptions? serOpts = null)
+    {
+        var buffer = new StringBuilderBuffer();
+        var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
+        FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
+
+        return buffer.AsString();
     }
 
     /// <summary>
@@ -66,6 +61,20 @@ public class Formatter
 
     private IBuffer _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
+
+    private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, IBuffer buffer)
+    {
+        _buffer = buffer;
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+
+        foreach(var item in docModel)
+        {
+            ComputeItemLengths(item);
+            FormatItem(item, startingDepth, false);
+        }
+
+        _buffer = new NullBuffer();
+    }
 
     /// <summary>
     /// Runs StringLengthFunc on every part of every item and stores the value.  Also computes the total minimum

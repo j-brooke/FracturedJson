@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFramework>netstandard2.0</TargetFramework>
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
         <Description>A library for formatting JSON, producing user-readable but compact output.</Description>
@@ -18,10 +18,13 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DocumentationFile></DocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
         <None Include="packageIcon.png" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Text.Json" Version="6.0.6" />
     </ItemGroup>
 </Project>

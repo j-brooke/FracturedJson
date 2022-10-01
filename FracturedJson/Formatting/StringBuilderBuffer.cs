@@ -6,7 +6,7 @@ namespace FracturedJson.Formatting;
 /// A place where strings are piled up sequentially to eventually make one big string, implemented with a
 /// good old .NET StringBuilder.
 /// </summary>
-internal class StringBuilderBuffer : IBuffer
+public class StringBuilderBuffer : IBuffer
 {
     public void Add(string value)
     {
@@ -15,7 +15,8 @@ internal class StringBuilderBuffer : IBuffer
 
     public void Add(params string[] values)
     {
-        _buff.AppendJoin(string.Empty, values);
+        foreach (var val in values)
+            _buff.Append(val);
     }
 
     public string AsString()

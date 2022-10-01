@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace FracturedJson.Tokenizing;
@@ -81,7 +80,6 @@ internal class ScannerState
     /// <summary>
     /// Throws a FracturedJsonException noting the current input position.
     /// </summary>
-    [DoesNotReturn]
     public void Throw(string message)
     {
         throw FracturedJsonException.Create(message, CurrentPosition);

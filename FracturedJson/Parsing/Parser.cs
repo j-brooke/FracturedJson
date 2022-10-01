@@ -463,7 +463,7 @@ public class Parser
         // Any others should be added as unattached comment items.
         if (beforeComments.Count > 0)
         {
-            var lastOfBefore = beforeComments[^1];
+            var lastOfBefore = beforeComments[beforeComments.Count-1];
             if (lastOfBefore.Type == JsonItemType.BlockComment && 
                 lastOfBefore.InputPosition.Row == element.InputPosition.Row)
             {

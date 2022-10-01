@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 
 namespace FracturedJson.Formatting;
@@ -19,11 +18,6 @@ public class TextWriterBuffer : IBuffer
     {
         foreach (var val in values)
             _writer.Write(val);
-    }
-
-    public string AsString()
-    {
-        throw new InvalidOperationException();
     }
 
     private readonly TextWriter _writer;

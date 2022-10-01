@@ -99,6 +99,8 @@ public static class TokenScanner
         }
     }
 
+    private static readonly List<char> _legalAfterBackslash = new List<char>() { '"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'};
+
     /// <summary>
     /// Read the enumerator's current character as a single-character token. (Like [, {, :, ], etc.)
     /// </summary>
@@ -195,8 +197,6 @@ public static class TokenScanner
     [SuppressMessage("ReSharper", "StringLiteralTypo")]
     private static JsonToken ProcessString(ScannerState state, IEnumerator<char> enumerator)
     {
-        const string legalAfterBackslash = "\"\\/bfnrtu";
-        
         state.Buffer.Clear();
         state.Buffer.Append(enumerator.Current);
         state.Advance(false);
@@ -224,7 +224,7 @@ public static class TokenScanner
             // \u, which needs to be followed by 4 hex digits, and \", which should not end the string.
             if (lastCharBeganEscape)
             {
-                if (!legalAfterBackslash.Contains(ch))
+                if (!_legalAfterBackslash.Contains(ch))
                     state.Throw("Bad escaped character in string");
                 if (ch == 'u')
                     expectedHexCount = 4;
