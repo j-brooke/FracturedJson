@@ -87,7 +87,7 @@ public class Parser
 
         var startingInputPosition = enumerator.Current.InputPosition;
 
-        // An element that was already added to the child list that is eligible for a postfix comment.
+        // Holder for an element that was already added to the child list that is eligible for a postfix comment.
         JsonItem? elemNeedingPostComment = null;
         var elemNeedingPostEndRow = -1L;
 
@@ -163,12 +163,12 @@ public class Parser
 
                     if (unplacedComment != null)
                     {
-                        // There was a block comment before this one.  Add it as an unattached comment to make room.
+                        // There was a block comment before this one.  Add it as a standalone comment to make room.
                         childList.Add(unplacedComment);
                         unplacedComment = null;
                     }
 
-                    // If this is a multiline comment, add it as unattached.
+                    // If this is a multiline comment, add it as standalone.
                     var commentItem = ParseSimple(token);
                     if (IsMultilineComment(commentItem))
                     {
@@ -200,7 +200,7 @@ public class Parser
 
                     if (unplacedComment != null)
                     {
-                        // A previous comment followed by a line-ending comment?  Add them both as unattached comments
+                        // A previous comment followed by a line-ending comment?  Add them both as standalone comments
                         childList.Add(unplacedComment);
                         childList.Add(ParseSimple(token));
                         unplacedComment = null;
@@ -323,6 +323,9 @@ public class Parser
                         break;
                     if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
                         break;
+
+                    // If we were hanging on to comments to maybe be prefix comments, add them as standalone before
+                    // adding a blank line item.
                     childList.AddRange(beforePropComments);
                     beforePropComments.Clear();                        
                     childList.Add(ParseSimple(token));
