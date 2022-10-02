@@ -286,6 +286,7 @@ public class Parser
         var beforePropComments = new List<JsonItem>();
         var midPropComments = new List<JsonToken>();
         JsonItem? afterPropComment = null;
+        var afterPropCommentWasAfterComma = false;
         
         var phase = ObjectPhase.BeforePropName;
         var thisObjComplexity = 0;
@@ -306,6 +307,16 @@ public class Parser
                               (isNewLine || isEndOfObject || startingNextPropName || isExcessPostComment);
             if (needToFlush)
             {
+                JsonItem? commentToHoldForNextElement = null;
+                if (startingNextPropName && afterPropCommentWasAfterComma && !isNewLine)
+                {
+                    // We've got an afterPropComment that showed up after the comma, and we're about to process
+                    // another element on this same line.  The comment should go with the next one, to honor the
+                    // comma placement.
+                    commentToHoldForNextElement = afterPropComment;
+                    afterPropComment = null;
+                }
+
                 AttachObjectValuePieces(childList, propertyName!.Value, propertyValue!, linePropValueEnds,
                     beforePropComments, midPropComments, afterPropComment);
                 thisObjComplexity = Math.Max(thisObjComplexity, propertyValue!.Complexity + 1);
@@ -314,6 +325,9 @@ public class Parser
                 beforePropComments.Clear();
                 midPropComments.Clear();
                 afterPropComment = null;
+
+                if (commentToHoldForNextElement != null)
+                    beforePropComments.Add(commentToHoldForNextElement);
             }
 
             switch (token.Type)
@@ -338,11 +352,18 @@ public class Parser
                         throw FracturedJsonException.Create("Comments not allowed with current options",
                             token.InputPosition);
                     if (phase == ObjectPhase.BeforePropName || propertyName==null)
+                    {
                         beforePropComments.Add(ParseSimple(token));
+                    }
                     else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
+                    {
                         midPropComments.Add(token);
+                    }
                     else
+                    {
                         afterPropComment = ParseSimple(token);
+                        afterPropCommentWasAfterComma = (phase == ObjectPhase.AfterComma);
+                    }
                     break;
                 case TokenType.EndObject:
                     endOfObject = true;

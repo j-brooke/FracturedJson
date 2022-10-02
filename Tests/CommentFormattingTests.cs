@@ -194,4 +194,62 @@ public class CommentFormattingTests
         Assert.AreEqual(7, outputLines.Length);
         TestHelpers.TestInstancesLineUp(outputLines, "+");
     }
+
+    [TestMethod]
+    public void AmbiguousCommentsInArraysRespectCommas()
+    {
+        var inputLines = new[]
+        {
+            "[ [ 'a' /*1*/, 'b' ],",
+            "  [ 'c', /*2*/ 'd' ] ]",
+        };
+
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            JsonEolStyle = EolStyle.Lf,
+            AlwaysExpandDepth = 99,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // We split all of the elements onto separate lines, but the comments should stay with them.  The comment
+        // should stick to the element that's on the same side of the comma.
+        Assert.AreEqual(10, outputLines.Length);
+        StringAssert.Contains(output, "\"a\" /*1*/,");
+        StringAssert.Contains(output, "/*2*/ \"d\"");
+    }
+
+    [TestMethod]
+    public void AmbiguousCommentsInObjectsRespectCommas()
+    {
+        var inputLines = new[]
+        {
+            "[ { 'a':'a' /*1*/, 'b':'b' },",
+            "  { 'c':'c', /*2*/ 'd':'d'} ]",
+        };
+
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            JsonEolStyle = EolStyle.Lf,
+            AlwaysExpandDepth = 99,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // We split all of the elements onto separate lines, but the comments should stay with them.  The comment
+        // should stick to the element that's on the same side of the comma.
+        Assert.AreEqual(10, outputLines.Length);
+        StringAssert.Contains(output, "\"a\" /*1*/,");
+        StringAssert.Contains(output, "/*2*/ \"d\"");
+    }
 }

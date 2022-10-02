@@ -1,6 +1,6 @@
 ﻿namespace FracturedJson;
 
-public record struct FracturedJsonOptions
+public record FracturedJsonOptions
 {
     /// <summary>
     /// Dictates which characters to use for line breaks.
@@ -136,7 +136,4 @@ public record struct FracturedJsonOptions
     /// it's nice to have the option here.
     /// </summary>
     public bool AllowTrailingCommas { get; set; } = false;
-    
-    public FracturedJsonOptions()
-    {}
 }

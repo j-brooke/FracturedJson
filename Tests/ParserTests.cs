@@ -537,7 +537,7 @@ public class ParserTests
     [TestMethod]
     public void ObjectWithInlineBlockComments2()
     {
-        // Here, comment a should be postfix-attached to w:1.
+        // Here, comment a should be postfix-attached to x:2.
         const string input = "{  \"w\": 1, /*a*/ \"x\": 2 }";
 
         var options = new FracturedJsonOptions()
@@ -551,7 +551,7 @@ public class ParserTests
         
         Assert.AreEqual(1, docModel.Length);
         Assert.AreEqual(2, docModel[0].Children.Count);
-        Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual("/*a*/", docModel[0].Children[1].PrefixComment);
     }
 
     [TestMethod]

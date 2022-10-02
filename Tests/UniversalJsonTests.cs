@@ -255,4 +255,47 @@ public class UniversalJsonTests
                           || nestLevel <= options.MaxTableRowComplexity);
         }
     }
+
+    [DataTestMethod]
+    [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
+    public void RepeatedFormattingIsStable(string inputText, FracturedJsonOptions options)
+    {
+        var mainFormatter = new Formatter() { Options = options };
+        var initialOutput = mainFormatter.Reformat(inputText, 0);
+
+        var crunchOptions = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = int.MaxValue,
+            MaxInlineLength = int.MaxValue,
+            MaxInlineComplexity = int.MaxValue,
+            MaxCompactArrayComplexity = int.MaxValue,
+            MaxTableRowComplexity = 0,
+            ColonPadding = false,
+            CommaPadding = false,
+            NestedBracketPadding = false,
+            SimpleBracketPadding = false,
+            DontJustifyNumbers = true,
+            PreserveBlankLines = true,
+            CommentPolicy = CommentPolicy.Preserve,
+            IndentSpaces = 0,
+        };
+
+        var crunchFormatter = new Formatter() { Options = crunchOptions };
+        var crunchOutput = crunchFormatter.Reformat(initialOutput, 0);
+
+        var expandOptions = new FracturedJsonOptions()
+        {
+            AlwaysExpandDepth = int.MaxValue,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+        };
+        var expandFormatter = new Formatter() { Options = expandOptions };
+        var expandOutput = expandFormatter.Reformat(crunchOutput, 0);
+
+        var backToStartOutput = mainFormatter.Reformat(expandOutput, 0);
+
+        // Feeding the input through a chain of formatters shouldn't lose or change anything.  Going back to the
+        // original settings should give us the same output, no matter how we've mangled things in between.
+        Assert.AreEqual(initialOutput, backToStartOutput);
+    }
 }

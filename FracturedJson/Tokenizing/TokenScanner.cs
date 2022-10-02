@@ -84,7 +84,7 @@ public static class TokenScanner
                     '"' => ProcessString(state, enumerator),
                     '-' => ProcessNumber(state, enumerator, out lookedAhead),
                     _ when char.IsDigit(ch) => ProcessNumber(state, enumerator, out lookedAhead),
-                    _ => throw new FracturedJsonException("Unexpected character", state.CurrentPosition)
+                    _ => throw FracturedJsonException.Create("Unexpected character", state.CurrentPosition)
                 };                
             }
             
