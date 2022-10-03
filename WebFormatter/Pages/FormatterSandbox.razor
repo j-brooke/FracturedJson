@@ -9,7 +9,7 @@
         <div>
             <div><label for="jsonInput">JSON Input:</label></div>
             <textarea class="json-box" @bind="State.InputJson"
-                autofocus rows="15" cols="100" id="jsonInput" spellcheck="false"
+                autofocus rows="15" cols="100" id="jsonInput" spellcheck="false" @ref="_inputBoxRef"
                 placeholder="Paste your favorite JSON data here">
             </textarea>
         </div>
@@ -29,4 +29,12 @@
 @code {
     [Parameter]
     public WebFormatterState State { get; init; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await _inputBoxRef.FocusAsync();
+    }
+
+    private ElementReference _inputBoxRef;
 }
