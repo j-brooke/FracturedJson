@@ -8,15 +8,23 @@
     <div class="input-output-area">
         <div>
             <div><label for="jsonInput">JSON Input:</label></div>
-            <textarea class="json-box" @bind="State.InputJson" autofocus rows="15" cols="100" id="jsonInput" placeholder="Paste your favorite JSON data here"></textarea>
+            <textarea class="json-box" @bind="State.InputJson"
+                autofocus rows="15" cols="100" id="jsonInput" spellcheck="false"
+                placeholder="Paste your favorite JSON data here">
+            </textarea>
         </div>
         <button type="button" @onclick="State.DoFormat">Format</button>
         <div>
             <div><label for="jsonOutput">Formatted Output:</label></div>
-            <textarea class="json-box" @bind="State.OutputJson" rows="15" cols="100" id="jsonOutput" placeholder="Formatted JSON will appear here"></textarea>
+            <textarea class="json-box" @bind="State.OutputJson"
+                rows="15" cols="100" id="jsonOutput" spellcheck="false"
+                placeholder="Formatted JSON will appear here">
+            </textarea>
         </div>
     </div>
 </div>
+
+
 
 @code {
     [Parameter]

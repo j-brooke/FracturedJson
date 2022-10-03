@@ -1,3 +1,12 @@
 input.number {
     width: 5em;
 }
+
+.section-label {
+    font-weight: bold;
+    padding-top: 1ch;
+}
+
+h2 {
+    margin: 6px 0 6px 0;
+}

@@ -1,9 +1,16 @@
+textarea {
+    width: 100%;
+}
+
 .whole-sandbox {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: max-content auto;
+}
+
+.settings-sidebar {
+    grid-area: 1 / 1 / 1 / 1;
 }
 
 .input-output-area {
-    display: flex;
-    flex-direction: column;
+    grid-area: 1 / 2 / 1 / 2;
 }
