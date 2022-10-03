@@ -1,42 +1,24 @@
 @page "/"
-@using FracturedJson
 
-<h3>FormatterSandbox</h3>
+<div class="whole-sandbox">
+    <div class="settings-sidebar">
+        <SettingsPanel State="State"/>
+    </div>
 
-<div>
-    <div><label for="jsonInput">JSON Input:</label></div>
-    <textarea class="json-box" @bind="State.InputJson" autofocus rows="15" cols="100" id="jsonInput" placeholder="Paste your favorite JSON data here"></textarea>
-</div>
-<SettingsPanel State="State" />
-<button type="button" @onclick="DoFormat">Format</button>
-<div>
-    <div><label for="jsonOutput">Formatted Output:</label></div>
-    <textarea class="json-box" @bind="State.OutputJson" rows="15" cols="100" id="jsonOutput" placeholder="Formatted JSON will appear here"></textarea>
+    <div class="input-output-area">
+        <div>
+            <div><label for="jsonInput">JSON Input:</label></div>
+            <textarea class="json-box" @bind="State.InputJson" autofocus rows="15" cols="100" id="jsonInput" placeholder="Paste your favorite JSON data here"></textarea>
+        </div>
+        <button type="button" @onclick="State.DoFormat">Format</button>
+        <div>
+            <div><label for="jsonOutput">Formatted Output:</label></div>
+            <textarea class="json-box" @bind="State.OutputJson" rows="15" cols="100" id="jsonOutput" placeholder="Formatted JSON will appear here"></textarea>
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter]
     public WebFormatterState State { get; init; } = new();
-
-    private readonly Formatter _formatter = new();
-
-    private void DoFormat()
-    {
-        try
-        {
-            _formatter.Options = State.Options;
-            State.OutputJson = _formatter.Reformat(State.InputJson, 0);
-        }
-        catch (FracturedJsonException e)
-        {
-            State.OutputJson = e.Message;
-        }
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        State.Options = State.Options with { MaxTotalLineLength = 100, CommentPolicy = CommentPolicy.Preserve };
-    }
-
 }

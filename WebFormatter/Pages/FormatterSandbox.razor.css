@@ -1,0 +1,9 @@
+.whole-sandbox {
+    display: flex;
+    flex-direction: row;
+}
+
+.input-output-area {
+    display: flex;
+    flex-direction: column;
+}
