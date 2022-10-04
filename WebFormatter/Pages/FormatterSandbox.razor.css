@@ -2,6 +2,15 @@ textarea {
     width: 100%;
 }
 
+button {
+    background-color: cadetblue;
+}
+
+button.fmt-btn {
+    padding: 6px 6px 6px 6px;
+    font-weight: bold;
+}
+
 .whole-sandbox {
     display: grid;
     grid-template-columns: max-content auto;

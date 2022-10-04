@@ -33,5 +33,18 @@ public class WebFormatterState
         }
     }
 
+    public void DoMinify()
+    {
+        try
+        {
+            _formatter.Options = Options;
+            OutputJson = _formatter.Minify(InputJson);
+        }
+        catch (FracturedJsonException e)
+        {
+            OutputJson = e.Message;
+        }
+    }
+
     private readonly Formatter _formatter;
 }
