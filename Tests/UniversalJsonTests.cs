@@ -91,28 +91,12 @@ public class UniversalJsonTests
         };
     }
 
-    /// <summary>
-    /// Returns the line, absent the prefix and indentation.
-    /// </summary>
-    private static string LineValueAfterColon(FracturedJsonOptions options, string line)
+    private static string SkipPrefixAndIndent(FracturedJsonOptions options, string line)
     {
         // Skip past the prefix string and whitespace.
         if (!line.StartsWith(options.PrefixString))
             throw new Exception("Output line does not begin with prefix string");
         var lineAfterPrefix = line.Substring(options.PrefixString.Length).TrimStart();
-
-        if (lineAfterPrefix.StartsWith('"'))
-        {
-            var indexOfSecondQuote = lineAfterPrefix.IndexOf('"', 1);
-
-            if (indexOfSecondQuote < 0)
-                throw new Exception("Mismatched quotes or something");
-
-            var indexOfColon = lineAfterPrefix.IndexOf(':', indexOfSecondQuote + 1);
-            if (indexOfColon >= 0)
-                lineAfterPrefix = lineAfterPrefix.Substring(indexOfColon + 1).TrimStart();
-        }
-
         return lineAfterPrefix;
     }
 
@@ -171,28 +155,21 @@ public class UniversalJsonTests
     [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
     public void MaxLengthRespected(string inputText, FracturedJsonOptions options)
     {
-        const string structuralChars = "[]{}:,";
-
         var formatter = new Formatter() { Options = options };
         var outputText = formatter.Reformat(inputText, 0);
         var outputLines = outputText.TrimEnd().Split(EolString(options));
 
         foreach (var line in outputLines)
         {
-            var content = LineValueAfterColon(options, line);
+            var content = SkipPrefixAndIndent(options, line);
 
             // If the content is shorter than the max, it's all good.
-            if (content.Length <= options.MaxInlineLength)
+            if (content.Length <= options.MaxInlineLength && line.Length <= options.MaxTotalLineLength)
                 continue;
 
-            // If the content is a single element - a long string or number - it's allowed to exceed the limit.
-            // We'll consider it a single element if there are no brackets or colons, and no commas other than maybe one
-            // at the end.
-            var noTrailingComma = content.TrimEnd();
-            if (noTrailingComma.EndsWith(','))
-                noTrailingComma = noTrailingComma.Substring(0, noTrailingComma.Length - 1);
-            var isSingleElem = !noTrailingComma.Any(c => structuralChars.Contains(c));
-            Assert.IsTrue(isSingleElem);
+            // We'll consider it a single element if there's no more than one comma.
+            var commaCount = content.Count(ch => ch == ',');
+            Assert.IsTrue(commaCount <= 1);
         }
     }
 
@@ -207,7 +184,7 @@ public class UniversalJsonTests
         // Look at each line of the output separately, counting the nesting level in each.
         foreach (var line in outputLines)
         {
-            var content = LineValueAfterColon(options, line);
+            var content = SkipPrefixAndIndent(options, line);
 
             // Keep a running total of opens vs closes.  Since Formatter treats empty arrays and objects as complexity
             // zero just like primitives, we don't update nestLevel until we see something other than an empty.
@@ -263,25 +240,11 @@ public class UniversalJsonTests
         var mainFormatter = new Formatter() { Options = options };
         var initialOutput = mainFormatter.Reformat(inputText, 0);
 
-        var crunchOptions = new FracturedJsonOptions()
-        {
-            MaxTotalLineLength = int.MaxValue,
-            MaxInlineLength = int.MaxValue,
-            MaxInlineComplexity = int.MaxValue,
-            MaxCompactArrayComplexity = int.MaxValue,
-            MaxTableRowComplexity = 0,
-            ColonPadding = false,
-            CommaPadding = false,
-            NestedBracketPadding = false,
-            SimpleBracketPadding = false,
-            DontJustifyNumbers = true,
-            PreserveBlankLines = true,
-            CommentPolicy = CommentPolicy.Preserve,
-            IndentSpaces = 0,
-        };
+        var crunchOutput = mainFormatter.Minify(initialOutput);
+        var backToStartOutput1 = mainFormatter.Reformat(crunchOutput, 0);
 
-        var crunchFormatter = new Formatter() { Options = crunchOptions };
-        var crunchOutput = crunchFormatter.Reformat(initialOutput, 0);
+        // We formatted it, then minified that, then reformatted that.  It should be the same.
+        Assert.AreEqual(initialOutput, backToStartOutput1);
 
         var expandOptions = new FracturedJsonOptions()
         {
@@ -292,10 +255,10 @@ public class UniversalJsonTests
         var expandFormatter = new Formatter() { Options = expandOptions };
         var expandOutput = expandFormatter.Reformat(crunchOutput, 0);
 
-        var backToStartOutput = mainFormatter.Reformat(expandOutput, 0);
+        var backToStartOutput2 = mainFormatter.Reformat(expandOutput, 0);
 
-        // Feeding the input through a chain of formatters shouldn't lose or change anything.  Going back to the
-        // original settings should give us the same output, no matter how we've mangled things in between.
-        Assert.AreEqual(initialOutput, backToStartOutput);
+        // For good measure, we took the minified output and expanded it as much as possible, and then formatted that.
+        // Again, it should be the same as our original formatting.
+        Assert.AreEqual(initialOutput, backToStartOutput2);
     }
 }

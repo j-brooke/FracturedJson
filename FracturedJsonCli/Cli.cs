@@ -28,12 +28,13 @@ namespace FracturedJsonCli
                 var allowComments = false;
                 var speedTest = false;
                 string? outFileName = null;
+                var minify = false;
 
                 var cliOpts = new OptionSet()
                 {
                     { "a|allow", "allow comments and trailing commas", _ => allowComments = true },
                     { "c|complexity=", "maximum inline complexity", (int n) => options.MaxInlineComplexity = n },
-                    { "e|expand=", "always-expand depth", (int n) => options.AlwaysExpandDepth = n},
+                    { "e|expand=", "always-expand depth", (int n) => options.AlwaysExpandDepth = n },
                     { "f|file=", "input from file instead of stdin", s => fileName = s },
                     { "h|help", "show this help info and exit", _ => showHelp = true },
                     { "j|no-justify", "don't justify parallel numbers", _ => options.DontJustifyNumbers = true },
@@ -58,6 +59,7 @@ namespace FracturedJsonCli
                     { "t|tab", "use tabs for indentation", _ => options.UseTabToIndent = true },
                     { "u|unix", "use Unix line endings (LF)", _ => options.JsonEolStyle = EolStyle.Lf },
                     { "w|windows", "use Windows line endings (CRLF)", _ => options.JsonEolStyle = EolStyle.Crlf },
+                    { "minify", "remove unnecessary space but preserve comments", _ => minify = true },
                     { "z|speed-test", "write timer data instead of JSON output", _ => speedTest = true },
                 };
 
@@ -104,13 +106,19 @@ namespace FracturedJsonCli
                 if (outFileName == null)
                 {
                     var formatter = new Formatter() { Options = options };
-                    formatter.Reformat(inputText, 0, Console.Out);
+                    if (minify)
+                        formatter.Minify(inputText, Console.Out);
+                    else
+                        formatter.Reformat(inputText, 0, Console.Out);
                 }
                 else
                 {
                     var formatter = new Formatter() { Options = options };
                     using var writer = File.CreateText(outFileName);
-                    formatter.Reformat(inputText, 0, writer);
+                    if (minify)
+                        formatter.Minify(inputText, writer);
+                    else
+                        formatter.Reformat(inputText, 0, writer);
                 }
 
                 timer.Stop();

@@ -19,7 +19,7 @@ public class Formatter
     public Func<string,int> StringLengthFunc { get; set; } = StringLengthByCharCount;
 
     /// <summary>
-    /// Reads in JSON text (or JSON-with-comments), and writes it back out formatted nicely.
+    /// Reads in JSON text (or JSON-with-comments), and returns a nicely-formatted string of the same content.
     /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth)
     {
@@ -31,6 +31,10 @@ public class Formatter
         return buffer.AsString();
     }
 
+    /// <summary>
+    /// Reads in JSON text (or JSON-with-comments), and writes a nicely-formatted version of the same content
+    /// to the writer.
+    /// </summary>
     public void Reformat(IEnumerable<char> jsonText, int startingDepth, TextWriter writer)
     {
         var buffer = new TextWriterBuffer(writer);
@@ -41,6 +45,9 @@ public class Formatter
         writer.Flush();
     }
 
+    /// <summary>
+    /// Writes the serialized object as a nicely-formatted string.
+    /// </summary>
     public string Serialize<T>(T obj, int startingDepth, JsonSerializerOptions? serOpts = null)
     {
         var buffer = new StringBuilderBuffer();
@@ -48,6 +55,46 @@ public class Formatter
         FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
 
         return buffer.AsString();
+    }
+
+    /// <summary>
+    /// Writes the serialized object to the writer as a nicely-formatted text.
+    /// </summary>
+    public void Serialize<T>(T obj, int startingDepth, TextWriter writer, JsonSerializerOptions? serOpts = null)
+    {
+        var buffer = new TextWriterBuffer(writer);
+        var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
+        FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
+
+        writer.Flush();
+    }
+
+    /// <summary>
+    /// Writes the given JSON input as a JSON string with all unnecessary space removed.  If comments and/or blank
+    /// lines are allowed, they are written preserved.
+    /// </summary>
+    public string Minify(IEnumerable<char> jsonText)
+    {
+        var buffer = new StringBuilderBuffer();
+        var parser = new Parser() { Options = Options };
+        var docModel = parser.ParseTopLevel(jsonText, false);
+        MinifyTopLevel(docModel, buffer);
+
+        return buffer.AsString();
+    }
+
+    /// <summary>
+    /// Writes the given JSON input to the writer as a JSON with all unnecessary space removed.  If comments and/or
+    /// blank lines are allowed, they are written preserved.
+    /// </summary>
+    public void Minify(IEnumerable<char> jsonText, TextWriter writer)
+    {
+        var buffer = new TextWriterBuffer(writer);
+        var parser = new Parser() { Options = Options };
+        var docModel = parser.ParseTopLevel(jsonText, false);
+        MinifyTopLevel(docModel, buffer);
+
+        writer.Flush();
     }
 
     /// <summary>
@@ -72,6 +119,18 @@ public class Formatter
             ComputeItemLengths(item);
             FormatItem(item, startingDepth, false);
         }
+
+        _buffer = new NullBuffer();
+    }
+
+    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, IBuffer buffer)
+    {
+        _buffer = buffer;
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+
+        var atStartOfNewLine = true;
+        foreach (var item in docModel)
+            atStartOfNewLine = MinifyItem(item, atStartOfNewLine);
 
         _buffer = new NullBuffer();
     }
@@ -292,6 +351,9 @@ public class Formatter
         var depthAfterColon = StandardFormatStart(item, depth);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
 
+        // Take note of the position of the last actual element, for comma decisions.  The last element
+        // might not be the last item.
+        var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
         {
             var rowItem = item.Children[i];
@@ -307,7 +369,7 @@ public class Formatter
             }
             
             _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
-            InlineTableRowSegment(template, rowItem, (i<item.Children.Count-1), true);
+            InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
             _buffer.Add(_pads.EOL);
         }
         
@@ -325,9 +387,12 @@ public class Formatter
     {
         var depthAfterColon = StandardFormatStart(item, depth);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
-        
+
+        // Take note of the position of the last actual element, for comma decisions.  The last element
+        // might not be the last item.
+        var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(item.Children[i], depthAfterColon+1, (i<item.Children.Count-1));
+            FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex));
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);
@@ -639,6 +704,98 @@ public class Formatter
     }
 
     /// <summary>
+    /// Recursively write a minified version of the item to the buffer, while preserving comments.
+    /// </summary>
+    private bool MinifyItem(JsonItem item, bool atStartOfNewLine)
+    {
+        var newline = "\n";
+        _buffer.Add(item.PrefixComment);
+        if (item.Name.Length > 0)
+            _buffer.Add(item.Name, ":");
+
+        if (item.MiddleComment.Contains(newline))
+        {
+            var normalizedComment = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
+            foreach(var line in normalizedComment)
+                _buffer.Add(line, newline);
+        }
+        else
+        {
+            _buffer.Add(item.MiddleComment);
+        }
+
+        if (item.Type is JsonItemType.Array or JsonItemType.Object)
+        {
+            var (openBracket, closeBracket) = (item.Type is JsonItemType.Object) ? ("{", "}") : ("[", "]");
+            _buffer.Add(openBracket);
+
+            // Loop through children.  Print commas when needed.  Keep track of when we've started a new line -
+            // that's important for blank lines.
+            var needsComma = false;
+            atStartOfNewLine = false;
+            foreach (var child in item.Children)
+            {
+                if (child.Type is not (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment))
+                {
+                    if (needsComma)
+                        _buffer.Add(",");
+                    needsComma = true;
+                }
+                atStartOfNewLine = MinifyItem(child, atStartOfNewLine);
+            }
+            _buffer.Add(closeBracket);
+        }
+        else if (item.Type is JsonItemType.BlankLine)
+        {
+            // Make sure we're starting on a new line before inserting a blank line.  Otherwise some can be lost.
+            if (!atStartOfNewLine)
+                _buffer.Add(newline);
+            _buffer.Add(newline);
+            return true;
+        }
+        else if (item.Type is JsonItemType.LineComment)
+        {
+            // Make sure we start on a new line for the comment, so that it will definitely be parsed as standalone.
+            if (!atStartOfNewLine)
+                _buffer.Add(newline);
+            _buffer.Add(item.Value, newline);
+            return true;
+        }
+        else if (item.Type is JsonItemType.BlockComment)
+        {
+            // Make sure we start on a new line for the comment, so that it will definitely be parsed as standalone.
+            if (!atStartOfNewLine)
+                _buffer.Add(newline);
+
+            if (item.Value.Contains(newline))
+            {
+                var normalizedComment = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
+                foreach(var line in normalizedComment)
+                    _buffer.Add(line, newline);
+                return true;
+            }
+            else
+            {
+                _buffer.Add(item.Value, newline);
+                return true;
+            }
+        }
+        else
+        {
+            _buffer.Add(item.Value);
+        }
+
+        _buffer.Add(item.PostfixComment);
+        if (item.PostfixComment.Length>0 && item.IsPostCommentLineStyle)
+        {
+            _buffer.Add(newline);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Returns a multiline comment string as an array of strings where newlines have been removed and leading space
     /// on each line has been trimmed as smartly as possible.
     /// </summary>
@@ -669,5 +826,22 @@ public class Formatter
         }
 
         return commentRows;
+    }
+
+    /// <summary>
+    /// Returns the index in the given list of the last element - that is, item that's not a standalone comment
+    /// or blank line.  Used to decide where commas should go.
+    /// </summary>
+    private static int IndexOfLastElement(IList<JsonItem> itemList)
+    {
+        for (var i = itemList.Count - 1; i >= 0; --i)
+        {
+            var isElement = itemList[i].Type is not
+                (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment);
+            if (isElement)
+                return i;
+        }
+
+        return -1;
     }
 }
