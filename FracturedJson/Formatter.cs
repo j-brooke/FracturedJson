@@ -538,8 +538,8 @@ public class Formatter
         
         if (template.PostfixCommentLength > 0)
             _buffer.Add(_pads.Comment,
-                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength),
-                item.PostfixComment);
+                item.PostfixComment,
+                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
         
         if (!commaGoesBeforeComment)
         {

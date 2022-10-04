@@ -24,7 +24,7 @@ public class PadFormattingTests
                 NestedBracketPadding = false,
                 SimpleBracketPadding = false,
                 MaxCompactArrayComplexity = 0,
-                MaxTableRowComplexity = 0,
+                MaxTableRowComplexity = -1,
             };
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);

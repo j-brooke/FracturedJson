@@ -57,10 +57,6 @@ internal class TableTemplate
     /// </summary>
     public void MeasureTableRoot(JsonItem tableRoot)
     {
-        IsRowDataCompatible = (tableRoot.Type is JsonItemType.Array or JsonItemType.Object);
-        if (!IsRowDataCompatible)
-            return;
-        
         // For each row of the potential table, measure it and its children, making room for everything.
         // (Or, if there are incompatible types at any level, set CanBeUsedInTable to false.)
         foreach(var child in tableRoot.Children)
@@ -74,7 +70,7 @@ internal class TableTemplate
 
     public bool TryToFit(int maximumLength)
     {
-        for (var complexity = GetTemplateComplexity(); complexity > 0; --complexity)
+        for (var complexity = GetTemplateComplexity(); complexity >= 0; --complexity)
         {
             if (ComputeSize() <= maximumLength)
                 return true;
@@ -146,13 +142,13 @@ internal class TableTemplate
         // compatible with everything.
         if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
         {
-            IsRowDataCompatible = (Type is JsonItemType.True or JsonItemType.Null);
+            IsRowDataCompatible &= (Type is JsonItemType.True or JsonItemType.Null);
             Type = JsonItemType.True;
             IsFormattableNumber = false;
         }
         else if (rowSegment.Type is JsonItemType.Number)
         {
-            IsRowDataCompatible = (Type is JsonItemType.Number or JsonItemType.Null);
+            IsRowDataCompatible &= (Type is JsonItemType.Number or JsonItemType.Null);
             Type = JsonItemType.Number;
         }
         else if (rowSegment.Type is JsonItemType.Null)
@@ -161,7 +157,7 @@ internal class TableTemplate
         }
         else
         {
-            IsRowDataCompatible = (Type == rowSegment.Type || Type == JsonItemType.Null);
+            IsRowDataCompatible &= (Type == rowSegment.Type || Type == JsonItemType.Null);
             if (Type is JsonItemType.Null)
                 Type = rowSegment.Type;
             IsFormattableNumber = false;
