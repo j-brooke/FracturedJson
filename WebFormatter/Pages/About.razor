@@ -1,0 +1,28 @@
+﻿@page "/about"
+@using System.Reflection
+@using FracturedJson
+
+<h3>About FracturedJson</h3>
+
+<div>Web Formatter version: @GetWebVersion()</div>
+<div>FracturedJson library version: @GetFjVersion()</div>
+
+<div><a href="https://github.com/j-brooke/FracturedJson">Project Homepage on GitHub</a></div>
+
+<p>FracturedJson is a family of tools for formatting JSON documents in a way that's easy for humans to read.  That means
+    putting as much as is reasonable on each line, but not more.  There are a lot of settings that you can use to
+    customize the output, but the general idea is that it should just work with any data set.</p>
+
+
+@code {
+
+    private string GetWebVersion()
+    {
+        return Assembly.GetAssembly(typeof(WebFormatterState))?.GetName().Version?.ToString() ?? "unknown";
+    }
+
+    private string GetFjVersion()
+    {
+        return Assembly.GetAssembly(typeof(Formatter))?.GetName().Version?.ToString() ?? "unknown";
+    }
+}
