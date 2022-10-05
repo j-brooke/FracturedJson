@@ -262,14 +262,13 @@ public class Formatter
         // If all items are alike, we'll want to format each element as if it were a table row.
         var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
         template.MeasureTableRoot(item);
-        var templateSize = template.ComputeSize();
 
         // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
         // be better.
         var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
         var avgItemWidth = _pads.CommaLen
                            + ((template.IsRowDataCompatible)
-                               ? templateSize
+                               ? template.TotalLength
                                : item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count);
         if (avgItemWidth * Options.MinCompactArrayRowItems > likelyAvailableLineSpace)
             return false;
@@ -287,7 +286,7 @@ public class Formatter
             var child = item.Children[i];
             var needsComma = (i < item.Children.Count - 1);
             var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) + 
-                                     ((template.IsRowDataCompatible) ? templateSize : child.MinimumTotalLength);
+                                     ((template.IsRowDataCompatible) ? template.TotalLength : child.MinimumTotalLength);
 
             if (remainingLineSpace < spaceNeededForNext)
             {
@@ -583,7 +582,7 @@ public class Formatter
         else
         {
             InlineElementRaw(item);
-            _buffer.Add(_pads.Spaces(template.ValueLength - item.ValueLength));
+            _buffer.Add(_pads.Spaces(template.CompositeValueLength - item.ValueLength));
         }
 
         // If there's a postfix line comment, the comma needs to happen first.  For block comments,
@@ -631,7 +630,7 @@ public class Formatter
             if (isPastEndOfArray)
             {
                 // We're done writing this array's children out.  Now we just need to add space to line up with others.
-                _buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                _buffer.Add(_pads.Spaces(subTemplate.TotalLength));
                 if (!isLastInTemplate)
                     _buffer.Add(_pads.DummyComma);
             }
@@ -677,7 +676,7 @@ public class Formatter
             }
             else
             {
-                _buffer.Add(_pads.Spaces(subTemplate.ComputeSize()));
+                _buffer.Add(_pads.Spaces(subTemplate.TotalLength));
                 if (!isLastInTemplate)
                     _buffer.Add(_pads.DummyComma);
             }

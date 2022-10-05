@@ -31,12 +31,14 @@ internal class TableTemplate
     public int RowCount { get; private set; }
     
     public int NameLength { get; private set; }
-    public int ValueLength { get; private set; }
+    public int SimpleValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public int PostfixCommentLength { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
     public bool IsFormattableNumber { get; private set; }
+    public int CompositeValueLength { get; private set; }
+    public int TotalLength { get; private set; }
     
     /// <summary>
     /// If this TableTemplate corresponds to an object or array, Children contains sub-templates
@@ -62,51 +64,27 @@ internal class TableTemplate
         foreach(var child in tableRoot.Children)
             MeasureRowSegment(child);
 
-        PruneUnusableSegments(int.MaxValue);
+        // Get rid of incomplete junk and figure out our size.
+        PruneAndRecompute(int.MaxValue);
 
         // If there are fewer than 2 actual data rows (i.e., not standalone comments), no point making a table.
         IsRowDataCompatible &= (RowCount >= 2);
     }
 
+    /// <summary>
+    /// Check if the template's width fits in the given size.  Repeatedly drop inner formatting and
+    /// recompute to make it fit, if needed.
+    /// </summary>
     public bool TryToFit(int maximumLength)
     {
         for (var complexity = GetTemplateComplexity(); complexity >= 0; --complexity)
         {
-            if (ComputeSize() <= maximumLength)
+            if (TotalLength <= maximumLength)
                 return true;
-            PruneUnusableSegments(complexity-1);
+            PruneAndRecompute(complexity-1);
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Returns the of the table-formatted items.  It's a method rather than a precomputed static value because
-    /// we might want to remove sub-templates before we're finished.  This is only valid after
-    /// <see cref="MeasureTableRoot"/> has been called.
-    /// </summary>
-    public int ComputeSize()
-    {
-        var actualValueSize = ValueLength;
-        if (Children.Count>0)
-        {
-            actualValueSize = Children.Sum(ch => ch.ComputeSize())
-                              + Math.Max(0, _pads.CommaLen * (Children.Count - 1))
-                              + _pads.ArrStartLen(PadType)
-                              + _pads.ArrEndLen(PadType);
-        }
-        else if (IsFormattableNumber)
-        {
-            actualValueSize = _maxDigitsBeforeDecimal + _maxDigitsAfterDecimal + ((_maxDigitsAfterDecimal > 0) ? 1 : 0);
-            if (_dataContainsNull && actualValueSize < 4)
-                actualValueSize = 4;
-        }
-
-        return ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
-               + ((NameLength > 0) ? NameLength + _pads.ColonLen : 0)
-               + ((MiddleCommentLength > 0) ? MiddleCommentLength + _pads.CommentLen : 0)
-               + actualValueSize
-               + ((PostfixCommentLength > 0) ? PostfixCommentLength + _pads.CommentLen : 0);
     }
 
     public string FormatNumber(string originalValueString)
@@ -114,9 +92,12 @@ internal class TableTemplate
         if (!IsFormattableNumber)
             throw new FracturedJsonException("Logic error - attempting to format inappropriate thing as number");
 
+        // Create a .NET format string, if we don't already have one.
         if (_numberFormat == null)
         {
             var totalWidth = _maxDigitsBeforeDecimal + _maxDigitsAfterDecimal + ((_maxDigitsAfterDecimal > 0) ? 1 : 0);
+
+            // Leave room for the literal null if we saw one in the row data.
             if (_dataContainsNull && totalWidth < 4)
                 totalWidth = 4;
             _numberFormat = $"{{0,{totalWidth}:F{_maxDigitsAfterDecimal}}}";
@@ -132,14 +113,19 @@ internal class TableTemplate
     private string? _numberFormat;
     private bool _dataContainsNull = false;
 
+    /// <summary>
+    /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
+    /// </summary>
+    /// <param name="rowSegment"></param>
     private void MeasureRowSegment(JsonItem rowSegment)
     {
-        // Comments and blank lines don't figure into template measurements
+        // Standalone comments and blank lines don't figure into template measurements
         if (rowSegment.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
             return;
         
-        // Make sure the type of this row is compatible with what we've seen already.  Null is 
-        // compatible with everything.
+        // Make sure this rowSegment's type is compatible with the ones we've seen so far.  Null is compatible
+        // with all types.  It the types aren't compatible, we can still align this element and its comments,
+        // but not any children for arrays/objects.
         if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
         {
             IsRowDataCompatible &= (Type is JsonItemType.True or JsonItemType.Null);
@@ -166,10 +152,10 @@ internal class TableTemplate
         // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
         IsRowDataCompatible &= !rowSegment.RequiresMultipleLines;
 
-        // Looks good.  Update the numbers.
+        // Update the numbers.
         RowCount += 1;
         NameLength = Math.Max(NameLength, rowSegment.NameLength);
-        ValueLength = Math.Max(ValueLength, rowSegment.ValueLength);
+        SimpleValueLength = Math.Max(SimpleValueLength, rowSegment.ValueLength);
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
@@ -233,18 +219,45 @@ internal class TableTemplate
     }
 
     /// <summary>
-    /// If our sub-templates aren't viable, get rid of them.
+    /// Get rid of any sub-templates we don't want - either because we found the row data wasn't compatible after all,
+    /// or because we need to reduce size.  Recompute CompositeValueLength and TotalLength, which may have changed
+    /// because of the pruning (or may not have been set yet at all).
     /// </summary>
-    private void PruneUnusableSegments(int maxAllowedComplexity)
+    private void PruneAndRecompute(int maxAllowedComplexity)
     {
         if (maxAllowedComplexity<=0)
             Children.Clear();
         
         foreach(var subTemplate in Children)
-            subTemplate.PruneUnusableSegments(maxAllowedComplexity-1);
+            subTemplate.PruneAndRecompute(maxAllowedComplexity-1);
         
         if (!IsRowDataCompatible)
             Children.Clear();
+
+        CompositeValueLength = SimpleValueLength;
+        if (Children.Count>0)
+        {
+            CompositeValueLength = Children.Sum(ch => ch.TotalLength)
+                                   + Math.Max(0, _pads.CommaLen * (Children.Count - 1))
+                                   + _pads.ArrStartLen(PadType)
+                                   + _pads.ArrEndLen(PadType);
+        }
+        else if (IsFormattableNumber)
+        {
+            CompositeValueLength = _maxDigitsBeforeDecimal
+                                   + _maxDigitsAfterDecimal
+                                   + ((_maxDigitsAfterDecimal > 0) ? 1 : 0);
+
+            // Allow room for null.
+            if (_dataContainsNull && CompositeValueLength < 4)
+                CompositeValueLength = 4;
+        }
+
+        TotalLength = ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
+                    + ((NameLength > 0) ? NameLength + _pads.ColonLen : 0)
+                    + ((MiddleCommentLength > 0) ? MiddleCommentLength + _pads.CommentLen : 0)
+                    + CompositeValueLength
+                    + ((PostfixCommentLength > 0) ? PostfixCommentLength + _pads.CommentLen : 0);
     }
 
     private int GetTemplateComplexity()
