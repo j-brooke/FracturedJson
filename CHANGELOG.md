@@ -1,5 +1,30 @@
 # FracturedJson Change Log
 
+## 3.0.0
+
+### Features
+
+* Support for comments (sometimes called JSON-with-comments or .jsonc).  Where possible, comments stay stuck to the elements that they're closest to in the input.
+* Deep table formatting.  In version 2, only the immediate children of table rows were lined up.  Now, if space permits and the types are consistent, all descendents are aligned as table columns.
+* New length limit option: `MaxTotalLineLength`.
+* Option to preserve blank lines.
+* Option to allow trailing commas.
+
+### Added
+
+* New settings: `MaxTotalLineLength`, `MaxTableRowComplexity`, `MinCompactArrayRowItems`, `CommentPolicy`, `PreserveBlankLines`, `AllowTrailingCommas`.
+
+### Removed
+
+* Removed settings: `TableObjectMinimumSimilarity`, `TableArrayMinimumSimilarity`, `AlignExpandedPropertyNames`, `JsonSerializerOptions`.
+* Support for East Asian Full-width characters is no longer built-in.  I did this to eliminate coupling with any specific library.  You can easily recreate the functionality by providing your own `StringLengthFunc`.  (See the `EastAsianWideCharactersTests` test class for an example.)
+
+### Changed
+
+* All of the settings are now bundled in a single class, `FracturedJsonOptions`.  They are now set all at once to `Formatter.Options` rather than being separate properties of `Formatter`.
+* Method names have changed.  Use `Reformat` when you're providing a JSON text, or `Serialize<T>` when providing .NET objects.
+
+
 ## 2.2.1
 
 ### Bug Fixes
