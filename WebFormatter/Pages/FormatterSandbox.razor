@@ -11,7 +11,7 @@
             <div><label for="jsonInput">JSON Input:</label></div>
             <textarea class="json-box" @bind="State.InputJson"
                 autofocus rows="15" cols="100" id="jsonInput" spellcheck="false" @ref="_inputBoxRef"
-                placeholder="Paste your favorite JSON data here">
+                placeholder="Paste JSON data here or press a Sample Data button.">
             </textarea>
         </div>
         <button type="button" class="fmt-btn" @onclick="State.DoFormat">Format</button>
@@ -22,7 +22,7 @@
             <div><label for="jsonOutput">Formatted Output:</label></div>
             <textarea class="json-box" @bind="State.OutputJson"
                 rows="15" cols="100" id="jsonOutput" spellcheck="false"
-                placeholder="Formatted JSON will appear here">
+                placeholder="Formatted JSON will appear here.">
             </textarea>
         </div>
     </div>
