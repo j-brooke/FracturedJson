@@ -35,6 +35,10 @@ input {
     background-color: silver;
 }
 
+button {
+    background-color: cadetblue;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

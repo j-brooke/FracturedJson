@@ -1,8 +1,9 @@
 @page "/"
+@inject WebFormatterState State
 
 <div class="whole-sandbox">
     <div class="settings-sidebar">
-        <SettingsPanel State="State"/>
+        <SettingsPanel/>
     </div>
 
     <div class="input-output-area">
@@ -30,8 +31,10 @@
 
 
 @code {
-    [Parameter]
-    public WebFormatterState State { get; init; } = new();
+    protected override void OnInitialized()
+    {
+        State.RestoreOptionsFromLocalStorage();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

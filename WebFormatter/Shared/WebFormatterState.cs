@@ -1,23 +1,18 @@
+using Blazored.LocalStorage;
 using FracturedJson;
 
 namespace WebFormatter.Shared;
 
 public class WebFormatterState
 {
-    public FracturedJsonOptions Options { get; set; }
+    public FracturedJsonOptions Options { get; set; } = new();
     public string InputJson { get; set; } = string.Empty;
     public string OutputJson { get; set; } = string.Empty;
 
-    public WebFormatterState()
+    public WebFormatterState(ISyncLocalStorageService localStorage)
     {
-        Options = new()
-        {
-            MaxInlineLength = 500000,
-            MaxTotalLineLength = 100,
-            CommentPolicy = CommentPolicy.Preserve,
-            PreserveBlankLines = true,
-        };
-        _formatter = new() { Options = Options };
+        _localStorage = localStorage;
+        _formatter = new();
     }
 
     public void DoFormat()
@@ -26,6 +21,7 @@ public class WebFormatterState
         {
             _formatter.Options = Options;
             OutputJson = _formatter.Reformat(InputJson, 0);
+            SaveOptionsToLocalStorage();
         }
         catch (FracturedJsonException e)
         {
@@ -46,5 +42,35 @@ public class WebFormatterState
         }
     }
 
+    public void SetToDefaults()
+    {
+        Options = GetDefaultOptions();
+        SaveOptionsToLocalStorage();
+    }
+
+    public void RestoreOptionsFromLocalStorage()
+    {
+        var restoredOpts = _localStorage.GetItem<FracturedJsonOptions>(_optionsKey);
+        Options = restoredOpts ?? GetDefaultOptions();
+    }
+
+    public void SaveOptionsToLocalStorage()
+    {
+        _localStorage.SetItem(_optionsKey, Options);
+    }
+
+    private const string _optionsKey = "options";
     private readonly Formatter _formatter;
+    private readonly ISyncLocalStorageService _localStorage;
+
+    private static FracturedJsonOptions GetDefaultOptions()
+    {
+        return new()
+        {
+            MaxInlineLength = 500000,
+            MaxTotalLineLength = 100,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+        };
+    }
 }

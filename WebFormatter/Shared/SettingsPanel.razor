@@ -1,4 +1,5 @@
 @using FracturedJson
+@inject WebFormatterState State
 
 <h2>Settings</h2>
 
@@ -27,11 +28,9 @@
 <div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
 <div><input type="checkbox" @bind="State.Options.PreserveBlankLines">Preserve Blank Lines</div>
 <div><input type="checkbox" @bind="State.Options.AllowTrailingCommas">Allow Trailing Commas</div>
+<button type="button" @onclick="State.SetToDefaults">Reset</button>
 
 @code {
-    [Parameter]
-    public WebFormatterState State { get; init; } = new WebFormatterState();
-
     private bool AllowComments
     {
         get => GetAllowComments();
