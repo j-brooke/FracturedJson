@@ -8,7 +8,7 @@
   "resources": {
     "assembly": {
       "Blazored.LocalStorage.dll": "sha256-6RRoYeDP3d0xabXmcCMF66wXeJlXVPem28Trs8sQiis=",
-      "FracturedJson.dll": "sha256-ciDLB3l0JMhpC31Kycohooh63eqzLlDNDVj1\/sBs1LE=",
+      "FracturedJson.dll": "sha256-BTgRspDyI22BOPd8eleIUZh5Jf9UBovbc8bVarONva0=",
       "Microsoft.AspNetCore.Components.dll": "sha256-jsrsUhFYj+9ZiYvRwptYiOjoYDebzVdXNyJvfVMPPEI=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-zB8Mfw3KnObSs6iqJLYCdnYojzfbpUogLXbetF6sKyQ=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-WasyeyYTHVFINaKU2jkYAe37pDZBvtTueW3ySFvnDps=",
@@ -42,16 +42,16 @@
       "System.Text.RegularExpressions.dll": "sha256-M7PDHt3OWWN\/Xj5WwyAkXeGtZGVTFQr8YWBmnAdfa+4=",
       "System.Threading.dll": "sha256-GBePRYGmZf4xVOrp8hT9qxa1PSZocV5vM8CIeogJbZk=",
       "Wcwidth.dll": "sha256-gvVEtHg2j+GEpmaTREzjfARu1Ha5a6eRiiAjkoX\/aAM=",
-      "WebFormatter.dll": "sha256-HYiOUE5EpF9mcyxYpqlUZD48ADOzObZfVw5J25hdgH8="
+      "WebFormatter.dll": "sha256-nmfAKdf8gDILFbo\/3gI7HOZ5KkfUFr3E8\/TOxpZlH0o="
     },
     "extensions": null,
     "lazyAssembly": null,
     "libraryInitializers": null,
     "pdb": null,
     "runtime": {
-      "dotnet.6.0.9.4jbk7s1e26.js": "sha256-J8h3nR9UQIoEC+wkPPfFwnOrkdIl\/SrxSQQBVA\/0\/c8=",
+      "dotnet.6.0.9.jmt1papkze.js": "sha256-SEWdJySxib3EBXC0vUbwMlZ+9IAzOHfGaAxW5ErqR80=",
       "dotnet.timezones.blat": "sha256-DCornv7RwGmh5F2M7NdY9Sg66xjw779ggSN9nS\/Br5o=",
-      "dotnet.wasm": "sha256-YRv6SPRfpUrtUdbpqKhGwR8Zlu+N2kZAcwWM1N\/l0fg=",
+      "dotnet.wasm": "sha256-fYwIVCtWwa+9HTWNend\/5ZaX4dDsLivV2egeo+LdR1E=",
       "icudt_CJK.dat": "sha256-WPyI4hWDPnOw62Nr27FkzGjdbucZnQD+Ph+GOPhAedw=",
       "icudt_EFIGS.dat": "sha256-4RwaPx87Z4dvn77ie\/ro3\/QzyS+\/gGmO3Y\/0CSAXw4k=",
       "icudt_no_CJK.dat": "sha256-OxylFgLJlFqixsj+nLxYVsv5iZLvfIKMpLf9hrWaChA=",
