@@ -1,5 +1,6 @@
 using Blazored.LocalStorage;
 using FracturedJson;
+using Wcwidth;
 
 namespace WebFormatter.Shared;
 
@@ -12,7 +13,7 @@ public class WebFormatterState
     public WebFormatterState(ISyncLocalStorageService localStorage)
     {
         _localStorage = localStorage;
-        _formatter = new();
+        _formatter = new() { StringLengthFunc = WideCharStringLength };
     }
 
     public void DoFormat()
@@ -72,5 +73,10 @@ public class WebFormatterState
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,
         };
+    }
+
+    public static int WideCharStringLength(string str)
+    {
+        return str.EnumerateRunes().Sum(rune => UnicodeCalculator.GetWidth(rune.Value));
     }
 }
