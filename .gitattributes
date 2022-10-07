@@ -1,1 +1,4 @@
-docs/* -merge -text
+# Docs - at least in some branches - contains the WebFormatter build.  Blazor
+# includes hashes for those files, and Git's helpful EOL conversions cause
+# tons of havok.
+docs/** binary
