@@ -324,6 +324,13 @@ public class Formatter
         
         var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
 
+        // If any child element is too long even without formatting, don't bother.
+        var isChildTooLong = item.Children
+            .Where(ch => ch.Type is not (JsonItemType.BlankLine or JsonItemType.LineComment or JsonItemType.BlockComment))
+            .Any(ch => ch.MinimumTotalLength > availableSpace);
+        if (isChildTooLong)
+            return false;
+
         // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
         // similar, IsRowDataCompatible will be false.
         var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
