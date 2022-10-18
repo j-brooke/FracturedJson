@@ -71,6 +71,13 @@ public class UniversalJsonTests
         yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 2 };
         yield return new()
         {
+            MaxInlineComplexity = 10,
+            MaxCompactArrayComplexity = 10,
+            MaxTableRowComplexity = 10,
+            MaxTotalLineLength = 1000,
+        };
+        yield return new()
+        {
             NestedBracketPadding = false,
             SimpleBracketPadding = true,
             ColonPadding = false,
@@ -223,7 +230,7 @@ public class UniversalJsonTests
             if (multipleTopLevelItems && options.CommentPolicy != CommentPolicy.Preserve)
             {
                 Assert.IsTrue(nestLevel <= options.MaxCompactArrayComplexity);
-                return;
+                continue;
             }
 
             // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one line.
