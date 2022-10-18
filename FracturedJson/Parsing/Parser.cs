@@ -38,11 +38,29 @@ public class Parser
                 yield break;
 
             var item = ParseItem(enumerator);
-            yield return item;
-            var isElement = item.Type != JsonItemType.BlankLine && item.Type != JsonItemType.BlockComment &&
-                            item.Type != JsonItemType.LineComment;
-            if (isElement && stopAfterFirstElem)
-                yield break;
+
+            var isComment = item.Type is JsonItemType.BlockComment or JsonItemType.LineComment;
+            var isBlank = item.Type is JsonItemType.BlankLine;
+
+            if (isBlank)
+            {
+                if (Options.PreserveBlankLines)
+                    yield return item;
+            }
+            else if (isComment)
+            {
+                if (Options.CommentPolicy == CommentPolicy.TreatAsError)
+                    throw FracturedJsonException.Create("Comments not allowed with current options",
+                        item.InputPosition);
+                if (Options.CommentPolicy == CommentPolicy.Preserve)
+                    yield return item;
+            }
+            else
+            {
+                yield return item;
+                if (stopAfterFirstElem)
+                    yield break;
+            }
         }
     }
 

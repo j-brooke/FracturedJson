@@ -252,4 +252,30 @@ public class CommentFormattingTests
         StringAssert.Contains(output, "\"a\" /*1*/,");
         StringAssert.Contains(output, "/*2*/ \"d\"");
     }
+
+    [TestMethod]
+    public void TopLevelCommentsIgnoredIfSet()
+    {
+        var inputLines = new[]
+        {
+            "//a",
+            "[1,2, //b",
+            "3]",
+            "//c"
+        };
+
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Remove,
+            JsonEolStyle = EolStyle.Lf,
+            AlwaysExpandDepth = 99,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+
+        Assert.IsFalse(output.Contains("//"));
+    }
 }
