@@ -83,7 +83,7 @@ public class NumberFormattingTests
 
         // If there's a number that requires an "E", don't try to justify the numbers.
         var opts = new FracturedJsonOptions()
-            { MaxInlineComplexity = -1, DontJustifyNumbers = true, JsonEolStyle = EolStyle.Lf };
+            { MaxInlineComplexity = -1, JsonEolStyle = EolStyle.Lf };
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
@@ -99,7 +99,7 @@ public class NumberFormattingTests
 
         // If there's a number with too many significant digits, don't try to justify the numbers.
         var opts = new FracturedJsonOptions()
-            { MaxInlineComplexity = -1, DontJustifyNumbers = true, JsonEolStyle = EolStyle.Lf };
+            { MaxInlineComplexity = -1, JsonEolStyle = EolStyle.Lf };
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
