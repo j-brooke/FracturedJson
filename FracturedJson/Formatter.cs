@@ -21,11 +21,11 @@ public class Formatter
     /// <summary>
     /// Reads in JSON text (or JSON-with-comments), and returns a nicely-formatted string of the same content.
     /// </summary>
-    public string Reformat(IEnumerable<char> jsonText, int startingDepth)
+    public string Reformat(IEnumerable<char> jsonText, int startingDepth = 0)
     {
         var buffer = new StringBuilderBuffer();
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, false);
+        var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
 
         return buffer.AsString();
@@ -39,7 +39,7 @@ public class Formatter
     {
         var buffer = new TextWriterBuffer(writer);
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, false);
+        var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
 
         writer.Flush();
@@ -48,7 +48,7 @@ public class Formatter
     /// <summary>
     /// Writes the serialized object as a nicely-formatted string.
     /// </summary>
-    public string Serialize<T>(T obj, int startingDepth, JsonSerializerOptions? serOpts = null)
+    public string Serialize<T>(T obj, int startingDepth = 0, JsonSerializerOptions? serOpts = null)
     {
         var buffer = new StringBuilderBuffer();
         var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
@@ -77,7 +77,7 @@ public class Formatter
     {
         var buffer = new StringBuilderBuffer();
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, false);
+        var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
 
         return buffer.AsString();
@@ -91,7 +91,7 @@ public class Formatter
     {
         var buffer = new TextWriterBuffer(writer);
         var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(jsonText, false);
+        var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
 
         writer.Flush();

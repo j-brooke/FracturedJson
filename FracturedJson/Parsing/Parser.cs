@@ -32,6 +32,8 @@ public class Parser
     private IEnumerable<JsonItem> ParseTopLevel(IEnumerable<JsonToken> tokenEnumeration, bool stopAfterFirstElem)
     {
         using var enumerator = tokenEnumeration.GetEnumerator();
+
+        var topLevelElemSeen = false;
         while (true)
         {
             if (!enumerator.MoveNext())
@@ -57,9 +59,11 @@ public class Parser
             }
             else
             {
+                if (topLevelElemSeen && stopAfterFirstElem)
+                    throw FracturedJsonException.Create("Unexpected start of second top level element",
+                        item.InputPosition);
+                topLevelElemSeen = true;
                 yield return item;
-                if (stopAfterFirstElem)
-                    yield break;
             }
         }
     }

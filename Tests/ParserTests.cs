@@ -714,9 +714,8 @@ public class ParserTests
     {
         const string input = "[ 1, 2 ],[ 3, 4 ]";
         var parser = new Parser();
-        var docModel = parser.ParseTopLevel(input, true).ToArray();
 
-        Assert.AreEqual(1, docModel.Length);
+        Assert.ThrowsException<FracturedJsonException>(() => parser.ParseTopLevel(input, true).ToArray());
     }
 }
 
