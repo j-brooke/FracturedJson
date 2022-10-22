@@ -1,5 +1,12 @@
 # FracturedJson Change Log
 
+## 3.0.1
+
+### Bug Fixes
+
+* Fixed a problem where top level comments weren't being ignored when the settings said they should.
+* Fixed a problem where more than one top-level element (actual data, not comments) would be processed.
+
 ## 3.0.0
 
 ### Features
