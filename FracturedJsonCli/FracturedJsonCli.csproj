@@ -4,9 +4,9 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>net6.0</TargetFramework>
         <Nullable>enable</Nullable>
-        <AssemblyVersion>3.0.1</AssemblyVersion>
+        <AssemblyVersion>3.0.2</AssemblyVersion>
         <IsPackable>false</IsPackable>
-        <PackageVersion>3.0.1</PackageVersion>
+        <PackageVersion>3.0.2</PackageVersion>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 

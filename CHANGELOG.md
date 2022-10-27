@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 3.0.2
+
+### Bug Fixes
+
+* Fixed a [bug](https://github.com/j-brooke/FracturedJson/issues/20) where the AlwaysExpandDepth setting was preventing table formatting. 
+
 ## 3.0.1
 
 ### Bug Fixes

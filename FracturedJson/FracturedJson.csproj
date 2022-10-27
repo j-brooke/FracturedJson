@@ -10,9 +10,9 @@
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>3.0.1</AssemblyVersion>
+        <AssemblyVersion>3.0.2</AssemblyVersion>
         <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
-        <PackageVersion>3.0.1</PackageVersion>
+        <PackageVersion>3.0.2</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
