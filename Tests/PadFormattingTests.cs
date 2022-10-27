@@ -31,4 +31,36 @@ public class PadFormattingTests
 
         Assert.IsFalse(output.Contains(' '));
     }
+
+    [TestMethod]
+    public void SimpleBracketPaddingWorksForTables()
+    {
+        const string input = "[[1, 2],[3, 4]]";
+
+        var opts = new FracturedJsonOptions()
+        {
+            JsonEolStyle = EolStyle.Lf,
+            MaxInlineComplexity = 1,
+            SimpleBracketPadding = true,
+        };
+
+        // Limit the complexity to make sure we format this as a table, but set SimpleBracketPadding to true.
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // There should be spaces between the brackets and the numbers.
+        Assert.AreEqual(4, outputLines.Length);
+        StringAssert.Contains(outputLines[1], "[ 1, 2 ]");
+        StringAssert.Contains(outputLines[2], "[ 3, 4 ]");
+
+        formatter.Options.SimpleBracketPadding = false;
+        output = formatter.Reformat(input, 0);
+        outputLines = output.TrimEnd().Split('\n');
+
+        // There should NOT be spaces between the brackets and the numbers.
+        Assert.AreEqual(4, outputLines.Length);
+        StringAssert.Contains(outputLines[1], "[1, 2]");
+        StringAssert.Contains(outputLines[2], "[3, 4]");
+    }
 }
