@@ -40,4 +40,23 @@ public class AlwaysExpandFormattingTests
         // If we force expanding at depth 1, we'll get lots of lines.
         Assert.AreEqual(10, outputLines.Length);
     }
+
+    [TestMethod]
+    public void AlwaysExpandDepthDoesntPreventTable()
+    {
+        const string input = "[ [1, 22, 9 ], [333, 4, 9 ] ]";
+
+        // With AlwaysExpandDepth=0, this whole line isn't allowed to be inlined.  But there's no reason
+        // why it shouldn't qualify for table formatting.  So the 1 should be padded to the size of 333, and
+        // 4 should be padded to the size of 22.  The commas and 9s should line up.
+        var opts = new FracturedJsonOptions() { JsonEolStyle = EolStyle.Lf, AlwaysExpandDepth = 0 };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(4, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, ",");
+        TestHelpers.TestInstancesLineUp(outputLines, "9");
+    }
 }

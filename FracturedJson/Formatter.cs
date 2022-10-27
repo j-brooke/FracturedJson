@@ -213,15 +213,25 @@ public class Formatter
     /// </summary>
     private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma)
     {
+        // Try to inline of compact-multiline format, as long as we're deeper than AlwaysExpandDepth.  Of course,
+        // there may be other disqualifying factors that are discovered along the way.
         if (depth > Options.AlwaysExpandDepth)
         {
             if (FormatContainerInline(item, depth, includeTrailingComma))
                 return;
             if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
                 return;
+        }
+
+        // Allow table formatting at the specified depth, too.  So if this is a root level array and
+        // AlwaysExpandDepth=0, we can table format it.  But if AlwaysExpandDepth=1, we can't format the root
+        // as a table, since a table's children are always inlined (and thus not expanded).
+        if (depth >= Options.AlwaysExpandDepth)
+        {
             if (FormatContainerTable(item, depth, includeTrailingComma))
                 return;
         }
+
         FormatContainerExpanded(item, depth, includeTrailingComma);
     }
 
