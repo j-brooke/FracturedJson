@@ -269,4 +269,21 @@ public class UniversalJsonTests
         // Again, it should be the same as our original formatting.
         Assert.AreEqual(initialOutput, backToStartOutput2);
     }
+
+    [DataTestMethod]
+    [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
+    public void NoTrailingWhitespace(string inputText, FracturedJsonOptions options)
+    {
+        var modifiedOptions = options with { OmitTrailingWhitespace = true };
+
+        var formatter = new Formatter() { Options = modifiedOptions };
+        var outputText = formatter.Reformat(inputText, 0);
+        var outputLines = outputText.TrimEnd().Split(EolString(options));
+
+        foreach (var line in outputLines)
+        {
+            var trimmedLine = line.TrimEnd();
+            Assert.AreEqual(trimmedLine, line);
+        }
+    }
 }

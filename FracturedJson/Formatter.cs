@@ -23,11 +23,12 @@ public class Formatter
     /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth = 0)
     {
-        var buffer = new StringBuilderBuffer();
+        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
 
+        buffer.Flush();
         return buffer.AsString();
     }
 
@@ -37,12 +38,12 @@ public class Formatter
     /// </summary>
     public void Reformat(IEnumerable<char> jsonText, int startingDepth, TextWriter writer)
     {
-        var buffer = new TextWriterBuffer(writer);
+        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
 
-        writer.Flush();
+        buffer.Flush();
     }
 
     /// <summary>
@@ -50,10 +51,11 @@ public class Formatter
     /// </summary>
     public string Serialize<T>(T obj, int startingDepth = 0, JsonSerializerOptions? serOpts = null)
     {
-        var buffer = new StringBuilderBuffer();
+        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
         var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
         FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
 
+        buffer.Flush();
         return buffer.AsString();
     }
 
@@ -62,11 +64,11 @@ public class Formatter
     /// </summary>
     public void Serialize<T>(T obj, int startingDepth, TextWriter writer, JsonSerializerOptions? serOpts = null)
     {
-        var buffer = new TextWriterBuffer(writer);
+        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
         var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
         FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
 
-        writer.Flush();
+        buffer.Flush();
     }
 
     /// <summary>
@@ -75,11 +77,12 @@ public class Formatter
     /// </summary>
     public string Minify(IEnumerable<char> jsonText)
     {
-        var buffer = new StringBuilderBuffer();
+        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
 
+        buffer.Flush();
         return buffer.AsString();
     }
 
@@ -89,12 +92,12 @@ public class Formatter
     /// </summary>
     public void Minify(IEnumerable<char> jsonText, TextWriter writer)
     {
-        var buffer = new TextWriterBuffer(writer);
+        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
 
-        writer.Flush();
+        buffer.Flush();
     }
 
     /// <summary>
@@ -250,7 +253,7 @@ public class Formatter
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         InlineElement(item, includeTrailingComma);
-        _buffer.Add(_pads.EOL);
+        _buffer.EndLine(_pads.EOL);
 
         return true;
     }
@@ -300,7 +303,7 @@ public class Formatter
 
             if (remainingLineSpace < spaceNeededForNext)
             {
-                _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon+1));
+                _buffer.EndLine(_pads.EOL).Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
                 remainingLineSpace = availableLineSpace;
             }
             
@@ -313,7 +316,7 @@ public class Formatter
         }
 
         // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
-        _buffer.Add(_pads.EOL, Options.PrefixString, _pads.Indent(depthAfterColon),
+        _buffer.EndLine(_pads.EOL).Add(Options.PrefixString, _pads.Indent(depthAfterColon),
             _pads.End(item.Type, BracketPaddingType.Empty));
 
         StandardFormatEnd(item, includeTrailingComma);
@@ -365,7 +368,7 @@ public class Formatter
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
@@ -386,7 +389,7 @@ public class Formatter
             
             _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
             InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
-            _buffer.Add(_pads.EOL);
+            _buffer.EndLine(_pads.EOL);
         }
         
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
@@ -402,7 +405,7 @@ public class Formatter
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
     {
         var depthAfterColon = StandardFormatStart(item, depth);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty), _pads.EOL);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
@@ -422,12 +425,12 @@ public class Formatter
         var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
 
         foreach (var line in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line, _pads.EOL);
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line).EndLine(_pads.EOL);
     }
 
     private void FormatBlankLine()
     {
-        _buffer.Add(Options.PrefixString, _pads.EOL);
+        _buffer.Add(Options.PrefixString).EndLine(_pads.EOL);
     }
 
     /// <summary>
@@ -437,7 +440,7 @@ public class Formatter
     {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         InlineElement(item, includeTrailingComma);
-        _buffer.Add(_pads.EOL);
+        _buffer.EndLine(_pads.EOL);
     }
 
     /// <summary>
@@ -478,10 +481,10 @@ public class Formatter
 
         // If the middle comment requires multiple lines, start a new line and indent everything after this.
         var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
-        _buffer.Add(_pads.EOL);
+        _buffer.EndLine(_pads.EOL);
         
         foreach (var row in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row, _pads.EOL);
+            _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row).EndLine(_pads.EOL);
         
         _buffer.Add(Options.PrefixString, _pads.Indent(depth+1));
         return depth + 1;
@@ -499,7 +502,7 @@ public class Formatter
             _buffer.Add(_pads.Comment, item.PostfixComment);
         if (includeTrailingComma && !item.IsPostCommentLineStyle)
             _buffer.Add(_pads.Comma);
-        _buffer.Add(_pads.EOL);
+        _buffer.EndLine(_pads.EOL);
     }
     
 
