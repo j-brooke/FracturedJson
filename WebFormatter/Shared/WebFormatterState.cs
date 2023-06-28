@@ -72,6 +72,7 @@ public class WebFormatterState
             MaxTotalLineLength = 100,
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,
+            OmitTrailingWhitespace = true,
         };
     }
 
