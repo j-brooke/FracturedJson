@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 3.1.0
+
+### Added
+
+* New setting: `OmitTrailingWhitespace`.  When true, the output JSON won't have any trailing spaces or tabs.  This is probably the preferred behavior in most cases, but the default is `false` for backward compatibility.
+
 ## 3.0.2
 
 ### Bug Fixes
