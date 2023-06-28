@@ -8,15 +8,35 @@ namespace FracturedJson.Formatting;
 /// </summary>
 public class StringBuilderBuffer : IBuffer
 {
-    public void Add(string value)
+    public StringBuilderBuffer(bool trimTrailingWhitespace)
     {
-        _buff.Append(value);
+        _trimTrailingWhitespace = trimTrailingWhitespace;
     }
 
-    public void Add(params string[] values)
+    public IBuffer Add(string value)
+    {
+        _buff.Append(value);
+        return this;
+    }
+
+    public IBuffer Add(params string[] values)
     {
         foreach (var val in values)
             _buff.Append(val);
+        return this;
+    }
+
+    public IBuffer EndLine(string eolString)
+    {
+        TrimIfNeeded();
+        _buff.Append(eolString);
+        return this;
+    }
+
+    public IBuffer Flush()
+    {
+        TrimIfNeeded();
+        return this;
     }
 
     public string AsString()
@@ -25,4 +45,26 @@ public class StringBuilderBuffer : IBuffer
     }
 
     private readonly StringBuilder _buff = new();
+    private readonly bool _trimTrailingWhitespace;
+
+    /// <summary>
+    /// Gets rid of spaces and tabs at the end of the buffer.  This should be called at the end of a line
+    /// but before the EOL symbol is added.
+    /// </summary>
+    private void TrimIfNeeded()
+    {
+        if (!_trimTrailingWhitespace)
+            return;
+
+        var newLength = _buff.Length;
+        while (newLength > 0)
+        {
+            var ch = _buff[newLength - 1];
+            if (ch is not (' ' or '\t'))
+                break;
+            newLength -= 1;
+        }
+
+        _buff.Length = newLength;
+    }
 }

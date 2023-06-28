@@ -20,6 +20,7 @@ namespace FracturedJsonCli
                 var options = new FracturedJsonOptions()
                 {
                     MaxInlineLength = int.MaxValue,
+                    OmitTrailingWhitespace = true,
                 };
 
                 var showHelp = false;

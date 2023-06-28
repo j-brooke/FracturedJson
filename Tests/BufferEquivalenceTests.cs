@@ -7,22 +7,74 @@ namespace Tests;
 public class BufferEquivalenceTests
 {
     /// <summary>
+    /// Generates combos of input JSON and Formatter options to feed to all of the tests.
+    /// </summary>
+    public static IEnumerable<object[]> GenerateUniversalParams()
+    {
+        var testFilesDir = new DirectoryInfo("StandardJsonFiles");
+        foreach (var file in testFilesDir.EnumerateFiles("*.json"))
+        {
+            var fileData = File.ReadAllText(file.FullName);
+            foreach (var options in GenerateOptions())
+                yield return new object[] { fileData, options };
+        }
+
+        var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
+        foreach (var file in commentTestFilesDir.EnumerateFiles("*.jsonc"))
+        {
+            var fileData = File.ReadAllText(file.FullName);
+            foreach (var options in GenerateOptions())
+            {
+                var moddedOpts = options with
+                {
+                    CommentPolicy = CommentPolicy.Preserve,
+                    PreserveBlankLines = true,
+                };
+                yield return new object[] { fileData, moddedOpts };
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generates formatter options with a few sets of property settings.
+    /// </summary>
+    private static IEnumerable<FracturedJsonOptions> GenerateOptions()
+    {
+        yield return new();
+        yield return new() { OmitTrailingWhitespace = true, JsonEolStyle = EolStyle.Lf };
+        yield return new()
+        {
+            NestedBracketPadding = false,
+            SimpleBracketPadding = true,
+            ColonPadding = false,
+            CommaPadding = false,
+            IndentSpaces = 3,
+            PrefixString = "\t\t",
+            JsonEolStyle = EolStyle.Crlf,
+        };
+    }
+
+
+    /// <summary>
     /// Tests that both overloads of Reformat produce the same output.
     /// </summary>
-    [TestMethod]
-    public void ReformatSameForBothOverrides()
+    [DataTestMethod]
+    [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
+    public void ReformatSameForBothOverrides(string inputText, FracturedJsonOptions options)
     {
-        var formatter = new Formatter();
-        var fileData = File.ReadAllText(Path.Combine("StandardJsonFiles", "0.json"));
+        var formatter = new Formatter() { Options = options };
 
-        var formattedAsString = formatter.Reformat(fileData, 0);
+        // Format directly as a string.
+        var formattedAsString = formatter.Reformat(inputText, 0);
 
+        // Format to a stream Writer.
         using var memWriter = new StringWriter();
-        formatter.Reformat(fileData, 0, memWriter);
+        formatter.Reformat(inputText, 0, memWriter);
         var writerString = memWriter.ToString();
 
         Assert.AreEqual(writerString, formattedAsString);
     }
+
 
     /// <summary>
     /// Tests that both overloads of Serialize produce the same output.
