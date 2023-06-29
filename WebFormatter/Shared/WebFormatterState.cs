@@ -54,7 +54,8 @@ public class WebFormatterState
         var restoredOpts = _localStorage.GetItem<FracturedJsonOptions>(_optionsKey);
 
         // Migrate old settings with the new fixed value here.
-        restoredOpts.OmitTrailingWhitespace = true;
+        if (restoredOpts != null)
+            restoredOpts.OmitTrailingWhitespace = true;
 
         Options = restoredOpts ?? GetDefaultOptions();
     }
