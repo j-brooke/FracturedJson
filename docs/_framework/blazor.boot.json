@@ -42,7 +42,7 @@
       "System.Text.RegularExpressions.dll": "sha256-ZzNVsB+akpVGgg+eSjBMtGsxaZD7Tg5+C\/+r\/l+sfUE=",
       "System.Threading.dll": "sha256-7McKY89vVSa1TZs6D8jg1F4Gd06JVY0IpuZw+ZkA7iQ=",
       "Wcwidth.dll": "sha256-gvVEtHg2j+GEpmaTREzjfARu1Ha5a6eRiiAjkoX\/aAM=",
-      "WebFormatter.dll": "sha256-UumWvPAQ5ac90Lo+Zc8l\/KKJKsZzZTjQxvmYbag\/iPc="
+      "WebFormatter.dll": "sha256-ZaLNX3gxm9ozxnLTkJl4HyG7rSna+sRrOwW1SoDNUXc="
     },
     "extensions": null,
     "lazyAssembly": null,
