@@ -123,4 +123,35 @@ public class NumberFormattingTests
         Assert.AreEqual(expectedOutput, output.TrimEnd());
     }
 
+    [TestMethod]
+    public void OverflowDoubleInvalidatesAlignment()
+    {
+        const string input = "[1e500, 4.0]";
+        const string expectedOutput = "[\n    1e500, 4.0  \n]";
+
+        // If a number is too big to fit in a 64-bit float, we shouldn't try to reformat its column/array.
+        // If we did, it would turn into "Infinity", isn't a valid JSON token.
+        var opts = new FracturedJsonOptions() { MaxInlineComplexity = -1, JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+
+        Assert.AreEqual(expectedOutput, output.TrimEnd());
+    }
+
+    [TestMethod]
+    public void UnderflowDoubleInvalidatesAlignment()
+    {
+        const string input = "[1e-500, 4.0]";
+        const string expectedOutput = "[\n    1e-500, 4.0   \n]";
+
+        // If a number is too small to fit in a 64-bit float, we shouldn't try to reformat its column/array.
+        // Doing so would change it to zero, which might be an unwelcome loss of precision.
+        var opts = new FracturedJsonOptions() { MaxInlineComplexity = -1, JsonEolStyle = EolStyle.Lf };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+
+        Assert.AreEqual(expectedOutput, output.TrimEnd());
+    }
 }
