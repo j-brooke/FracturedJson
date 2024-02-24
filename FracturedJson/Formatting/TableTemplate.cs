@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace FracturedJson.Formatting;
 
@@ -113,6 +114,10 @@ internal class TableTemplate
     private string? _numberFormat;
     private bool _dataContainsNull = false;
 
+    // Regex to help us distinguish between numbers that truly have a zero value - which can take many forms like
+    // 0, 0.000, and 0.0e75 - and numbers too small for a 64bit float, such as 1e-500.
+    private static readonly Regex _trulyZeroValString = new Regex("^-?[0.]+([eE].*)?$");
+
     /// <summary>
     /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
     /// </summary>
@@ -206,15 +211,28 @@ internal class TableTemplate
         }
         else if (rowSegment.Type == JsonItemType.Number && IsFormattableNumber)
         {
+            // So far, everything in this column is a number that we can safely reformat.  Check to see if that's
+            // still true with this new rowSegment, and if so, measure how much space we need before and after
+            // the decimal point.
             const int maxChars = 15;
-            var normalizedVal = double.Parse(rowSegment.Value).ToString("G", CultureInfo.InvariantCulture);
-            IsFormattableNumber = normalizedVal.Length <= maxChars && !normalizedVal.Contains('E');
+            var parsedVal = double.Parse(rowSegment.Value);
+            var normalizedStr = parsedVal.ToString("G", CultureInfo.InvariantCulture);
 
-            var indexOfDot = normalizedVal.IndexOf('.');
+            // JSON allows numbers that won't fit in a 64-bit double.  For example, 1e500 becomes Infinity, and
+            // 1e-500 becomes 0.  In either of those cases, we shouldn't try to reformat the column.  Likewise,
+            // if there are too many digits or it needs to be expressed in scientific notation, we're better off
+            // not even trying.
+            IsFormattableNumber = !double.IsNaN(parsedVal)
+                                  && !double.IsInfinity(parsedVal)
+                                  && normalizedStr.Length <= maxChars
+                                  && !normalizedStr.Contains('E')
+                                  && (parsedVal!=0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
+
+            var indexOfDot = normalizedStr.IndexOf('.');
             _maxDigitsBeforeDecimal =
-                Math.Max(_maxDigitsBeforeDecimal, (indexOfDot >= 0) ? indexOfDot : normalizedVal.Length);
+                Math.Max(_maxDigitsBeforeDecimal, (indexOfDot >= 0) ? indexOfDot : normalizedStr.Length);
             _maxDigitsAfterDecimal =
-                Math.Max(_maxDigitsAfterDecimal, (indexOfDot >= 0) ? normalizedVal.Length - indexOfDot - 1 : 0);
+                Math.Max(_maxDigitsAfterDecimal, (indexOfDot >= 0) ? normalizedStr.Length - indexOfDot - 1 : 0);
         }
     }
 
