@@ -1,5 +1,9 @@
 # FracturedJson Change Log
 
+## 3.1.1
+
+* Fixed a [bug](https://github.com/j-brooke/FracturedJson/issues/27) where numbers that overflow or underflow a 64-bit float could (depending on settings) be written to the output as `Infinity` or `0`.  In the overflow case, that caused output to be invalid JSON.  With this fix, FracturedJson recognizes that it can't safely reform numbers like this, and uses the exact number representation from the original document.
+
 ## 3.1.0
 
 ### Added
