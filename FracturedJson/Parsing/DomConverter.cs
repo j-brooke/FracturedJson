@@ -3,8 +3,16 @@ using System.Text.Json;
 
 namespace FracturedJson.Parsing;
 
+/// <summary>
+/// Function for converting from a <see cref="JsonElement"/> to a FracturedJson <see cref="JsonItem"/>.
+/// FracturedJson doesn't directly know how to serialize .NET objects, but <see cref="System.Text.Json"/> is quite
+/// good at it, so we let it do the hard work.
+/// </summary>
 public static class DomConverter
 {
+    /// <summary>
+    /// Function for converting from a <see cref="JsonElement"/> to a FracturedJson <see cref="JsonItem"/>.
+    /// </summary>
     public static JsonItem Convert(JsonElement dotnetElem, string? propName)
     {
         var itemType = dotnetElem.ValueKind switch

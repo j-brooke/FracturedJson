@@ -8,17 +8,27 @@ namespace FracturedJson.Formatting;
 /// </summary>
 public class StringBuilderBuffer : IBuffer
 {
+    /// <summary>
+    /// Creates a new StringBuilderBuffer.
+    /// </summary>
+    /// <param name="trimTrailingWhitespace">If true, whitespace at the end of lines is removed.</param>
     public StringBuilderBuffer(bool trimTrailingWhitespace)
     {
         _trimTrailingWhitespace = trimTrailingWhitespace;
     }
 
+    /// <summary>
+    /// Add a single string to the buffer.
+    /// </summary>
     public IBuffer Add(string value)
     {
         _buff.Append(value);
         return this;
     }
 
+    /// <summary>
+    /// Add a group of strings to the buffer.
+    /// </summary>
     public IBuffer Add(params string[] values)
     {
         foreach (var val in values)
@@ -26,6 +36,10 @@ public class StringBuilderBuffer : IBuffer
         return this;
     }
 
+    /// <summary>
+    /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
+    /// extra post-processing, like trimming trailing whitespace.
+    /// </summary>
     public IBuffer EndLine(string eolString)
     {
         TrimIfNeeded();
@@ -33,12 +47,18 @@ public class StringBuilderBuffer : IBuffer
         return this;
     }
 
+    /// <summary>
+    /// Call this to let the buffer finish up any work in progress.
+    /// </summary>
     public IBuffer Flush()
     {
         TrimIfNeeded();
         return this;
     }
 
+    /// <summary>
+    /// Convert the contents of the buffer into a single string.
+    /// </summary>
     public string AsString()
     {
         return _buff.ToString();

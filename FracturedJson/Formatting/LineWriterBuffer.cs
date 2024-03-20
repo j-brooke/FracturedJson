@@ -9,18 +9,29 @@ namespace FracturedJson.Formatting;
 /// </summary>
 public class LineWriterBuffer : IBuffer
 {
+    /// <summary>
+    /// Creates a new LineWriterBuffer.
+    /// </summary>
+    /// <param name="writer">TextWriter to which the sequence should be written.</param>
+    /// <param name="trimTrailingWhitespace">If true, whitespace at the end of lines is removed.</param>
     public LineWriterBuffer(TextWriter writer, bool trimTrailingWhitespace)
     {
         _writer = writer;
         _trimTrailingWhitespace = trimTrailingWhitespace;
     }
 
+    /// <summary>
+    /// Add a single string to the buffer.
+    /// </summary>
     public IBuffer Add(string value)
     {
         _lineBuff.Append(value);
         return this;
     }
 
+    /// <summary>
+    /// Add a group of strings to the buffer.
+    /// </summary>
     public IBuffer Add(params string[] values)
     {
         foreach(var item in values)
@@ -28,12 +39,19 @@ public class LineWriterBuffer : IBuffer
         return this;
     }
 
+    /// <summary>
+    /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
+    /// extra post-processing, like trimming trailing whitespace.
+    /// </summary>
     public IBuffer EndLine(string eolString)
     {
         AddLineToWriter(eolString);
         return this;
     }
 
+    /// <summary>
+    /// Call this to let the buffer finish up any work in progress.
+    /// </summary>
     public IBuffer Flush()
     {
         AddLineToWriter(string.Empty);

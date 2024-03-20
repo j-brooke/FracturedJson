@@ -1,5 +1,8 @@
 ﻿namespace FracturedJson;
 
+/// <summary>
+/// Settings controlling the output of FracturedJson-formatted JSON documents.
+/// </summary>
 public record FracturedJsonOptions
 {
     /// <summary>

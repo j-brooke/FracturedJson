@@ -12,6 +12,9 @@ namespace FracturedJson.Parsing;
 /// </summary>
 public class Parser
 {
+    /// <summary>
+    /// Settings controlling output and defining permissible input.
+    /// </summary>
     public FracturedJsonOptions Options { get; set; } = new();
 
     /// <summary>

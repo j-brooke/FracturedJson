@@ -15,7 +15,14 @@ namespace FracturedJson;
 /// </summary>
 public class Formatter
 {
+    /// <summary>
+    /// Settings controlling output and defining permissible input.
+    /// </summary>
     public FracturedJsonOptions Options { get; set; } = new();
+
+    /// <summary>
+    /// Function that returns the width of the input string, for purposes of aligning text.
+    /// </summary>
     public Func<string,int> StringLengthFunc { get; set; } = StringLengthByCharCount;
 
     /// <summary>

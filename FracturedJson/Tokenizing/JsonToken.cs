@@ -6,7 +6,18 @@ namespace FracturedJson.Tokenizing;
 /// </summary>
 public record struct JsonToken(TokenType Type, string Text, InputPosition InputPosition)
 {
+    /// <summary>
+    /// What sort of JSON thing this is.
+    /// </summary>
     public TokenType Type { get; } = Type;
+
+    /// <summary>
+    /// The text that makes up this token from the original input.
+    /// </summary>
     public string Text { get; } = Text;
+
+    /// <summary>
+    /// Location of the start of this token in the input.
+    /// </summary>
     public InputPosition InputPosition { get; } = InputPosition;
 }

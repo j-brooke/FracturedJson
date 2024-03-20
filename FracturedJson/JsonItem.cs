@@ -16,6 +16,9 @@ namespace FracturedJson;
 /// </remarks>
 public class JsonItem
 {
+    /// <summary>
+    /// The type of item - string, blank line, etc.
+    /// </summary>
     public JsonItemType Type { get; set; }
     
     /// <summary>
@@ -59,11 +62,31 @@ public class JsonItem
     /// True if the postfix comment is to-end-of-line rather than block style.
     /// </summary>
     public bool IsPostCommentLineStyle { get; set; }
-    
+
+    /// <summary>
+    /// String length of the name part.
+    /// </summary>
     public int NameLength { get; set; }
+
+    /// <summary>
+    /// String length of the value part.  It it's an array or object, it's the sum of the children, with padding
+    /// and brackets.
+    /// </summary>
     public int ValueLength { get; set; }
+
+    /// <summary>
+    /// Length of the comment at the front of the item, if any.
+    /// </summary>
     public int PrefixCommentLength { get; set; }
+
+    /// <summary>
+    /// Length of the comment in the middle of the item, if any.
+    /// </summary>
     public int MiddleCommentLength { get; set; }
+
+    /// <summary>
+    /// Length of the comment at the end of the item, if any.
+    /// </summary>
     public int PostfixCommentLength { get; set; }
     
     /// <summary>
@@ -87,9 +110,11 @@ public class JsonItem
     /// </summary>
     public IList<JsonItem> Children { get; set; } = Array.Empty<JsonItem>();
 
+    /// <summary>
+    /// Produces a debug-friendly string.
+    /// </summary>
     public override string ToString()
     {
-        // Intended for use by debuggers.
         var shortName = (Name.Length <= 15) ? Name : Name.Substring(0, 12) + "...";
         var shortVal = (Value.Length <= 15) ? Value : Value.Substring(0, 12) + "...";
         return $"{{ Name = {shortName}, Value = {shortVal} }}";

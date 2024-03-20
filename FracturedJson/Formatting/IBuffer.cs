@@ -6,7 +6,14 @@
 /// </summary>
 public interface IBuffer
 {
+    /// <summary>
+    /// Add a single string to the buffer.
+    /// </summary>
     public IBuffer Add(string value);
+
+    /// <summary>
+    /// Add a group of strings to the buffer.
+    /// </summary>
     public IBuffer Add(params string[] values);
 
     /// <summary>

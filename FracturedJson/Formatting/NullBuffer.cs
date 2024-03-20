@@ -5,21 +5,34 @@ namespace FracturedJson.Formatting;
 /// </summary>
 public class NullBuffer : IBuffer
 {
+    /// <summary>
+    /// Add a single string to the buffer.
+    /// </summary>
     public IBuffer Add(string value)
     {
         return this;
     }
 
+    /// <summary>
+    /// Add a group of strings to the buffer.
+    /// </summary>
     public IBuffer Add(params string[] values)
     {
         return this;
     }
 
+    /// <summary>
+    /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
+    /// extra post-processing, like trimming trailing whitespace.
+    /// </summary>
     public IBuffer EndLine(string eolString)
     {
         return this;
     }
 
+    /// <summary>
+    /// Call this to let the buffer finish up any work in progress.
+    /// </summary>
     public IBuffer Flush()
     {
         return this;

@@ -5,13 +5,23 @@ using System.IO;
 
 namespace FracturedJson.Tokenizing;
 
+/// <summary>
+/// Class that breaks up text of a JSON document into complete tokens.  Tokens are specific keywords - null, true,
+/// false - or a complete quoted string, or a complete number, or a comment, etc.
+/// </summary>
 public static class TokenScanner
 {
+    /// <summary>
+    /// Reads in a file and returns an enumeration of tokens.
+    /// </summary>
     public static IEnumerable<JsonToken> Scan(FileInfo fileInfo)
     {
         return Scan(EnumerateFile(fileInfo));
     }
 
+    /// <summary>
+    /// Reads in a file and returns an enumeration of characters.
+    /// </summary>
     public static IEnumerable<char> EnumerateFile(FileInfo fileInfo)
     {
         using var reader = new StreamReader(fileInfo.FullName);
