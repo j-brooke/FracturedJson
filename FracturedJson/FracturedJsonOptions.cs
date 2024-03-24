@@ -110,6 +110,8 @@ public record FracturedJsonOptions
     /// </summary>
     public bool DontJustifyNumbers { get; set; } = false;
 
+    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Normalize;
+
     /// <summary>
     /// Number of spaces to use per indent level.  If <see cref="UseTabToIndent"/> is true, spaces won't be used but
     /// this number will still be used in length computations.

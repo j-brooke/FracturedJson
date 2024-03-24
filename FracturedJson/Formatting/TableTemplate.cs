@@ -37,7 +37,8 @@ internal class TableTemplate
     public int MiddleCommentLength { get; private set; }
     public int PostfixCommentLength { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
-    public bool IsFormattableNumber { get; private set; }
+    public bool AllowNumberNormalization { get; private set; }
+    public bool IsNumberList { get; private set; }
     public int CompositeValueLength { get; private set; }
     public int TotalLength { get; private set; }
     
@@ -47,11 +48,12 @@ internal class TableTemplate
     /// </summary>
     public IList<TableTemplate> Children { get; set; } = new List<TableTemplate>();
 
-    public TableTemplate(PaddedFormattingTokens pads, bool allowReformattingNumbers)
+    public TableTemplate(PaddedFormattingTokens pads, NumberListAlignment numberListAlignment)
     {
         _pads = pads;
-        _allowReformattingNumbers = allowReformattingNumbers;
-        IsFormattableNumber = allowReformattingNumbers;
+        _numberListAlignment = numberListAlignment;
+        AllowNumberNormalization = (numberListAlignment == NumberListAlignment.Normalize);
+        IsNumberList = true;
     }
 
     /// <summary>
@@ -88,29 +90,66 @@ internal class TableTemplate
         return false;
     }
 
-    public string FormatNumber(string originalValueString)
+    public (int, string, int) FormatNumber(JsonItem item)
     {
-        if (!IsFormattableNumber)
+        if (!IsNumberList || item.Type is not (JsonItemType.Number or JsonItemType.Null))
             throw new FracturedJsonException("Logic error - attempting to format inappropriate thing as number");
 
-        // Create a .NET format string, if we don't already have one.
-        if (_numberFormat == null)
-        {
-            var totalWidth = _maxDigitsBeforeDecimal + _maxDigitsAfterDecimal + ((_maxDigitsAfterDecimal > 0) ? 1 : 0);
+        var formatType = (_numberListAlignment is NumberListAlignment.Normalize && !AllowNumberNormalization)
+            ? NumberListAlignment.Left
+            : _numberListAlignment;
 
-            // Leave room for the literal null if we saw one in the row data.
-            if (_dataContainsNull && totalWidth < 4)
-                totalWidth = 4;
-            _numberFormat = $"{{0,{totalWidth}:F{_maxDigitsAfterDecimal}}}";
+        switch (formatType)
+        {
+            case NumberListAlignment.Left:
+                return (0, item.Value, SimpleValueLength - item.ValueLength);
+            case NumberListAlignment.Right:
+                return (SimpleValueLength - item.ValueLength, item.Value, 0);
         }
 
-        return string.Format(CultureInfo.InvariantCulture, _numberFormat, double.Parse(originalValueString));
+        if (formatType is NumberListAlignment.Normalize)
+        {
+            var normDecLength = (_maxDigAfterDecNorm > 0) ? 1 : 0;
+            var normFieldLength = _maxDigBeforeDecNorm + normDecLength + _maxDigAfterDecNorm;
+
+            if (item.Type is JsonItemType.Null)
+                return (_maxDigBeforeDecNorm - item.ValueLength, item.Value, _maxDigAfterDecNorm + normDecLength);
+
+            // Create a .NET format string, if we don't already have one.
+            _numberFormat ??= $"{{0,{normFieldLength}:F{_maxDigAfterDecNorm}}}";
+
+            var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, double.Parse(item.Value));
+            return (0, reformattedStr, 0);
+        }
+
+        var rawDecLength = (_maxDigAfterDecRaw > 0) ? 1 : 0;
+        var rawFieldLength = _maxDigBeforeDecRaw + rawDecLength + _maxDigAfterDecRaw;
+
+        if (item.Type is JsonItemType.Null)
+            return (_maxDigBeforeDecRaw - item.ValueLength, item.Value, _maxDigAfterDecRaw + rawDecLength);
+
+        int leftPad;
+        int rightPad;
+        var indexOfDot = item.Value.IndexOfAny(_dotOrE);
+        if (indexOfDot > 0)
+        {
+            leftPad = _maxDigBeforeDecRaw - indexOfDot;
+            rightPad = rawFieldLength - leftPad - item.ValueLength;
+            return (leftPad, item.Value, rightPad);
+        }
+
+        leftPad = _maxDigBeforeDecRaw - item.ValueLength;
+        rightPad = _maxDigAfterDecRaw + rawDecLength;
+        return (leftPad, item.Value, rightPad);
     }
 
+    private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
     private readonly PaddedFormattingTokens _pads;
-    private readonly bool _allowReformattingNumbers;
-    private int _maxDigitsBeforeDecimal = 0;
-    private int _maxDigitsAfterDecimal = 0;
+    private readonly NumberListAlignment _numberListAlignment;
+    private int _maxDigBeforeDecRaw = 0;
+    private int _maxDigAfterDecRaw = 0;
+    private int _maxDigBeforeDecNorm = 0;
+    private int _maxDigAfterDecNorm = 0;
     private string? _numberFormat;
     private bool _dataContainsNull = false;
 
@@ -135,7 +174,7 @@ internal class TableTemplate
         {
             IsRowDataCompatible &= (Type is JsonItemType.True or JsonItemType.Null);
             Type = JsonItemType.True;
-            IsFormattableNumber = false;
+            IsNumberList = false;
         }
         else if (rowSegment.Type is JsonItemType.Number)
         {
@@ -145,13 +184,15 @@ internal class TableTemplate
         else if (rowSegment.Type is JsonItemType.Null)
         {
             _dataContainsNull = true;
+            _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, 4);
+            _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, 4);
         }
         else
         {
             IsRowDataCompatible &= (Type == rowSegment.Type || Type == JsonItemType.Null);
             if (Type is JsonItemType.Null)
                 Type = rowSegment.Type;
-            IsFormattableNumber = false;
+            IsNumberList = false;
         }
 
         // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
@@ -178,7 +219,7 @@ internal class TableTemplate
             for (var i = 0; i < rowSegment.Children.Count; ++i)
             {
                 if (Children.Count <= i)
-                    Children.Add(new(_pads, _allowReformattingNumbers));
+                    Children.Add(new(_pads, _numberListAlignment));
                 var subTemplate = Children[i];
                 subTemplate.MeasureRowSegment(rowSegment.Children[i]);
             }
@@ -203,13 +244,13 @@ internal class TableTemplate
                 var subTemplate = Children.FirstOrDefault(tt => tt.LocationInParent == rowSegChild.Name);
                 if (subTemplate == null)
                 {
-                    subTemplate = new(_pads, _allowReformattingNumbers) { LocationInParent = rowSegChild.Name };
+                    subTemplate = new(_pads, _numberListAlignment) { LocationInParent = rowSegChild.Name };
                     Children.Add(subTemplate);
                 }
                 subTemplate.MeasureRowSegment(rowSegChild);
             }
         }
-        else if (rowSegment.Type == JsonItemType.Number && IsFormattableNumber)
+        else if (rowSegment.Type == JsonItemType.Number && IsNumberList)
         {
             // So far, everything in this column is a number that we can safely reformat.  Check to see if that's
             // still true with this new rowSegment, and if so, measure how much space we need before and after
@@ -222,18 +263,26 @@ internal class TableTemplate
             // 1e-500 becomes 0.  In either of those cases, we shouldn't try to reformat the column.  Likewise,
             // if there are too many digits or it needs to be expressed in scientific notation, we're better off
             // not even trying.
-            IsFormattableNumber = !double.IsNaN(parsedVal)
+            AllowNumberNormalization &= !double.IsNaN(parsedVal)
                                   && !double.IsInfinity(parsedVal)
                                   && normalizedStr.Length <= maxChars
                                   && !normalizedStr.Contains('E')
                                   && (parsedVal!=0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
 
-            var indexOfDot = normalizedStr.IndexOf('.');
-            _maxDigitsBeforeDecimal =
-                Math.Max(_maxDigitsBeforeDecimal, (indexOfDot >= 0) ? indexOfDot : normalizedStr.Length);
-            _maxDigitsAfterDecimal =
-                Math.Max(_maxDigitsAfterDecimal, (indexOfDot >= 0) ? normalizedStr.Length - indexOfDot - 1 : 0);
+            var indexOfDotNorm = normalizedStr.IndexOf('.');
+            _maxDigBeforeDecNorm =
+                Math.Max(_maxDigBeforeDecNorm, (indexOfDotNorm >= 0) ? indexOfDotNorm : normalizedStr.Length);
+            _maxDigAfterDecNorm =
+                Math.Max(_maxDigAfterDecNorm, (indexOfDotNorm >= 0) ? normalizedStr.Length - indexOfDotNorm - 1 : 0);
+
+            var indexOfDotRaw = rowSegment.Value.IndexOfAny(_dotOrE);
+            _maxDigBeforeDecRaw =
+                Math.Max(_maxDigBeforeDecRaw, (indexOfDotRaw >= 0) ? indexOfDotRaw : rowSegment.ValueLength);
+            _maxDigAfterDecRaw =
+                Math.Max(_maxDigAfterDecRaw, (indexOfDotRaw >= 0) ? rowSegment.ValueLength - indexOfDotRaw - 1 : 0);
         }
+
+        AllowNumberNormalization &= IsNumberList;
     }
 
     /// <summary>
@@ -260,11 +309,11 @@ internal class TableTemplate
                                    + _pads.ArrStartLen(PadType)
                                    + _pads.ArrEndLen(PadType);
         }
-        else if (IsFormattableNumber)
+        else if (AllowNumberNormalization)
         {
-            CompositeValueLength = _maxDigitsBeforeDecimal
-                                   + _maxDigitsAfterDecimal
-                                   + ((_maxDigitsAfterDecimal > 0) ? 1 : 0);
+            CompositeValueLength = _maxDigBeforeDecNorm
+                                   + _maxDigAfterDecNorm
+                                   + ((_maxDigAfterDecNorm > 0) ? 1 : 0);
 
             // Allow room for null.
             if (_dataContainsNull && CompositeValueLength < 4)
