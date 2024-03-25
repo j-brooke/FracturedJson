@@ -104,12 +104,11 @@ public record FracturedJsonOptions
     /// line comments).
     /// </summary>
     public bool OmitTrailingWhitespace { get; set; } = false;
-    
-    /// <summary>
-    /// If true, numbers won't be right-aligned with matching precision.
-    /// </summary>
-    public bool DontJustifyNumbers { get; set; } = false;
 
+    /// <summary>
+    /// Controls how lists or columns of numbers (possibly with nulls) are aligned, and whether their precision
+    /// may be normalized.
+    /// </summary>
     public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Normalize;
 
     /// <summary>

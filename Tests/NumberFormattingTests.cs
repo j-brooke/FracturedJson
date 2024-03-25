@@ -59,23 +59,6 @@ public class NumberFormattingTests
     }
 
     [TestMethod]
-    public void DontJustifyOptionRespected()
-    {
-        const string input = "[1, 2.1, 3, -99]";
-        const string expectedOutput = "[\n    1  , 2.1, 3  , -99\n]";
-
-        // Here, it's formatted as a compact multiline array (but not really multiline).  But since we're telling it
-        // not to justify numbers, they're treated like text: left-aligned and space-padded.
-        var opts = new FracturedJsonOptions()
-            { MaxInlineComplexity = -1, DontJustifyNumbers = true, JsonEolStyle = EolStyle.Lf };
-
-        var formatter = new Formatter() { Options = opts };
-        var output = formatter.Reformat(input, 0);
-
-        Assert.AreEqual(expectedOutput, output.TrimEnd());
-    }
-
-    [TestMethod]
     public void BigNumbersInvalidateAlignment1()
     {
         const string input = "[1, 2.1, 3, 1e+99]";
@@ -154,4 +137,103 @@ public class NumberFormattingTests
 
         Assert.AreEqual(expectedOutput, output.TrimEnd());
     }
+
+    [TestMethod]
+    public void LeftAlignMatchesExpected()
+    {
+        var expectedRows = new[]
+        {
+            "[",
+            "    [123.456 , 0      , 0   ],",
+            "    [234567.8, 0      , 0   ],",
+            "    [3       , 0.00000, 7e2 ],",
+            "    [null    , 2e-1   , 80e1],",
+            "    [5.6789  , 3.5e-1 , 0   ]",
+            "]",
+        };
+
+        TestAlignment(NumberListAlignment.Left, expectedRows);
+    }
+
+    [TestMethod]
+    public void RightAlignMatchesExpected()
+    {
+        var expectedRows = new[]
+        {
+            "[",
+            "    [ 123.456,       0,    0],",
+            "    [234567.8,       0,    0],",
+            "    [       3, 0.00000,  7e2],",
+            "    [    null,    2e-1, 80e1],",
+            "    [  5.6789,  3.5e-1,    0]",
+            "]",
+        };
+
+        TestAlignment(NumberListAlignment.Right, expectedRows);
+    }
+
+    [TestMethod]
+    public void DecimalAlignMatchesExpected()
+    {
+        var expectedRows = new[]
+        {
+            "[",
+            "    [   123.456 , 0      ,  0  ],",
+            "    [234567.8   , 0      ,  0  ],",
+            "    [     3     , 0.00000,  7e2],",
+            "    [  null     , 2e-1   , 80e1],",
+            "    [     5.6789, 3.5e-1 ,  0  ]",
+            "]",
+        };
+
+        TestAlignment(NumberListAlignment.Decimal, expectedRows);
+    }
+
+    [TestMethod]
+    public void NormalizeAlignMatchesExpected()
+    {
+        var expectedRows = new[]
+        {
+            "[",
+            "    [   123.4560, 0.00,   0],",
+            "    [234567.8000, 0.00,   0],",
+            "    [     3.0000, 0.00, 700],",
+            "    [  null     , 0.20, 800],",
+            "    [     5.6789, 0.35,   0]",
+            "]",
+        };
+
+        TestAlignment(NumberListAlignment.Normalize, expectedRows);
+    }
+
+    private static void TestAlignment(NumberListAlignment align, string[] expectedRows)
+    {
+
+        var input = string.Join(string.Empty, _numberTable);
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 60,
+            JsonEolStyle = EolStyle.Lf,
+            OmitTrailingWhitespace = true,
+            NumberListAlignment = align
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputRows = output.TrimEnd().Split('\n');
+
+        CollectionAssert.AreEqual(expectedRows, outputRows);
+    }
+
+
+    private static readonly string[] _numberTable = new[]
+    {
+        "[",
+        "    [ 123.456, 0, 0 ],",
+        "    [ 234567.8, 0, 0 ],",
+        "    [ 3, 0.00000, 7e2 ],",
+        "    [ null, 2e-1, 80e1 ],",
+        "    [ 5.6789, 3.5e-1, 0 ]",
+        "]",
+    };
 }

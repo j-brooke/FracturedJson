@@ -258,7 +258,7 @@ public class UniversalJsonTests
             AlwaysExpandDepth = int.MaxValue,
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,
-            DontJustifyNumbers = true,
+            NumberListAlignment = NumberListAlignment.Decimal,
         };
         var expandFormatter = new Formatter() { Options = expandOptions };
         var expandOutput = expandFormatter.Reformat(crunchOutput, 0);
