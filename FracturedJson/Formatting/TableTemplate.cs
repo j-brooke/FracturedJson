@@ -7,8 +7,9 @@ using System.Text.RegularExpressions;
 namespace FracturedJson.Formatting;
 
 /// <summary>
-/// Collects spacing information about the columns of a potential table.  Each TableTemplate corresponds do
-/// a part of a row, and they're nested recursively to match the JSON structure.
+/// Collects spacing information about the columns of a potential table.  Each TableTemplate corresponds to
+/// a part of a row, and they're nested recursively to match the JSON structure.  (Also used in complex multiline
+/// arrays to try to fit them all nicely together.)
 /// </summary>
 /// <remarks>
 /// <para> Say you have an object/array where each item would make a nice row all by itself.  We want to try to line up 
@@ -22,6 +23,11 @@ internal class TableTemplate
     /// The property name in the table that this segment matches up with. 
     /// </summary>
     public string? LocationInParent { get; private set; }
+
+    /// <summary>
+    /// The type of values in the column, if they're uniform.  There's some wiggle-room here: for instance,
+    /// true and false have different JsonItemTypes but are considered the same type for table purposes.
+    /// </summary>
     public JsonItemType Type { get; private set; } = JsonItemType.Null;
     
     /// <summary>
@@ -49,7 +55,17 @@ internal class TableTemplate
     /// settings.
     /// </summary>
     public bool IsNumberList { get; private set; }
+
+    /// <summary>
+    /// Length of the value for this template when things are complicated.  For arrays and objects, it's the sum of
+    /// all the child templates' lengths, plus brackets and commas and such.  For number lists, it's the space
+    /// required to align them as appropriate.
+    /// </summary>
     public int CompositeValueLength { get; private set; }
+
+    /// <summary>
+    /// Length of the entire template, including space for the value, property name, and all comments.
+    /// </summary>
     public int TotalLength { get; private set; }
     
     /// <summary>
@@ -100,11 +116,12 @@ internal class TableTemplate
         return false;
     }
 
+    /// <summary>
+    /// Added the number, properly aligned and possibly reformatted, according to our measurements.
+    /// This assumes that the segment is a number list, and therefore that the item is a number or null.
+    /// </summary>
     public void FormatNumber(IBuffer buffer, JsonItem item)
     {
-        if (!IsNumberList || item.Type is not (JsonItemType.Number or JsonItemType.Null))
-            throw new FracturedJsonException("Logic error - attempting to format inappropriate thing as number");
-
         var formatType = (_numberListAlignment is NumberListAlignment.Normalize && !AllowNumberNormalization)
             ? NumberListAlignment.Left
             : _numberListAlignment;
@@ -120,20 +137,18 @@ internal class TableTemplate
                 return;
         }
 
-        var (fieldLength, decLength) = GetNumberFieldWidth();
-
         // Normalize case - rewrite the number with the appropriate precision.
         if (formatType is NumberListAlignment.Normalize)
         {
             if (item.Type is JsonItemType.Null)
             {
                 buffer.Add(_pads.Spaces(_maxDigBeforeDecNorm - item.ValueLength), item.Value,
-                    _pads.Spaces(_maxDigAfterDecNorm + decLength));
+                    _pads.Spaces(CompositeValueLength - _maxDigBeforeDecNorm));
                 return;
             }
 
             // Create a .NET format string, if we don't already have one.
-            _numberFormat ??= $"{{0,{fieldLength}:F{_maxDigAfterDecNorm}}}";
+            _numberFormat ??= $"{{0,{CompositeValueLength}:F{_maxDigAfterDecNorm}}}";
 
             var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, double.Parse(item.Value));
             buffer.Add(reformattedStr);
@@ -144,7 +159,7 @@ internal class TableTemplate
         if (item.Type is JsonItemType.Null)
         {
             buffer.Add(_pads.Spaces(_maxDigBeforeDecRaw - item.ValueLength), item.Value,
-                _pads.Spaces(_maxDigAfterDecRaw + decLength));
+                _pads.Spaces(CompositeValueLength - _maxDigBeforeDecRaw));
             return;
         }
 
@@ -154,12 +169,12 @@ internal class TableTemplate
         if (indexOfDot > 0)
         {
             leftPad = _maxDigBeforeDecRaw - indexOfDot;
-            rightPad = fieldLength - leftPad - item.ValueLength;
+            rightPad = CompositeValueLength - leftPad - item.ValueLength;
         }
         else
         {
             leftPad = _maxDigBeforeDecRaw - item.ValueLength;
-            rightPad = _maxDigAfterDecRaw + decLength;
+            rightPad = CompositeValueLength - _maxDigBeforeDecRaw;
         }
 
         buffer.Add(_pads.Spaces(leftPad), item.Value, _pads.Spaces(rightPad));
@@ -229,6 +244,7 @@ internal class TableTemplate
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
 
+        // Everything after this is moot if the column doesn't have a uniform type.
         if (!IsRowDataCompatible)
             return;
         
@@ -316,27 +332,26 @@ internal class TableTemplate
     /// </summary>
     private void PruneAndRecompute(int maxAllowedComplexity)
     {
-        if (maxAllowedComplexity<=0)
+        if (maxAllowedComplexity <= 0 || !IsRowDataCompatible)
             Children.Clear();
         
         foreach(var subTemplate in Children)
             subTemplate.PruneAndRecompute(maxAllowedComplexity-1);
-        
-        if (!IsRowDataCompatible)
-            Children.Clear();
 
-        CompositeValueLength = SimpleValueLength;
-        if (Children.Count>0)
+        if (IsNumberList)
+        {
+            CompositeValueLength = GetNumberFieldWidth();
+        }
+        else if (Children.Count > 0)
         {
             CompositeValueLength = Children.Sum(ch => ch.TotalLength)
                                    + Math.Max(0, _pads.CommaLen * (Children.Count - 1))
                                    + _pads.ArrStartLen(PadType)
                                    + _pads.ArrEndLen(PadType);
         }
-        else if (IsNumberList)
+        else
         {
-            var (fieldLength, _) = GetNumberFieldWidth();
-            CompositeValueLength = fieldLength;
+            CompositeValueLength = SimpleValueLength;
         }
 
         TotalLength = ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
@@ -353,21 +368,18 @@ internal class TableTemplate
         return 1 + Children.Max(ch => ch.GetTemplateComplexity());
     }
 
-    private (int, int) GetNumberFieldWidth()
+    private int GetNumberFieldWidth()
     {
         switch (_numberListAlignment)
         {
-            case NumberListAlignment.Left:
-            case NumberListAlignment.Right:
-                return (SimpleValueLength, 0);
             case NumberListAlignment.Decimal:
                 var rawDecLen = (_maxDigAfterDecRaw > 0) ? 1 : 0;
-                return (_maxDigBeforeDecRaw + rawDecLen + _maxDigAfterDecRaw, rawDecLen);
+                return _maxDigBeforeDecRaw + rawDecLen + _maxDigAfterDecRaw;
             case NumberListAlignment.Normalize:
                 var normDecLen = (_maxDigAfterDecNorm > 0) ? 1 : 0;
-                return (_maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm, normDecLen);
+                return _maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm;
+            default:
+                return SimpleValueLength;
         }
-
-        throw new FracturedJsonException($"Unknown NumberListAlignment: {_numberListAlignment}");
     }
 }
