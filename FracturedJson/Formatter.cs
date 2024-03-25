@@ -604,8 +604,7 @@ public class Formatter
         }
         else if (template.IsNumberList)
         {
-            var (leftPad, valStr, rightPad) = template.FormatNumber(item);
-            _buffer.Add(_pads.Spaces(leftPad), valStr, _pads.Spaces(rightPad));
+            template.FormatNumber(_buffer, item);
         }
         else
         {

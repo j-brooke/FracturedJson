@@ -100,7 +100,7 @@ internal class TableTemplate
         return false;
     }
 
-    public (int, string, int) FormatNumber(JsonItem item)
+    public void FormatNumber(IBuffer buffer, JsonItem item)
     {
         if (!IsNumberList || item.Type is not (JsonItemType.Number or JsonItemType.Null))
             throw new FracturedJsonException("Logic error - attempting to format inappropriate thing as number");
@@ -109,30 +109,44 @@ internal class TableTemplate
             ? NumberListAlignment.Left
             : _numberListAlignment;
 
+        // The easy cases.  Use the value exactly as it was in the source doc.
         switch (formatType)
         {
             case NumberListAlignment.Left:
-                return (0, item.Value, SimpleValueLength - item.ValueLength);
+                buffer.Add(item.Value, _pads.Spaces(SimpleValueLength - item.ValueLength));
+                return;
             case NumberListAlignment.Right:
-                return (SimpleValueLength - item.ValueLength, item.Value, 0);
+                buffer.Add(_pads.Spaces(SimpleValueLength - item.ValueLength), item.Value);
+                return;
         }
 
         var (fieldLength, decLength) = GetNumberFieldWidth();
 
+        // Normalize case - rewrite the number with the appropriate precision.
         if (formatType is NumberListAlignment.Normalize)
         {
             if (item.Type is JsonItemType.Null)
-                return (_maxDigBeforeDecNorm - item.ValueLength, item.Value, _maxDigAfterDecNorm + decLength);
+            {
+                buffer.Add(_pads.Spaces(_maxDigBeforeDecNorm - item.ValueLength), item.Value,
+                    _pads.Spaces(_maxDigAfterDecNorm + decLength));
+                return;
+            }
 
             // Create a .NET format string, if we don't already have one.
             _numberFormat ??= $"{{0,{fieldLength}:F{_maxDigAfterDecNorm}}}";
 
             var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, double.Parse(item.Value));
-            return (0, reformattedStr, 0);
+            buffer.Add(reformattedStr);
+            return;
         }
 
+        // Decimal case - line up the decimals (or E's) but leave the value exactly as it was in the source.
         if (item.Type is JsonItemType.Null)
-            return (_maxDigBeforeDecRaw - item.ValueLength, item.Value, _maxDigAfterDecRaw + decLength);
+        {
+            buffer.Add(_pads.Spaces(_maxDigBeforeDecRaw - item.ValueLength), item.Value,
+                _pads.Spaces(_maxDigAfterDecRaw + decLength));
+            return;
+        }
 
         int leftPad;
         int rightPad;
@@ -141,12 +155,14 @@ internal class TableTemplate
         {
             leftPad = _maxDigBeforeDecRaw - indexOfDot;
             rightPad = fieldLength - leftPad - item.ValueLength;
-            return (leftPad, item.Value, rightPad);
+        }
+        else
+        {
+            leftPad = _maxDigBeforeDecRaw - item.ValueLength;
+            rightPad = _maxDigAfterDecRaw + decLength;
         }
 
-        leftPad = _maxDigBeforeDecRaw - item.ValueLength;
-        rightPad = _maxDigAfterDecRaw + decLength;
-        return (leftPad, item.Value, rightPad);
+        buffer.Add(_pads.Spaces(leftPad), item.Value, _pads.Spaces(rightPad));
     }
 
     private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
