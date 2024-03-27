@@ -38,7 +38,17 @@ namespace FracturedJsonCli
                     { "e|expand=", "always-expand depth", (int n) => options.AlwaysExpandDepth = n },
                     { "f|file=", "input from file instead of stdin", s => fileName = s },
                     { "h|help", "show this help info and exit", _ => showHelp = true },
-                    { "j|no-justify", "don't justify parallel numbers", _ => options.DontJustifyNumbers = true },
+                    {
+                        "j|justify=", "number list justification [l,r,d,n]", s =>
+                            options.NumberListAlignment = s.ToUpper() switch
+                        {
+                            "L" or "LEFT" => NumberListAlignment.Left,
+                            "R" or "RIGHT" => NumberListAlignment.Right,
+                            "D" or "DECIMAL" => NumberListAlignment.Decimal,
+                            "N" or "NORMALIZE" => NumberListAlignment.Normalize,
+                            _ => NumberListAlignment.Left,
+                        }
+                    },
                     {
                         "l|length=",
                         "maximum total line length when inlining",

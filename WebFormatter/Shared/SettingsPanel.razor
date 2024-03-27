@@ -1,38 +1,58 @@
 @using FracturedJson
+@using System.Data
 @inject WebFormatterState State
 
 <h2>Settings</h2>
 
-<div class="section-label">Length and Complexity</div>
-<div><input type="number" class="number" @bind="State.Options.MaxTotalLineLength" min="0" step="10">Max Total Line Length</div>
-<div><input type="number" class="number" @bind="State.Options.MaxInlineLength" min="0" step="10">Max Inline Length</div>
+<EditForm EditContext="@_editContext">
+    <div class="section-label">Length and Complexity</div>
+    <div><input type="number" class="number" @bind="State.Options.MaxTotalLineLength" min="0" step="10">Max Total Line Length</div>
+    <div><input type="number" class="number" @bind="State.Options.MaxInlineLength" min="0" step="10">Max Inline Length</div>
 
-<div><input type="number" class="number" @bind="State.Options.MaxInlineComplexity" min="-1">Max Inline Complexity</div>
-<div><input type="number" class="number" @bind="State.Options.MaxCompactArrayComplexity" min="-1">Max Compact Array Complexity</div>
-<div><input type="number" class="number" @bind="State.Options.MaxTableRowComplexity" min="-1">Max Table Row Complexity</div>
+    <div><input type="number" class="number" @bind="State.Options.MaxInlineComplexity" min="-1">Max Inline Complexity</div>
+    <div><input type="number" class="number" @bind="State.Options.MaxCompactArrayComplexity" min="-1">Max Compact Array Complexity</div>
+    <div><input type="number" class="number" @bind="State.Options.MaxTableRowComplexity" min="-1">Max Table Row Complexity</div>
 
-<div><input type="number" class="number" @bind="State.Options.MinCompactArrayRowItems" min="0">Min Compact Array Row Items</div>
-<div><input type="number" class="number" @bind="State.Options.AlwaysExpandDepth" min="-1">Always Expand Depth</div>
+    <div><input type="number" class="number" @bind="State.Options.MinCompactArrayRowItems" min="0">Min Compact Array Row Items</div>
+    <div><input type="number" class="number" @bind="State.Options.AlwaysExpandDepth" min="-1">Always Expand Depth</div>
 
-<div class="section-label">Padding</div>
-<div><input type="checkbox" @bind="State.Options.NestedBracketPadding">Nested Bracket Padding</div>
-<div><input type="checkbox" @bind="State.Options.SimpleBracketPadding">Simple Bracket Padding</div>
-<div><input type="checkbox" @bind="State.Options.ColonPadding">Colon Padding</div>
-<div><input type="checkbox" @bind="State.Options.CommaPadding">Comma Padding</div>
-<div><input type="checkbox" @bind="State.Options.CommentPadding">Comment Padding</div>
-<div><input type="checkbox" @bind="State.Options.UseTabToIndent">Use Tab To Indent</div>
-<div><input type="number" class="number" @bind="State.Options.IndentSpaces" min="0">Indent Spaces</div>
+    <div class="section-label">Padding</div>
+    <div><input type="checkbox" @bind="State.Options.NestedBracketPadding">Nested Bracket Padding</div>
+    <div><input type="checkbox" @bind="State.Options.SimpleBracketPadding">Simple Bracket Padding</div>
+    <div><input type="checkbox" @bind="State.Options.ColonPadding">Colon Padding</div>
+    <div><input type="checkbox" @bind="State.Options.CommaPadding">Comma Padding</div>
+    <div><input type="checkbox" @bind="State.Options.CommentPadding">Comment Padding</div>
+    <div><input type="checkbox" @bind="State.Options.UseTabToIndent">Use Tab To Indent</div>
+    <div><input type="number" class="number" @bind="State.Options.IndentSpaces" min="0">Indent Spaces</div>
 
-<div class="section-label">Miscellaneous</div>
-<div><input type="checkbox" @bind="State.Options.DontJustifyNumbers">Don't Justify Numbers</div>
-<div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
-<div><input type="checkbox" @bind="State.Options.PreserveBlankLines">Preserve Blank Lines</div>
-<div><input type="checkbox" @bind="State.Options.AllowTrailingCommas">Allow Trailing Commas</div>
+    <div class="section-label">Miscellaneous</div>
+    <div>
+        <InputSelect @bind-Value="@State.Options.NumberListAlignment">
+            @foreach (var alignOpt in Enum.GetValues<NumberListAlignment>())
+            {
+                <option value="@alignOpt">@alignOpt</option>
+            }
+        </InputSelect>
+        <label>Number List Alignment</label>
+    </div>
+    <div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
+    <div><input type="checkbox" @bind="State.Options.PreserveBlankLines">Preserve Blank Lines</div>
+    <div><input type="checkbox" @bind="State.Options.AllowTrailingCommas">Allow Trailing Commas</div>
 
-<button type="button" @onclick="State.SetToDefaults">Reset</button>
-&nbsp;<a href="https://github.com/j-brooke/FracturedJson/wiki/Options" target="_blank" rel="noopener">Settings Help</a>
+    <button type="button" @onclick="State.SetToDefaults">Reset</button>
+    &nbsp;<a href="https://github.com/j-brooke/FracturedJson/wiki/Options" target="_blank" rel="noopener">Settings Help</a>
+</EditForm>
+
 
 @code {
+    private EditContext? _editContext;
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(State.Options);
+        base.OnInitialized();
+    }
+
     private bool AllowComments
     {
         get => GetAllowComments();
