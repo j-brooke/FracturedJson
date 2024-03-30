@@ -219,8 +219,8 @@ internal class TableTemplate
         }
         else if (rowSegment.Type is JsonItemType.Null)
         {
-            _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, 4);
-            _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, 4);
+            _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, _pads.LiteralNullLen);
+            _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, _pads.LiteralNullLen);
         }
         else
         {
@@ -370,16 +370,17 @@ internal class TableTemplate
 
     private int GetNumberFieldWidth()
     {
-        switch (_numberListAlignment)
+        if (_numberListAlignment == NumberListAlignment.Normalize && AllowNumberNormalization)
         {
-            case NumberListAlignment.Decimal:
-                var rawDecLen = (_maxDigAfterDecRaw > 0) ? 1 : 0;
-                return _maxDigBeforeDecRaw + rawDecLen + _maxDigAfterDecRaw;
-            case NumberListAlignment.Normalize:
-                var normDecLen = (_maxDigAfterDecNorm > 0) ? 1 : 0;
-                return _maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm;
-            default:
-                return SimpleValueLength;
+            var normDecLen = (_maxDigAfterDecNorm > 0) ? 1 : 0;
+            return _maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm;
         }
+        else if (_numberListAlignment == NumberListAlignment.Decimal)
+        {
+            var rawDecLen = (_maxDigAfterDecRaw > 0) ? 1 : 0;
+            return _maxDigBeforeDecRaw + rawDecLen + _maxDigAfterDecRaw;
+        }
+
+        return SimpleValueLength;
     }
 }

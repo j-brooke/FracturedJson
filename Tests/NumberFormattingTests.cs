@@ -139,6 +139,39 @@ public class NumberFormattingTests
     }
 
     [TestMethod]
+    public void AccurateCompositeLengthForNormalized()
+    {
+        // Make sure the the inner TableTemplate is accurately reporting the CompositeLength.  Otherwise,
+        // the null row won't have the right number of spaces.
+        var inputRows = new[]
+        {
+            "[",
+            "    { \"a\": {\"val\": 12345} },",
+            "    { \"a\": {\"val\": 6.78901} },",
+            "    { \"a\": null },",
+            "    { \"a\": {\"val\": 1e500} }",
+            "]",
+        };
+
+        var input = string.Join(string.Empty, inputRows);
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 40,
+            JsonEolStyle = EolStyle.Lf,
+            OmitTrailingWhitespace = true,
+            NumberListAlignment = NumberListAlignment.Normalize
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputRows = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(6, outputRows.Length);
+        Assert.AreEqual(outputRows[2].Length, outputRows[3].Length);
+    }
+
+
+    [TestMethod]
     public void LeftAlignMatchesExpected()
     {
         var expectedRows = new[]
@@ -208,7 +241,6 @@ public class NumberFormattingTests
 
     private static void TestAlignment(NumberListAlignment align, string[] expectedRows)
     {
-
         var input = string.Join(string.Empty, _numberTable);
         var opts = new FracturedJsonOptions()
         {

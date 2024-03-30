@@ -13,6 +13,9 @@ internal class PaddedFormattingTokens
     public int CommaLen { get; }
     public int ColonLen { get; }
     public int CommentLen { get; }
+    public int LiteralNullLen { get; }
+    public int LiteralTrueLen { get; }
+    public int LiteralFalseLen { get; }
     public int PrefixStringLen { get; }
     public string DummyComma => Spaces(CommaLen);
     
@@ -63,6 +66,9 @@ internal class PaddedFormattingTokens
         CommaLen = strLenFunc(Comma);
         ColonLen = strLenFunc(Colon);
         CommentLen = strLenFunc(Comment);
+        LiteralNullLen = strLenFunc("null");
+        LiteralTrueLen = strLenFunc("true");
+        LiteralFalseLen = strLenFunc("false");
         PrefixStringLen = strLenFunc(opts.PrefixString);
     }
 

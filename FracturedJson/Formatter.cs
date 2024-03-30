@@ -156,8 +156,15 @@ public class Formatter
         foreach(var child in item.Children)
             ComputeItemLengths(child);
 
+        item.ValueLength = item.Type switch
+        {
+            JsonItemType.Null => _pads.LiteralNullLen,
+            JsonItemType.True => _pads.LiteralTrueLen,
+            JsonItemType.False => _pads.LiteralFalseLen,
+            _ => StringLengthFunc(item.Value)
+        };
+
         item.NameLength = StringLengthFunc(item.Name);
-        item.ValueLength = StringLengthFunc(item.Value);
         item.PrefixCommentLength = StringLengthFunc(item.PrefixComment);
         item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
         item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
