@@ -104,11 +104,12 @@ public record FracturedJsonOptions
     /// line comments).
     /// </summary>
     public bool OmitTrailingWhitespace { get; set; } = false;
-    
+
     /// <summary>
-    /// If true, numbers won't be right-aligned with matching precision.
+    /// Controls how lists or columns of numbers (possibly with nulls) are aligned, and whether their precision
+    /// may be normalized.
     /// </summary>
-    public bool DontJustifyNumbers { get; set; } = false;
+    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Normalize;
 
     /// <summary>
     /// Number of spaces to use per indent level.  If <see cref="UseTabToIndent"/> is true, spaces won't be used but

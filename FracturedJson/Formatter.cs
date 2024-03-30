@@ -156,8 +156,15 @@ public class Formatter
         foreach(var child in item.Children)
             ComputeItemLengths(child);
 
+        item.ValueLength = item.Type switch
+        {
+            JsonItemType.Null => _pads.LiteralNullLen,
+            JsonItemType.True => _pads.LiteralTrueLen,
+            JsonItemType.False => _pads.LiteralFalseLen,
+            _ => StringLengthFunc(item.Value)
+        };
+
         item.NameLength = StringLengthFunc(item.Name);
-        item.ValueLength = StringLengthFunc(item.Value);
         item.PrefixCommentLength = StringLengthFunc(item.PrefixComment);
         item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
         item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
@@ -280,7 +287,7 @@ public class Formatter
             return false;
 
         // If all items are alike, we'll want to format each element as if it were a table row.
-        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
+        var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item);
 
         // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
@@ -353,7 +360,7 @@ public class Formatter
 
         // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
         // similar, IsRowDataCompatible will be false.
-        var template = new TableTemplate(_pads, !Options.DontJustifyNumbers);
+        var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item);
         if (!template.IsRowDataCompatible)
             return false;
@@ -602,9 +609,9 @@ public class Formatter
             else
                 InlineTableRawObject(template, item);
         }
-        else if (template.IsFormattableNumber && item.Type != JsonItemType.Null)
+        else if (template.IsNumberList)
         {
-            _buffer.Add(template.FormatNumber(item.Value));
+            template.FormatNumber(_buffer, item);
         }
         else
         {
