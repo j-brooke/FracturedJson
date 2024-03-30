@@ -1,6 +1,9 @@
 # FracturedJson
 
-FracturedJson is utility that formats JSON data producing user-readable but fairly compact output. Arrays and objects are written on single lines if they're short enough and not too complex; otherwise their contents are presented indented, beginning on lines of their own.  If a collection of inline arrays or objects are sufficiently similar and there's enough room, they will be aligned in a tabular arrangement.
+FracturedJson is a family of utilities that format [JSON data](https://www.json.org) in a way that's easy for
+humans to read, but fairly compact.  Arrays and objects are written on single lines, as long as they're
+neither too long nor too complex.  When several such lines are similar in structure, they're written with
+fields aligned like a table.  Long arrays are written with multiple items per line across multiple lines.
 
 It is available as a browser page, a .NET Standard 2.0 library, a Javascript package, and a Visual Studio Code extension.
 

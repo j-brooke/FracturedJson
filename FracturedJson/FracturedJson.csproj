@@ -4,15 +4,16 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
-        <Description>A library for formatting JSON, producing user-readable but compact output.</Description>
-        <Copyright>2023 Jesse Brooke</Copyright>
+        <Description>A library for formatting JSON, producing human-readable but compact output.</Description>
+        <Copyright>2024 Jesse Brooke</Copyright>
         <PackageProjectUrl>https://j-brooke.github.io/FracturedJson/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>3.1.1</AssemblyVersion>
+        <AssemblyVersion>4.0.0</AssemblyVersion>
         <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
-        <PackageVersion>3.1.1</PackageVersion>
+        <PackageVersion>4.0.0</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
@@ -27,6 +28,7 @@
 
     <ItemGroup>
         <None Include="packageIcon.png" Pack="true" PackagePath="" />
+        <None Include="..\README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
     <ItemGroup>

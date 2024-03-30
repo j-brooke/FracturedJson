@@ -169,17 +169,17 @@ public class Formatter
         item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
         item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
         item.RequiresMultipleLines =
-            (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment) 
+            (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
             || item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
             || item.PrefixComment.Contains(newline)
-            || item.MiddleComment.Contains(newline) 
-            || item.PostfixComment.Contains(newline) 
+            || item.MiddleComment.Contains(newline)
+            || item.PostfixComment.Contains(newline)
             || item.Value.Contains(newline);
 
         if (item.Type is JsonItemType.Array or JsonItemType.Object)
         {
             var padType = GetPaddingType(item);
-            item.ValueLength = 
+            item.ValueLength =
                 _pads.StartLen(item.Type, padType)
                 + _pads.EndLen(item.Type, padType)
                 + item.Children.Sum(ch => ch.MinimumTotalLength)
@@ -253,7 +253,7 @@ public class Formatter
     }
 
     /// <summary>
-    /// Tries to add the representation for an array or object to the buffer, including all necessary indents, newlines, 
+    /// Tries to add the representation for an array or object to the buffer, including all necessary indents, newlines,
     /// etc., if the array/object qualifies.
     /// </summary>
     /// <returns>True if the content was added.</returns>
@@ -273,7 +273,7 @@ public class Formatter
     }
 
     /// <summary>
-    /// Tries to add the representation of this array to the buffer, including indents and things, spanning multiple 
+    /// Tries to add the representation of this array to the buffer, including indents and things, spanning multiple
     /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
@@ -312,7 +312,7 @@ public class Formatter
             // Figure out whether the next item fits on the current line.  If not, start a new one.
             var child = item.Children[i];
             var needsComma = (i < item.Children.Count - 1);
-            var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) + 
+            var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) +
                                      ((template.IsRowDataCompatible) ? template.TotalLength : child.MinimumTotalLength);
 
             if (remainingLineSpace < spaceNeededForNext)
@@ -320,7 +320,7 @@ public class Formatter
                 _buffer.EndLine(_pads.EOL).Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
                 remainingLineSpace = availableLineSpace;
             }
-            
+
             // Write it out
             if (template.IsRowDataCompatible)
                 InlineTableRowSegment(template, child, needsComma, false);
@@ -348,7 +348,7 @@ public class Formatter
         // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
             return false;
-        
+
         var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
 
         // If any child element is too long even without formatting, don't bother.
@@ -365,7 +365,7 @@ public class Formatter
         if (!template.IsRowDataCompatible)
             return false;
 
-        // If the rows won't fit with everything (including descendents) tabular, try dropping the columns for
+        // If the rows won't fit with everything (including descendants) tabular, try dropping the columns for
         // the deepest nested items, repeatedly, until it either fits or we give up.
         //
         // For instance, here's an example of what fully tabular would look like:
@@ -400,12 +400,12 @@ public class Formatter
                 FormatStandaloneComment(rowItem, depthAfterColon+1);
                 continue;
             }
-            
+
             _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
             InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
             _buffer.EndLine(_pads.EOL);
         }
-        
+
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);
 
@@ -479,10 +479,10 @@ public class Formatter
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
         if (item.PrefixCommentLength > 0)
             _buffer.Add(item.PrefixComment, _pads.Comment);
-        
+
         if (item.NameLength > 0)
             _buffer.Add(item.Name, _pads.Colon);
-        
+
         if (item.MiddleCommentLength == 0)
             return depth;
 
@@ -496,10 +496,10 @@ public class Formatter
         // If the middle comment requires multiple lines, start a new line and indent everything after this.
         var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
         _buffer.EndLine(_pads.EOL);
-        
+
         foreach (var row in commentRows)
             _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row).EndLine(_pads.EOL);
-        
+
         _buffer.Add(Options.PrefixString, _pads.Indent(depth+1));
         return depth + 1;
     }
@@ -518,7 +518,7 @@ public class Formatter
             _buffer.Add(_pads.Comma);
         _buffer.EndLine(_pads.EOL);
     }
-    
+
 
     /// <summary>
     /// Adds the inline representation of this item to the buffer.  This includes all of this element's
@@ -529,10 +529,10 @@ public class Formatter
     {
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
-        
+
         if (item.PrefixCommentLength > 0)
             _buffer.Add(item.PrefixComment, _pads.Comment);
-        
+
         if (item.NameLength > 0)
             _buffer.Add(item.Name, _pads.Colon);
 
@@ -559,20 +559,20 @@ public class Formatter
         {
             var padType = GetPaddingType(item);
             _buffer.Add(_pads.ArrStart(padType));
-            
+
             for (var i=0; i<item.Children.Count; ++i)
                 InlineElement(item.Children[i], (i<item.Children.Count-1));
-            
+
             _buffer.Add(_pads.ArrEnd(padType));
         }
         else if (item.Type == JsonItemType.Object)
         {
             var padType = GetPaddingType(item);
             _buffer.Add(_pads.ObjStart(padType));
-            
+
             for (var i=0; i<item.Children.Count; ++i)
                 InlineElement(item.Children[i], (i<item.Children.Count-1));
-            
+
             _buffer.Add(_pads.ObjEnd(padType));
         }
         else
@@ -589,9 +589,9 @@ public class Formatter
     {
         if (template.PrefixCommentLength > 0)
             _buffer.Add(item.PrefixComment,
-                _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength), 
+                _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength),
                 _pads.Comment);
-        
+
         if (template.NameLength > 0)
             _buffer.Add(item.Name,
                 _pads.Spaces(template.NameLength - item.NameLength),
@@ -633,12 +633,12 @@ public class Formatter
             else if (isWholeRow)
                 _buffer.Add(_pads.DummyComma);
         }
-        
+
         if (template.PostfixCommentLength > 0)
             _buffer.Add(_pads.Comment,
                 item.PostfixComment,
                 _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
-        
+
         if (!commaGoesBeforeComment)
         {
             if (includeTrailingComma)
@@ -840,7 +840,7 @@ public class Formatter
         var commentRows = normalized.Split('\n')
             .Where(line => line.Length>0)
             .ToArray();
-        
+
         /*
          * The first line doesn't include any leading whitespace, but subsequent lines probably do.
          * We want to remove leading whitespace from those rows, but only up to where the first line began.
