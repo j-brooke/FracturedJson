@@ -391,6 +391,10 @@ public class Parser
                     }
                     break;
                 case TokenType.EndObject:
+                    if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
+                        throw FracturedJsonException.Create("Unexpected end of object",
+                            token.InputPosition);
+
                     endOfObject = true;
                     break;
                 case TokenType.String:
