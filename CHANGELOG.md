@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 4.0.1
+
+### Bug Fixes
+
+* Fixed a [bug](https://github.com/j-brooke/FracturedJson/issues/32) where no exception is thrown when there's a property name but no value at the end of an object.
+
 ## 4.0.0
 
 ### Features

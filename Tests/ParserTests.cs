@@ -703,6 +703,8 @@ public class ParserTests
     [DataRow("{ \"w\" \"foo\" }")]
     [DataRow("{ \"w\" {:1 }")]
     [DataRow("{ \"w\":1 \"x\":2 }")]
+    [DataRow("{ \"a\": 1, \"b\" }\n")]
+    [DataRow("{ \"a\": 1, \"b:\" }\n")]
     public void ThrowsForMalformedData(string input)
     {
         var parser = new Parser();
