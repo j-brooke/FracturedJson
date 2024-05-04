@@ -1,7 +1,7 @@
 {
   "entryAssembly": "WebFormatter",
   "resources": {
-    "hash": "sha256-ofgTr1j/2O7WcDJLPYvBiZm57rCHO4NIC3aANhns7GU=",
+    "hash": "sha256-PFS8bqWnsNF2x+pdx+4O5/zaIznthw0rMgBEbkVamZQ=",
     "runtime": {
       "dotnet.6.0.25.38ehpvve5u.js": "sha256-1jUGCCSGH9JWhkqbHdQk8JBjBI8K/VC63En5zlypVps=",
       "dotnet.timezones.blat": "sha256-KsGUR9nqtXb3Hy6IrNlnc1HoSS+AFlsXTX9rq4oChtA=",
@@ -12,7 +12,7 @@
     },
     "assembly": {
       "Blazored.LocalStorage.dll": "sha256-6RRoYeDP3d0xabXmcCMF66wXeJlXVPem28Trs8sQiis=",
-      "FracturedJson.dll": "sha256-uVS1uhkqzcdivI1yuXMwBLcBw5Ijg2M28+R/gyKqXEw=",
+      "FracturedJson.dll": "sha256-Fwzur4r75qMRp7nEtzKq7QpK75rhdujryMqkz+sFz1w=",
       "Microsoft.AspNetCore.Components.dll": "sha256-6slw8OjKhVGJ06G9o/Fn2/nrTzYnLNmT8x2yOf6NmXI=",
       "Microsoft.AspNetCore.Components.Forms.dll": "sha256-TTXvCMGV5SJ6na5fDiRrBzR751WWe1OW8dhQQBWkoMg=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-66WA4vZeFPjQChSiFR1jacCzy1RWQSJHc0cAKbre3Xo=",
@@ -53,7 +53,7 @@
       "System.Text.RegularExpressions.dll": "sha256-dxa3+w1KNQF21pYyO+oGJtPTXWotWxZrEDL+odLUCoo=",
       "System.Threading.dll": "sha256-po6XHDFNkTemdlx2nKb4Ac3Vl50kC/IjrA/NA5MA1OI=",
       "Wcwidth.dll": "sha256-gvVEtHg2j+GEpmaTREzjfARu1Ha5a6eRiiAjkoX/aAM=",
-      "WebFormatter.dll": "sha256-Ubs+xl6/s5Fd0ir5Rki1qC1Y8Il+Iu+4IfTw54ma8UU="
+      "WebFormatter.dll": "sha256-ZEt58pD/fRTuMcU9XNSPV7QzDlLoST9Rgo2nmPwhqpY="
     },
     "runtimeAssets": {
       "dotnet.wasm": {
