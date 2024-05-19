@@ -1,7 +1,7 @@
 {
   "entryAssembly": "WebFormatter",
   "resources": {
-    "hash": "sha256-PFS8bqWnsNF2x+pdx+4O5/zaIznthw0rMgBEbkVamZQ=",
+    "hash": "sha256-Wx82TEoF1ZyOwcetlIS0y33kbuFExun35Tn7Y681LQE=",
     "runtime": {
       "dotnet.6.0.25.38ehpvve5u.js": "sha256-1jUGCCSGH9JWhkqbHdQk8JBjBI8K/VC63En5zlypVps=",
       "dotnet.timezones.blat": "sha256-KsGUR9nqtXb3Hy6IrNlnc1HoSS+AFlsXTX9rq4oChtA=",
@@ -12,7 +12,7 @@
     },
     "assembly": {
       "Blazored.LocalStorage.dll": "sha256-6RRoYeDP3d0xabXmcCMF66wXeJlXVPem28Trs8sQiis=",
-      "FracturedJson.dll": "sha256-Fwzur4r75qMRp7nEtzKq7QpK75rhdujryMqkz+sFz1w=",
+      "FracturedJson.dll": "sha256-u+LdOWxWfwQMpoeZUyxPfBepdjHygkzyusprkWCRpYQ=",
       "Microsoft.AspNetCore.Components.dll": "sha256-6slw8OjKhVGJ06G9o/Fn2/nrTzYnLNmT8x2yOf6NmXI=",
       "Microsoft.AspNetCore.Components.Forms.dll": "sha256-TTXvCMGV5SJ6na5fDiRrBzR751WWe1OW8dhQQBWkoMg=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-66WA4vZeFPjQChSiFR1jacCzy1RWQSJHc0cAKbre3Xo=",
@@ -43,7 +43,7 @@
       "System.Net.Http.dll": "sha256-iV00Snv1DDVrIYkkRErtSD1/0Tcy5RZX3cOzKXrPd7Y=",
       "System.Net.Primitives.dll": "sha256-BywaHkwk4cKrGvklHxo2+uTaRz9mumGin5L7fcFMG2I=",
       "System.ObjectModel.dll": "sha256-++QO5z1qrBbvQ6s+rlS88Tr7PamkDz1/485DTEkAwZY=",
-      "System.Private.CoreLib.dll": "sha256-ZLfi8gF+vTh54rbSabs6FIHbm48VB4+GgWIj/EoySlI=",
+      "System.Private.CoreLib.dll": "sha256-aUcgqFmB3b/jfbM0efnZkvGETHMFLxwwoPKrTaDLkA4=",
       "System.Private.Runtime.InteropServices.JavaScript.dll": "sha256-4dHGaQgPfO08HYWAZwQQEY8ZWO4Ku/OXfj36Wme8w0I=",
       "System.Private.Uri.dll": "sha256-Cosd8dBJlBqYBsd99BB6aADojPMap+aBfmXo3AR9pR0=",
       "System.Runtime.CompilerServices.Unsafe.dll": "sha256-Jvrv2Ci0kSYAAYz5aLtFo5N4G6m/fHycPv0ZYay67J8=",
@@ -53,7 +53,7 @@
       "System.Text.RegularExpressions.dll": "sha256-dxa3+w1KNQF21pYyO+oGJtPTXWotWxZrEDL+odLUCoo=",
       "System.Threading.dll": "sha256-po6XHDFNkTemdlx2nKb4Ac3Vl50kC/IjrA/NA5MA1OI=",
       "Wcwidth.dll": "sha256-gvVEtHg2j+GEpmaTREzjfARu1Ha5a6eRiiAjkoX/aAM=",
-      "WebFormatter.dll": "sha256-ZEt58pD/fRTuMcU9XNSPV7QzDlLoST9Rgo2nmPwhqpY="
+      "WebFormatter.dll": "sha256-FAaJ4ZEan3BlGdJzp+iWeY+j0bAizhdkkUS2lxiJVWE="
     },
     "runtimeAssets": {
       "dotnet.wasm": {
