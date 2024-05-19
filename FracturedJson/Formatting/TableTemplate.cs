@@ -150,7 +150,8 @@ internal class TableTemplate
             // Create a .NET format string, if we don't already have one.
             _numberFormat ??= $"{{0,{CompositeValueLength}:F{_maxDigAfterDecNorm}}}";
 
-            var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, double.Parse(item.Value));
+            var parsedVal = double.Parse(item.Value, CultureInfo.InvariantCulture);
+            var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, parsedVal);
             buffer.Add(reformattedStr);
             return;
         }
@@ -292,7 +293,7 @@ internal class TableTemplate
             // to normalize the numbers - write them all with the same number of digits after the decimal point.
             // We also need to take some measurements for both contingencies.
             const int maxChars = 15;
-            var parsedVal = double.Parse(rowSegment.Value);
+            var parsedVal = double.Parse(rowSegment.Value, CultureInfo.InvariantCulture);
             var normalizedStr = parsedVal.ToString("G", CultureInfo.InvariantCulture);
 
             // JSON allows numbers that won't fit in a 64-bit double.  For example, 1e500 becomes Infinity, and
