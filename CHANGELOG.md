@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 4.0.2
+
+### Bug Fixes
+
+* Fixed a [bug](https://github.com/j-brooke/FracturedJson/issues/33) where an exception is thrown if the current locale uses a number format that's incompatible with JSON's number representation.  (E.g., a locale that uses "," instead of "." as the decimal separator.)
+
 ## 4.0.1
 
 ### Bug Fixes
