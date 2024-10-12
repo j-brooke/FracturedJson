@@ -11,9 +11,9 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>4.0.2</AssemblyVersion>
+        <AssemblyVersion>4.0.3</AssemblyVersion>
         <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
-        <PackageVersion>4.0.2</PackageVersion>
+        <PackageVersion>4.0.3</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>
     </PropertyGroup>

@@ -1,5 +1,11 @@
 # FracturedJson Change Log
 
+## 4.0.3
+
+### Package Updates
+
+* Updated to using System.Text.Json version 6.0.10 to address a [vulnerability](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
+
 ## 4.0.2
 
 ### Bug Fixes
