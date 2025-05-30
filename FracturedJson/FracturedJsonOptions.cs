@@ -50,6 +50,9 @@ public record FracturedJsonOptions
     /// </summary>
     public int MaxTableRowComplexity { get; set; } = 2;
 
+    // TODO: document
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePadding;
+
     /// <summary>
     /// Minimum number of items allowed per row to format an array as with multiple items per line across multiple
     /// lines.  This is an approximation, not a hard rule.  The idea is that if there will be too few items per row,
