@@ -190,4 +190,196 @@ public class TableFormattingTests
         var zCount = output.Count(ch => ch == 'z');
         Assert.AreEqual(3, zCount);
     }
+
+    [TestMethod]
+    public void CommasBeforePaddingWorks()
+    {
+        var inputLines = new[]
+        {
+            "{",
+            "    'Rect' : { 'glow': 'steady', 'position': {'x': -44, 'y':  4}, 'color': [0, 255, 255] }, ",
+            "    'Point': { 'glow': 'pulse', 'position': {'y': 22, 'z': 3} }, ",
+            "    'Oval' : { 'glow': 'gradient', 'position': {'x': 140.33, 'y':  0.1}, 'color': '#7f3e96' }  ",
+            "}",
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        // Always put the comma snugly against their elements.
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 120,
+            JsonEolStyle = EolStyle.Lf,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            TableCommaPlacement = TableCommaPlacement.BeforePadding,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // In this case, the commas should be right next to values.
+        Assert.AreEqual(5, outputLines.Length);
+        Assert.IsTrue(outputLines[1].Contains("\"steady\","));
+        Assert.IsTrue(outputLines[2].Contains("\"pulse\","));
+        Assert.IsTrue(outputLines[3].Contains("\"gradient\","));
+
+        Assert.IsTrue(outputLines[1].Contains("-44,"));
+        Assert.IsTrue(outputLines[2].Contains("22,"));
+    }
+
+    [TestMethod]
+    public void CommasAfterPaddingWorks()
+    {
+        var inputLines = new[]
+        {
+            "{",
+            "    'Rect' : { 'glow': 'steady', 'position': {'x': -44, 'y':  4}, 'color': [0, 255, 255] }, ",
+            "    'Point': { 'glow': 'pulse', 'position': {'y': 22, 'z': 3} }, ",
+            "    'Oval' : { 'glow': 'gradient', 'position': {'x': 140.33, 'y':  0.1}, 'color': '#7f3e96' }  ",
+            "}",
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        // Commas go after the padding, making a nice neat row of their own.
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 120,
+            JsonEolStyle = EolStyle.Lf,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            TableCommaPlacement = TableCommaPlacement.AfterPadding,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // In this case, many values will have spaces after them.
+        Assert.AreEqual(5, outputLines.Length);
+        Assert.IsTrue(outputLines[1].Contains("\"steady\" "));
+        Assert.IsTrue(outputLines[2].Contains("\"pulse\" "));
+        Assert.IsTrue(outputLines[3].Contains("\"gradient\","));
+
+        Assert.IsTrue(outputLines[1].Contains("-44 "));
+        Assert.IsTrue(outputLines[2].Contains("22 "));
+        Assert.IsTrue(outputLines[3].Contains("140.33,"));
+
+        // And the first set of commas should line up.
+        TestHelpers.TestInstancesLineUp(outputLines, ",");
+    }
+
+    [TestMethod]
+    public void CommasBeforePaddingExceptNumbersWorks()
+    {
+        var inputLines = new[]
+        {
+            "{",
+            "    'Rect' : { 'glow': 'steady', 'position': {'x': -44, 'y':  4}, 'color': [0, 255, 255] }, ",
+            "    'Point': { 'glow': 'pulse', 'position': {'y': 22, 'z': 3} }, ",
+            "    'Oval' : { 'glow': 'gradient', 'position': {'x': 140.33, 'y':  0.1}, 'color': '#7f3e96' }  ",
+            "}",
+        };
+        var input = string.Join("\n", inputLines).Replace('\'', '"');
+
+        // For strings and such, put the commas next to the values.  But for numbers put them after the padding,
+        // with the commas in neat rows.
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 120,
+            JsonEolStyle = EolStyle.Lf,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            TableCommaPlacement = TableCommaPlacement.BeforePaddingExceptNumbers,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // For strings, the commas should be right next to values.
+        Assert.AreEqual(5, outputLines.Length);
+        Assert.IsTrue(outputLines[1].Contains("\"steady\","));
+        Assert.IsTrue(outputLines[2].Contains("\"pulse\","));
+        Assert.IsTrue(outputLines[3].Contains("\"gradient\","));
+
+        // For numbers, many will have space after.
+        Assert.IsTrue(outputLines[1].Contains("-44 "));
+        Assert.IsTrue(outputLines[2].Contains("22 "));
+        Assert.IsTrue(outputLines[3].Contains("140.33,"));
+
+        // And the commas should line up before the "y" column.
+        TestHelpers.TestInstancesLineUp(outputLines, ", \"y\":");
+    }
+
+    [TestMethod]
+    public void CommasBeforePaddingWorksWithComments()
+    {
+        var input = """
+                    [
+                        [ 1 /* q */, "a" ], /* w */
+                        [ 22, "bbb" ], // x
+                        [ 3.33 /* sss */, "cc" ] /* y */
+                    ]
+                    """;
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            MaxTotalLineLength = 40,
+            JsonEolStyle = EolStyle.Lf,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            TableCommaPlacement = TableCommaPlacement.BeforePadding,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // The commas should come immediately after the 22, and after the first comments on the other lines.
+        Assert.IsTrue(outputLines[1].Contains("*/,"));
+        Assert.IsTrue(outputLines[2].Contains("22,"));
+        Assert.IsTrue(outputLines[3].Contains("*/,"));
+
+        // The outer commas and comments should line up.
+        Assert.AreEqual(outputLines[1].IndexOf("],", StringComparison.Ordinal),
+            outputLines[2].IndexOf("],", StringComparison.Ordinal));
+        Assert.AreEqual(outputLines[1].IndexOf("/* w", StringComparison.Ordinal),
+            outputLines[2].IndexOf("// x", StringComparison.Ordinal));
+        Assert.AreEqual(outputLines[2].IndexOf("// x", StringComparison.Ordinal),
+            outputLines[3].IndexOf("/* y", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void CommasAfterPaddingWorksWithComments()
+    {
+        var input = """
+                    [
+                        [ 1 /* q */, "a" ], /* w */
+                        [ 22, "bbb" ], // x
+                        [ 3.33 /* sss */, "cc" ] /* y */
+                    ]
+                    """;
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            MaxTotalLineLength = 40,
+            JsonEolStyle = EolStyle.Lf,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            TableCommaPlacement = TableCommaPlacement.AfterPadding,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // The first row of commas should be in a line after room for all comments.
+        TestHelpers.TestInstancesLineUp(outputLines, ",");
+
+        // The outer commas and comments should line up.
+        Assert.AreEqual(outputLines[1].IndexOf("],", StringComparison.Ordinal),
+            outputLines[2].IndexOf("],", StringComparison.Ordinal));
+        Assert.AreEqual(outputLines[1].IndexOf("/* w", StringComparison.Ordinal),
+            outputLines[2].IndexOf("// x", StringComparison.Ordinal));
+        Assert.AreEqual(outputLines[2].IndexOf("// x", StringComparison.Ordinal),
+            outputLines[3].IndexOf("/* y", StringComparison.Ordinal));
+    }
 }

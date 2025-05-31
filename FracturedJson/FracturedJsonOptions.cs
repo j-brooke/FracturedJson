@@ -50,8 +50,11 @@ public record FracturedJsonOptions
     /// </summary>
     public int MaxTableRowComplexity { get; set; } = 2;
 
-    // TODO: document
-    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePadding;
+    /// <summary>
+    /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
+    /// element that preceeds them.
+    /// </summary>
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.AfterPadding;
 
     /// <summary>
     /// Minimum number of items allowed per row to format an array as with multiple items per line across multiple

@@ -42,6 +42,7 @@ internal class TableTemplate
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public int PostfixCommentLength { get; private set; }
+    public bool IsAnyPostCommentLineStyle { get; set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
 
     /// <summary>
@@ -241,6 +242,7 @@ internal class TableTemplate
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
+        IsAnyPostCommentLineStyle |= rowSegment.IsPostCommentLineStyle;
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;

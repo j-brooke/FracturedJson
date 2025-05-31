@@ -85,6 +85,21 @@ public class UniversalJsonTests
             IndentSpaces = 3,
             PrefixString = "\t\t"
         };
+        yield return new()
+        {
+            TableCommaPlacement = TableCommaPlacement.BeforePadding,
+            NumberListAlignment = NumberListAlignment.Left,
+        };
+        yield return new()
+        {
+            TableCommaPlacement = TableCommaPlacement.BeforePaddingExceptNumbers,
+            NumberListAlignment = NumberListAlignment.Decimal,
+        };
+        yield return new()
+        {
+            TableCommaPlacement = TableCommaPlacement.BeforePaddingExceptNumbers,
+            NumberListAlignment = NumberListAlignment.Normalize,
+        };
     }
 
     private static string EolString(FracturedJsonOptions options)

@@ -602,13 +602,22 @@ public class Formatter
                 _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
                 _pads.Comment);
 
-        var commaPos = (Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
-                        || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
-                        && !template.IsNumberList)
-            ? CommaPosition.BeforeColumnPadding
-            : CommaPosition.AfterColumnPadding;
-        if (!item.IsPostCommentLineStyle && item.PostfixCommentLength > 0)
-            commaPos = CommaPosition.AfterComment;
+        // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
+        var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
+                             || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
+                             && !template.IsNumberList;
+        CommaPosition commaPos;
+        if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
+        {
+            if (item.PostfixCommentLength > 0)
+                commaPos = (commaBeforePad) ? CommaPosition.BeforeCommentPadding : CommaPosition.AfterCommentPadding;
+            else
+                commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterCommentPadding;
+        }
+        else
+        {
+            commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterValuePadding;
+        }
 
         // If this segment represents a whole row and this is the last element we won't have a comma.  But in some
         // cases we need an equivalent space still, such as if the commas go before comments.
@@ -624,31 +633,34 @@ public class Formatter
                 InlineTableRawArray(template, item);
             else
                 InlineTableRawObject(template, item);
-            if (commaPos == CommaPosition.BeforeColumnPadding)
+            if (commaPos == CommaPosition.BeforeValuePadding)
                 _buffer.Add(commaType);
         }
         else if (template.IsNumberList)
         {
-            var numberCommaType = (commaPos == CommaPosition.BeforeColumnPadding) ? commaType : string.Empty;
+            var numberCommaType = (commaPos == CommaPosition.BeforeValuePadding) ? commaType : string.Empty;
             template.FormatNumber(_buffer, item, numberCommaType);
         }
         else
         {
             InlineElementRaw(item);
-            if (commaPos == CommaPosition.BeforeColumnPadding)
+            if (commaPos == CommaPosition.BeforeValuePadding)
                 _buffer.Add(commaType);
             _buffer.Add(_pads.Spaces(template.CompositeValueLength - item.ValueLength));
         }
 
-        if (commaPos == CommaPosition.AfterColumnPadding)
+        if (commaPos == CommaPosition.AfterValuePadding)
             _buffer.Add(commaType);
 
         if (template.PostfixCommentLength > 0)
-            _buffer.Add(_pads.Comment,
-                item.PostfixComment,
-                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
+            _buffer.Add(_pads.Comment, item.PostfixComment);
 
-        if (commaPos == CommaPosition.AfterComment)
+        if (commaPos == CommaPosition.BeforeCommentPadding)
+            _buffer.Add(commaType);
+
+        _buffer.Add(_pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
+
+        if (commaPos == CommaPosition.AfterCommentPadding)
             _buffer.Add(commaType);
     }
 
@@ -884,8 +896,9 @@ public class Formatter
 
     private enum CommaPosition
     {
-        BeforeColumnPadding,
-        AfterColumnPadding,
-        AfterComment,
+        BeforeValuePadding,
+        AfterValuePadding,
+        BeforeCommentPadding,
+        AfterCommentPadding,
     }
 }
