@@ -619,8 +619,9 @@ public class Formatter
             commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterValuePadding;
         }
 
-        // If this segment represents a whole row and this is the last element we won't have a comma.  But in some
-        // cases we need an equivalent space still, such as if the commas go before comments.
+        // If we're asked to include a comma, do it.  For internal segments, if we don't supply a comma, the padding
+        // will work out elsewhere.  But if this segment is the whole row of a table, we need to supply a dummy
+        // comma due to possible end-of-line comment complications.
         var commaType = (includeTrailingComma)
             ? _pads.Comma
             : (isWholeRow)
