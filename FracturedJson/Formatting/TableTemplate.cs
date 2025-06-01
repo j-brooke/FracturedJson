@@ -42,6 +42,7 @@ internal class TableTemplate
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public int PostfixCommentLength { get; private set; }
+    public bool IsAnyPostCommentLineStyle { get; set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
 
     /// <summary>
@@ -120,7 +121,7 @@ internal class TableTemplate
     /// Added the number, properly aligned and possibly reformatted, according to our measurements.
     /// This assumes that the segment is a number list, and therefore that the item is a number or null.
     /// </summary>
-    public void FormatNumber(IBuffer buffer, JsonItem item)
+    public void FormatNumber(IBuffer buffer, JsonItem item, string commaBeforePadType)
     {
         var formatType = (_numberListAlignment is NumberListAlignment.Normalize && !AllowNumberNormalization)
             ? NumberListAlignment.Left
@@ -130,10 +131,10 @@ internal class TableTemplate
         switch (formatType)
         {
             case NumberListAlignment.Left:
-                buffer.Add(item.Value, _pads.Spaces(SimpleValueLength - item.ValueLength));
+                buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(SimpleValueLength - item.ValueLength));
                 return;
             case NumberListAlignment.Right:
-                buffer.Add(_pads.Spaces(SimpleValueLength - item.ValueLength), item.Value);
+                buffer.Add(_pads.Spaces(SimpleValueLength - item.ValueLength), item.Value, commaBeforePadType);
                 return;
         }
 
@@ -143,7 +144,7 @@ internal class TableTemplate
             if (item.Type is JsonItemType.Null)
             {
                 buffer.Add(_pads.Spaces(_maxDigBeforeDecNorm - item.ValueLength), item.Value,
-                    _pads.Spaces(CompositeValueLength - _maxDigBeforeDecNorm));
+                    commaBeforePadType, _pads.Spaces(CompositeValueLength - _maxDigBeforeDecNorm));
                 return;
             }
 
@@ -152,7 +153,7 @@ internal class TableTemplate
 
             var parsedVal = double.Parse(item.Value, CultureInfo.InvariantCulture);
             var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, parsedVal);
-            buffer.Add(reformattedStr);
+            buffer.Add(reformattedStr, commaBeforePadType);
             return;
         }
 
@@ -160,7 +161,7 @@ internal class TableTemplate
         if (item.Type is JsonItemType.Null)
         {
             buffer.Add(_pads.Spaces(_maxDigBeforeDecRaw - item.ValueLength), item.Value,
-                _pads.Spaces(CompositeValueLength - _maxDigBeforeDecRaw));
+                commaBeforePadType, _pads.Spaces(CompositeValueLength - _maxDigBeforeDecRaw));
             return;
         }
 
@@ -178,7 +179,7 @@ internal class TableTemplate
             rightPad = CompositeValueLength - _maxDigBeforeDecRaw;
         }
 
-        buffer.Add(_pads.Spaces(leftPad), item.Value, _pads.Spaces(rightPad));
+        buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
     }
 
     private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
@@ -241,6 +242,7 @@ internal class TableTemplate
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
+        IsAnyPostCommentLineStyle |= rowSegment.IsPostCommentLineStyle;
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;

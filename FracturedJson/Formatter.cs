@@ -602,50 +602,67 @@ public class Formatter
                 _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
                 _pads.Comment);
 
+        // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
+        var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
+                             || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
+                             && !template.IsNumberList;
+        CommaPosition commaPos;
+        if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
+        {
+            if (item.PostfixCommentLength > 0)
+                commaPos = (commaBeforePad) ? CommaPosition.BeforeCommentPadding : CommaPosition.AfterCommentPadding;
+            else
+                commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterCommentPadding;
+        }
+        else
+        {
+            commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterValuePadding;
+        }
+
+        // If we're asked to include a comma, do it.  For internal segments, if we don't supply a comma, the padding
+        // will work out elsewhere.  But if this segment is the whole row of a table, we need to supply a dummy
+        // comma due to possible end-of-line comment complications.
+        var commaType = (includeTrailingComma)
+            ? _pads.Comma
+            : (isWholeRow)
+                ? _pads.DummyComma
+                : string.Empty;
+
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
             if (template.Type is JsonItemType.Array)
                 InlineTableRawArray(template, item);
             else
                 InlineTableRawObject(template, item);
+            if (commaPos == CommaPosition.BeforeValuePadding)
+                _buffer.Add(commaType);
         }
         else if (template.IsNumberList)
         {
-            template.FormatNumber(_buffer, item);
+            var numberCommaType = (commaPos == CommaPosition.BeforeValuePadding) ? commaType : string.Empty;
+            template.FormatNumber(_buffer, item, numberCommaType);
         }
         else
         {
             InlineElementRaw(item);
+            if (commaPos == CommaPosition.BeforeValuePadding)
+                _buffer.Add(commaType);
             _buffer.Add(_pads.Spaces(template.CompositeValueLength - item.ValueLength));
         }
 
-        // If there's a postfix line comment, the comma needs to happen first.  For block comments,
-        // it would be better to put the comma after the comment.
-        var commaGoesBeforeComment = item.IsPostCommentLineStyle || item.PostfixCommentLength == 0;
-        if (commaGoesBeforeComment)
-        {
-            // For internal row segments, there won't be trailing comments for any of the rows.  But
-            // if this is a whole row, then there will be commas after all but the last one.  So,
-            // if this is a whole row and it doesn't need a comma, then it needs padding to match
-            // the ones above.
-            if (includeTrailingComma)
-                _buffer.Add(_pads.Comma);
-            else if (isWholeRow)
-                _buffer.Add(_pads.DummyComma);
-        }
+        if (commaPos == CommaPosition.AfterValuePadding)
+            _buffer.Add(commaType);
 
         if (template.PostfixCommentLength > 0)
-            _buffer.Add(_pads.Comment,
-                item.PostfixComment,
-                _pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
+            _buffer.Add(_pads.Comment, item.PostfixComment);
 
-        if (!commaGoesBeforeComment)
-        {
-            if (includeTrailingComma)
-                _buffer.Add(_pads.Comma);
-            else if (isWholeRow)
-                _buffer.Add(_pads.DummyComma);
-        }
+        if (commaPos == CommaPosition.BeforeCommentPadding)
+            _buffer.Add(commaType);
+
+        _buffer.Add(_pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
+
+        if (commaPos == CommaPosition.AfterCommentPadding)
+            _buffer.Add(commaType);
     }
 
     /// <summary>
@@ -876,5 +893,13 @@ public class Formatter
         }
 
         return -1;
+    }
+
+    private enum CommaPosition
+    {
+        BeforeValuePadding,
+        AfterValuePadding,
+        BeforeCommentPadding,
+        AfterCommentPadding,
     }
 }

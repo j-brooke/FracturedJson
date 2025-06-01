@@ -66,7 +66,7 @@ public class EndingCommaFormattingTests
         Assert.AreEqual(outputLines.Length, 6);
         StringAssert.Contains(output, "[1    ]");
 
-        // There should only be one comma - between the 1 and 2.
+        // There should only be one comma - between [1] and [false].
         var commaCount = output.Count(ch => ch == ',');
         Assert.AreEqual(1, commaCount);
     }

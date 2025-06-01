@@ -50,6 +50,16 @@ namespace FracturedJsonCli
                         }
                     },
                     {
+                        "k|comma=", "table comma placement [b,a,n]", s =>
+                            options.TableCommaPlacement = s.ToUpper() switch
+                            {
+                                "B" or "BEFORE" => TableCommaPlacement.BeforePadding,
+                                "A" or "AFTER" => TableCommaPlacement.AfterPadding,
+                                "N" or "NUMBER" => TableCommaPlacement.BeforePaddingExceptNumbers,
+                                _ => TableCommaPlacement.AfterPadding,
+                            }
+                    },
+                    {
                         "l|length=",
                         "maximum total line length when inlining",
                         (int n) => options.MaxTotalLineLength = n

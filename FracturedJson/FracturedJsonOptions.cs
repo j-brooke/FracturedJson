@@ -51,6 +51,12 @@ public record FracturedJsonOptions
     public int MaxTableRowComplexity { get; set; } = 2;
 
     /// <summary>
+    /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
+    /// element that preceeds them.
+    /// </summary>
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.AfterPadding;
+
+    /// <summary>
     /// Minimum number of items allowed per row to format an array as with multiple items per line across multiple
     /// lines.  This is an approximation, not a hard rule.  The idea is that if there will be too few items per row,
     /// you'd probably rather see it as a table.
