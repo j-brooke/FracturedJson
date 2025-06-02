@@ -17,11 +17,7 @@ namespace FracturedJsonCli
         {
             try
             {
-                var options = new FracturedJsonOptions()
-                {
-                    MaxInlineLength = int.MaxValue,
-                    OmitTrailingWhitespace = true,
-                };
+                var options = FracturedJsonOptions.Recommended();
 
                 var showHelp = false;
                 string? fileName = null;

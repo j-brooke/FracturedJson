@@ -154,4 +154,19 @@ public record FracturedJsonOptions
     /// it's nice to have the option here.
     /// </summary>
     public bool AllowTrailingCommas { get; set; } = false;
+
+    /// <summary>
+    /// Returns a new <see cref="FracturedJsonOptions"/> object with the recommended default settings without concern
+    /// for backward compatibility.  The constructor's defaults should preserve the same behavior from one minor
+    /// revision to the next even if new features are added.  The instance created by this method will be updated
+    /// with new settings if they are more sensible for most cases.
+    /// </summary>
+    public static FracturedJsonOptions Recommended()
+    {
+        return new FracturedJsonOptions() with
+        {
+            TableCommaPlacement = TableCommaPlacement.BeforePadding,
+            OmitTrailingWhitespace = true,
+        };
+    }
 }
