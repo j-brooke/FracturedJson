@@ -100,6 +100,7 @@ public class UniversalJsonTests
             TableCommaPlacement = TableCommaPlacement.BeforePaddingExceptNumbers,
             NumberListAlignment = NumberListAlignment.Normalize,
         };
+        yield return FracturedJsonOptions.Recommended();
     }
 
     private static string EolString(FracturedJsonOptions options)
