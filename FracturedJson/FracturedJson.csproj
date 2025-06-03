@@ -5,15 +5,15 @@
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
         <Description>A library for formatting JSON, producing human-readable but compact output.</Description>
-        <Copyright>2024 Jesse Brooke</Copyright>
+        <Copyright>2025 Jesse Brooke</Copyright>
         <PackageProjectUrl>https://j-brooke.github.io/FracturedJson/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>4.0.3</AssemblyVersion>
+        <AssemblyVersion>4.1.0</AssemblyVersion>
         <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
-        <PackageVersion>4.0.3</PackageVersion>
+        <PackageVersion>4.1.0</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>
     </PropertyGroup>

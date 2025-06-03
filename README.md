@@ -74,6 +74,9 @@ If enabled in the settings, it can also handle JSON-with-comments (which isn't r
 }
 ```
 
+## Getting Started
+
+To get started using the .NET library, see the [.NET library wiki page](https://github.com/j-brooke/FracturedJson/wiki/.NET-Library).
 
 ## More Information
 

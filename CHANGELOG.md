@@ -1,5 +1,24 @@
 # FracturedJson Change Log
 
+## 4.1.0
+
+### Features
+
+Added a new option for where commas are placed with table formatting.  The old (and still default) behavior puts commas after the column padding.  This causes all the commas for a column to line up, which sometimes looks silly, especially when it's just a single column of strings being formatted as a table.
+
+Now you can set `TableCommaPlacement` to `TableCommaPlacement.BeforePadding` to make the commas cling tightly to the values to their left.  Or, if you prefer, you can use `TableCommaPlacement.BeforePaddingExceptNumbers` to leave your number columns unaffected.  (That option is only meaningful when `NumberListAlignment` is `Left` or `Decimal`.)
+
+Also added was a new factory method, `FracturedJsonOptions.Recommended()` which, unlike the `FracturedJsonOptions` constructor, will always point to the new best defaults without regard for backward compatibility.
+
+### Added
+
+* New setting `FracturedJsonOptions.TableCommaPlacement`.
+* New method `FracturedJsonOptions.Recommended()`.
+
+### Build Environment
+
+Updated the CLI and Tests projects to target .NET 8.  The FracturedJson library itself is still .NET Standard 2.0 compliant.
+
 ## 4.0.3
 
 ### Package Updates
