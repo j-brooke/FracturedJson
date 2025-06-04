@@ -78,6 +78,7 @@ public class WebFormatterState
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,
             OmitTrailingWhitespace = true,
+            TableCommaPlacement = TableCommaPlacement.BeforePadding,
         };
     }
 

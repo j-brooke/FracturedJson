@@ -1,5 +1,4 @@
 @using FracturedJson
-@using System.Data
 @inject WebFormatterState State
 
 <h2>Settings</h2>
@@ -35,6 +34,17 @@
         </InputSelect>
         <label>Number List Alignment</label>
     </div>
+
+    <div>
+        <!-- We're shortening a few names to keep the settings a manageable width. -->
+        <InputSelect @bind-Value="@State.Options.TableCommaPlacement">
+            <option value="BeforePadding">BeforePadding</option>
+            <option value="AfterPadding">AfterPadding</option>
+            <option value="BeforePaddingExceptNumbers">BeforeExceptNumbers</option>
+        </InputSelect>
+        <label>Table Commas</label>
+    </div>
+
     <div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
     <div><input type="checkbox" @bind="State.Options.PreserveBlankLines">Preserve Blank Lines</div>
     <div><input type="checkbox" @bind="State.Options.AllowTrailingCommas">Allow Trailing Commas</div>
