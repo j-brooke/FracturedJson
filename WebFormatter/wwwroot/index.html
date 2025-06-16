@@ -5,10 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FracturedJson Web Formatter</title>
-    <base href="/FracturedJson/" />
     <link href="css/app.css" rel="stylesheet" />
     <link href="WebFormatter.styles.css" rel="stylesheet" />
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+
+    <script>
+        // When running locally, base needs to be / .  Running from Github Pages, it needs to be /FracturedJson/ .
+        const isLocal = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+        const base = document.createElement('base');
+        base.href = isLocal ? '/' : '/FracturedJson/';
+        document.head.appendChild(base);
+    </script>
 </head>
 
 <body>
