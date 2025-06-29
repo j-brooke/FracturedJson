@@ -11,17 +11,13 @@
 @code {
     private void SetSamplePureJson()
     {
-        State.InputJson = _samplePureJson;
+        State.InputJson = SampleJson.PureJson;
         State.OutputJson = string.Empty;
     }
 
     private void SetSampleWithComments()
     {
-        State.InputJson = _sampleJsonWithComments;
+        State.InputJson = SampleJson.JsonWithComments;
         State.OutputJson = string.Empty;
     }
-
-    // Sample JSON.  I've replaced quotes with apostrophes to avoid escapes which make it hard to read.
-    private const string _samplePureJson = "[ null ]";
-    private const string _sampleJsonWithComments = "[ null /* fnord */]";
 }

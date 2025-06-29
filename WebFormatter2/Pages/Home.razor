@@ -30,13 +30,9 @@
 
 @code
 {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        State.SomethingHappened += PropagateChange;
-    }
-
-    private void PropagateChange()
-    {
-        StateHasChanged();
+        State.SomethingHappened += StateHasChanged;
+        await State.RestoreOptionsFromLocalStorage();
     }
 }

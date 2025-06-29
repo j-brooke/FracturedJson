@@ -15,7 +15,6 @@ public class WebFormatterState
             if (_inputJson == value)
                 return;
             _inputJson = value;
-            Console.WriteLine($"InputJson updated to: {value}");
             SomethingHappened?.Invoke();
         }
     }
@@ -32,7 +31,7 @@ public class WebFormatterState
         }
     }
 
-    public WebFormatterState(ISyncLocalStorageService localStorage)
+    public WebFormatterState(ILocalStorageService localStorage)
     {
         _localStorage = localStorage;
         _formatter = new() { StringLengthFunc = WideCharStringLength };
@@ -71,25 +70,21 @@ public class WebFormatterState
         SaveOptionsToLocalStorage();
     }
 
-    public void RestoreOptionsFromLocalStorage()
+    public async Task RestoreOptionsFromLocalStorage()
     {
-        var restoredOpts = _localStorage.GetItem<FracturedJsonOptions>(_optionsKey);
-
-        // Migrate old settings with the new fixed value here.
-        if (restoredOpts != null)
-            restoredOpts.OmitTrailingWhitespace = true;
-
+        var restoredOpts = await _localStorage.GetItemAsync<FracturedJsonOptions>(_optionsKey);
         Options = restoredOpts ?? GetDefaultOptions();
+        SomethingHappened?.Invoke();
     }
 
     public void SaveOptionsToLocalStorage()
     {
-        _localStorage.SetItem(_optionsKey, Options);
+        _localStorage.SetItemAsync(_optionsKey, Options);
     }
 
     private const string _optionsKey = "options";
     private readonly Formatter _formatter;
-    private readonly ISyncLocalStorageService _localStorage;
+    private readonly ILocalStorageService _localStorage;
     private string _inputJson = string.Empty;
     private string _outputJson = string.Empty;
 

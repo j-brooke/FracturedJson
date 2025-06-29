@@ -57,10 +57,10 @@
 @code {
     private EditContext? _editContext;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _editContext = new EditContext(State.Options);
-        base.OnInitialized();
+        State.SomethingHappened += StateHasChanged;
     }
 
     private bool AllowComments
