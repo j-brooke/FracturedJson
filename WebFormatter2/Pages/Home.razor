@@ -1,0 +1,42 @@
+﻿@page "/"
+@using WebFormatter2.Components
+@inject WebFormatterState State
+
+<PageTitle>Home</PageTitle>
+
+<div class="page">
+    <div class="header">
+        <MainBanner></MainBanner>
+    </div>
+    <div class="side">
+        <SettingsPanel></SettingsPanel>
+    </div>
+    <div class="buttons">
+        <ButtonPanel></ButtonPanel>
+    </div>
+    <div class="main">
+        <div class="json-area">
+            <div class="json-panel">
+                <label for="jsonInput">JSON Input:</label>
+                <textarea class="json-box" @bind="State.InputJson"  autofocus id="jsonInput" spellcheck="false" placeholder="Paste JSON data here or press a Sample Data button."></textarea>
+            </div>
+            <div class="json-panel">
+                <label for="jsonOutput">Formatted Output:</label>
+                <textarea class="json-box" @bind="State.OutputJson" id="jsonOutput" spellcheck="false" placeholder="Formatted JSON will appear here."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        State.SomethingHappened += PropagateChange;
+    }
+
+    private void PropagateChange()
+    {
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,14 @@
+img.logo {
+    width: 100px;
+    grid-area: 1 / 1 / 1 / 1;
+}
+
+.main-banner {
+    grid-area: 1 / 1 / 1 / 1;
+    display: grid;
+    grid-template-columns: max-content auto;
+}
+
+h1 {
+    margin: 8px;
+}

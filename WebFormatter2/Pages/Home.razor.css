@@ -1,0 +1,53 @@
+.page {
+    height: 100%;
+    display: grid;
+    grid-template-areas:
+        "h h"
+        "s b"
+        "s m";
+    grid-template-columns: minmax(min-content, auto) 1fr;
+    grid-template-rows: minmax(min-content, auto) auto 1fr;
+}
+
+.header {
+    background-color: #26b050;
+    grid-area: h;
+}
+
+.side {
+    background-color: #c02d76;
+    grid-area: s;
+}
+
+.buttons {
+    background-color: darkgoldenrod;
+    grid-area: b;
+}
+
+.main {
+    background-color: #b32121;
+    grid-area: m;
+}
+
+.json-area {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 1fr 1fr; /* Explicitly define two columns for the textareas */
+    gap: 10px; /* Optional: Add some spacing between the textareas */
+}
+
+.json-panel {
+    display: grid;
+    grid-template-rows: min-content 1fr;
+}
+
+.json-panel > textarea {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+    padding: 8px; /* Optional: Explicit padding for better appearance */
+    border: 1px solid #ccc; /* Optional: Explicit border for consistency */
+}
+
+.app { height: 100vh; }

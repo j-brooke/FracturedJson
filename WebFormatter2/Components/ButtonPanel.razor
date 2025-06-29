@@ -1,0 +1,27 @@
+@inject WebFormatterState State
+
+<div class="button-panel">
+    <button type="button" class="fmt-btn" @onclick="State.DoFormat">Format</button>
+    <button type="button" class="fmt-btn" @onclick="State.DoMinify">Minify</button>
+    <button type="button" class="sample-btn" @onclick="SetSamplePureJson">Sample Data (no comments)</button>
+    <button type="button" class="sample-btn" @onclick="SetSampleWithComments">Sample Data (with comments)</button>
+</div>
+
+
+@code {
+    private void SetSamplePureJson()
+    {
+        State.InputJson = _samplePureJson;
+        State.OutputJson = string.Empty;
+    }
+
+    private void SetSampleWithComments()
+    {
+        State.InputJson = _sampleJsonWithComments;
+        State.OutputJson = string.Empty;
+    }
+
+    // Sample JSON.  I've replaced quotes with apostrophes to avoid escapes which make it hard to read.
+    private const string _samplePureJson = "[ null ]";
+    private const string _sampleJsonWithComments = "[ null /* fnord */]";
+}
