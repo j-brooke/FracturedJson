@@ -57,8 +57,9 @@
 @code {
     private EditContext? _editContext;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
+        base.OnInitialized();
         _editContext = new EditContext(State.Options);
         State.SomethingHappened += StateHasChanged;
     }

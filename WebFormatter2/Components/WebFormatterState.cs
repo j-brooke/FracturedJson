@@ -4,7 +4,7 @@ using Wcwidth;
 
 namespace WebFormatter2.Components;
 
-public class WebFormatterState
+public class WebFormatterState : IDisposable, IAsyncDisposable
 {
     public event Action? SomethingHappened;
     public FracturedJsonOptions Options { get; set; } = new();
@@ -35,6 +35,9 @@ public class WebFormatterState
     {
         _localStorage = localStorage;
         _formatter = new() { StringLengthFunc = WideCharStringLength };
+
+        // Periodically check for settings changes and send them to local storage if found.
+        _timer = new(CheckSettingsBackup, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
     }
 
     public void DoFormat()
@@ -43,7 +46,6 @@ public class WebFormatterState
         {
             _formatter.Options = Options;
             OutputJson = _formatter.Reformat(InputJson, 0);
-            SaveOptionsToLocalStorage();
         }
         catch (FracturedJsonException e)
         {
@@ -67,24 +69,31 @@ public class WebFormatterState
     public void SetToDefaults()
     {
         Options = GetDefaultOptions();
-        SaveOptionsToLocalStorage();
     }
 
     public async Task RestoreOptionsFromLocalStorage()
     {
         var restoredOpts = await _localStorage.GetItemAsync<FracturedJsonOptions>(_optionsKey);
         Options = restoredOpts ?? GetDefaultOptions();
+        _lastSavedOptions = Options with {};
         SomethingHappened?.Invoke();
     }
 
-    public void SaveOptionsToLocalStorage()
+    public void Dispose()
     {
-        _localStorage.SetItemAsync(_optionsKey, Options);
+        _timer?.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timer != null) await _timer.DisposeAsync();
     }
 
     private const string _optionsKey = "options";
     private readonly Formatter _formatter;
     private readonly ILocalStorageService _localStorage;
+    private Timer? _timer;
+    private FracturedJsonOptions _lastSavedOptions = new();
     private string _inputJson = string.Empty;
     private string _outputJson = string.Empty;
 
@@ -101,7 +110,16 @@ public class WebFormatterState
         };
     }
 
-    public static int WideCharStringLength(string str)
+    private void CheckSettingsBackup(object? state)
+    {
+        if (Options == _lastSavedOptions)
+            return;
+
+        _lastSavedOptions = Options with {};
+        Task.Run(() => _localStorage.SetItemAsync(_optionsKey, Options));
+    }
+
+    private static int WideCharStringLength(string str)
     {
         return str.EnumerateRunes().Sum(rune => UnicodeCalculator.GetWidth(rune.Value));
     }
