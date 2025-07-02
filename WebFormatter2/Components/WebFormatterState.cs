@@ -44,6 +44,20 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         }
     }
 
+    public string CombinedJson
+    {
+        get => _combinedJson;
+        set
+        {
+            if (_combinedJson == value)
+                return;
+            _combinedJson = value;
+            SomethingHappened?.Invoke();
+        }
+    }
+
+    public string StandaloneErrorMsg { get; set; } = string.Empty;
+
     public WebFormatterState(ILocalStorageService localStorage)
     {
         _localStorage = localStorage;
@@ -59,10 +73,12 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         {
             _formatter.Options = Options;
             OutputJson = _formatter.Reformat(InputJson, 0);
+            CombinedJson = OutputJson;
         }
         catch (FracturedJsonException e)
         {
             OutputJson = e.Message;
+            StandaloneErrorMsg = e.Message;
         }
     }
 
@@ -72,10 +88,12 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         {
             _formatter.Options = Options;
             OutputJson = _formatter.Minify(InputJson);
+            CombinedJson = OutputJson;
         }
         catch (FracturedJsonException e)
         {
             OutputJson = e.Message;
+            StandaloneErrorMsg = e.Message;
         }
     }
 
@@ -109,6 +127,41 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         SaveViewOptions();
     }
 
+    public void SetModeOverUnder()
+    {
+        ViewOptions.ViewMode = ViewMode.OverUnder;
+        SaveViewOptions();
+        SomethingHappened?.Invoke();
+    }
+
+    public void SetModeSideBySide()
+    {
+        ViewOptions.ViewMode = ViewMode.SideBySide;
+        SaveViewOptions();
+        SomethingHappened?.Invoke();
+    }
+
+    public void SetModeUnified()
+    {
+        ViewOptions.ViewMode = ViewMode.Unified;
+        SaveViewOptions();
+        SomethingHappened?.Invoke();
+    }
+
+    public void SetSamplePureJson()
+    {
+        InputJson = SampleJson.PureJson.ReplaceLineEndings(string.Empty);
+        OutputJson = string.Empty;
+        CombinedJson = SampleJson.PureJson;
+    }
+
+    public void SetSampleWithComments()
+    {
+        InputJson = SampleJson.JsonWithComments;
+        OutputJson = string.Empty;
+        CombinedJson = SampleJson.JsonWithComments;
+    }
+
     public void Dispose()
     {
         _timer?.Dispose();
@@ -129,6 +182,7 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
     private ViewOptions _lastSavedViewOptions = new();
     private string _inputJson = string.Empty;
     private string _outputJson = string.Empty;
+    private string _combinedJson = string.Empty;
 
     private static FracturedJsonOptions GetDefaultOptions()
     {

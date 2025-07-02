@@ -9,4 +9,6 @@ public record ViewOptions
     /// Show the settings sidebar with all of the <see cref="FracturedJson.FracturedJsonOptions"/> properties.
     /// </summary>
     public bool ShowSettings { get; set; } = true;
+
+    public ViewMode ViewMode { get; set; } = ViewMode.OverUnder;
 }

@@ -3,21 +3,9 @@
 <div class="button-panel">
     <button type="button" class="fmt-btn" @onclick="State.DoFormat">Format</button>
     <button type="button" class="fmt-btn" @onclick="State.DoMinify">Minify</button>
-    <button type="button" class="sample-btn" @onclick="SetSamplePureJson">Sample Data (no comments)</button>
-    <button type="button" class="sample-btn" @onclick="SetSampleWithComments">Sample Data (with comments)</button>
+    <button type="button" class="sample-btn" @onclick="State.SetSamplePureJson">Sample Data (no comments)</button>
+    <button type="button" class="sample-btn" @onclick="State.SetSampleWithComments">Sample Data (with comments)</button>
+    <button type="button" class="mode-btn" @onclick="State.SetModeOverUnder">OverUnder</button>
+    <button type="button" class="mode-btn" @onclick="State.SetModeSideBySide">SideBySide</button>
+    <button type="button" class="mode-btn" @onclick="State.SetModeUnified">Unified</button>
 </div>
-
-
-@code {
-    private void SetSamplePureJson()
-    {
-        State.InputJson = SampleJson.PureJson;
-        State.OutputJson = string.Empty;
-    }
-
-    private void SetSampleWithComments()
-    {
-        State.InputJson = SampleJson.JsonWithComments;
-        State.OutputJson = string.Empty;
-    }
-}

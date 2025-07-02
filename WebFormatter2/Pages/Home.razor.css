@@ -17,6 +17,7 @@
 .side {
     background-color: #c02d76;
     grid-area: s;
+    overflow: scroll;
 }
 
 .buttons {
@@ -29,11 +30,23 @@
     grid-area: m;
 }
 
-.json-area {
+.json-area-stack {
     height: 100%;
     display: grid;
-    grid-template-rows: 1fr 1fr; /* Explicitly define two columns for the textareas */
-    gap: 10px; /* Optional: Add some spacing between the textareas */
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+}
+
+.json-area-side {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.json-area-unified {
+    height: 100%;
+    display: grid;
 }
 
 .json-panel {
@@ -45,9 +58,9 @@
     width: 100%;
     height: 100%;
     resize: none;
-    box-sizing: border-box; /* Ensure padding and borders are included in width/height */
-    padding: 8px; /* Optional: Explicit padding for better appearance */
-    border: 1px solid #ccc; /* Optional: Explicit border for consistency */
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid #ccc;
 }
 
 .app { height: 100vh; }
