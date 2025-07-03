@@ -7,8 +7,6 @@
         "s m";
     grid-template-columns: minmax(min-content, auto) 1fr;
     grid-template-rows: minmax(min-content, auto) auto 1fr;
-    background-color: var(--background-color);
-    color: var(--text-color);
 }
 
 .header {

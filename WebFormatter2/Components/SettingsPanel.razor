@@ -13,7 +13,7 @@
                 </svg>
             </button>
         </div>
-        <EditForm EditContext="@_editContext">
+        <div>
             <div class="section-label">Length and Complexity</div>
             <div><input type="number" class="number" @bind="State.Options.MaxTotalLineLength" min="0" step="10">Max Total Line Length</div>
             <div><input type="number" class="number" @bind="State.Options.MaxInlineLength" min="0" step="10">Max Inline Length</div>
@@ -61,7 +61,7 @@
 
             <button type="button" @onclick="State.SetToDefaults">Reset</button>
             &nbsp;<a href="https://github.com/j-brooke/FracturedJson/wiki/Options" target="_blank" rel="noopener">Settings Help</a>
-        </EditForm>
+        </div>
     </div>
 }
 else

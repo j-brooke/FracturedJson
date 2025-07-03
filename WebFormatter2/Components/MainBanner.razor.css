@@ -8,11 +8,3 @@ img.logo {
     display: grid;
     grid-template-columns: max-content auto;
 }
-
-h1 {
-    margin: 8px;
-}
-
-a {
-    color: var(--link-color);
-}
