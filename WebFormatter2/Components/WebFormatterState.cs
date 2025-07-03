@@ -1,5 +1,6 @@
 using Blazored.LocalStorage;
 using FracturedJson;
+using Microsoft.JSInterop;
 using Wcwidth;
 
 namespace WebFormatter2.Components;
@@ -58,9 +59,10 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
 
     public string StandaloneErrorMsg { get; set; } = string.Empty;
 
-    public WebFormatterState(ILocalStorageService localStorage)
+    public WebFormatterState(ILocalStorageService localStorage, IJSRuntime jsRuntime)
     {
         _localStorage = localStorage;
+        _jsRuntime = jsRuntime;
         _formatter = new() { StringLengthFunc = WideCharStringLength };
 
         // Periodically check for settings changes and send them to local storage if found.
@@ -112,6 +114,7 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         ViewOptions = restoredView ?? new ViewOptions();
         _lastSavedViewOptions = ViewOptions with {};
 
+        await ApplyThemeToDom();
         SomethingHappened?.Invoke();
     }
 
@@ -148,6 +151,14 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         SomethingHappened?.Invoke();
     }
 
+    public void ToggleDarkTheme()
+    {
+        ViewOptions.DarkTheme = !ViewOptions.DarkTheme;
+        SaveViewOptions();
+        Task.Run(ApplyThemeToDom);
+        SomethingHappened?.Invoke();
+    }
+
     public void SetSamplePureJson()
     {
         InputJson = SampleJson.PureJson.ReplaceLineEndings(string.Empty);
@@ -177,6 +188,7 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
 
     private readonly Formatter _formatter;
     private readonly ILocalStorageService _localStorage;
+    private readonly IJSRuntime _jsRuntime;
     private Timer? _timer;
     private FracturedJsonOptions _lastSavedOptions = new();
     private ViewOptions _lastSavedViewOptions = new();
@@ -219,6 +231,16 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
 
         _lastSavedViewOptions = ViewOptions with {};
         Task.Run(() => _localStorage.SetItemAsync(_viewKey, ViewOptions));
+    }
+
+    /// <summary>
+    /// Sets an attribute on the root that controls CSS color variables.
+    /// </summary>
+    private async Task ApplyThemeToDom()
+    {
+        await _jsRuntime.InvokeVoidAsync("document.documentElement.setAttribute",
+            "dark-theme",
+            ViewOptions.DarkTheme.ToString().ToLower());
     }
 
     /// <summary>

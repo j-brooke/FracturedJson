@@ -12,3 +12,7 @@ img.logo {
 h1 {
     margin: 8px;
 }
+
+a {
+    color: var(--link-color);
+}

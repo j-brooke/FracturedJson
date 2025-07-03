@@ -111,3 +111,20 @@ code {
 #app {
     height: 100%;
 }
+
+/* -- Light/Dark mode -- */
+:root {
+    --background-color: #1b6ec2;
+    --text-color: #000000;
+    --json-background: #cee2e2;
+    --json-text: #155a15;
+    --link-color: #7ebae5;
+}
+
+[dark-theme="true"] {
+    --background-color: #171744;
+    --text-color: #aaaaaa;
+    --json-background: #3e3e4e;
+    --json-text: #86bf86;
+    --link-color: #0071c1;
+}

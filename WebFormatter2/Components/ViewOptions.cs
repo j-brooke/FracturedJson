@@ -11,4 +11,6 @@ public record ViewOptions
     public bool ShowSettings { get; set; } = true;
 
     public ViewMode ViewMode { get; set; } = ViewMode.OverUnder;
+
+    public bool DarkTheme { get; set; }
 }

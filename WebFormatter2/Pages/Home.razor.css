@@ -7,26 +7,24 @@
         "s m";
     grid-template-columns: minmax(min-content, auto) 1fr;
     grid-template-rows: minmax(min-content, auto) auto 1fr;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 .header {
-    background-color: #26b050;
     grid-area: h;
 }
 
 .side {
-    background-color: #c02d76;
     grid-area: s;
     overflow: scroll;
 }
 
 .buttons {
-    background-color: darkgoldenrod;
     grid-area: b;
 }
 
 .main {
-    background-color: #b32121;
     grid-area: m;
 }
 
@@ -61,6 +59,8 @@
     box-sizing: border-box;
     padding: 8px;
     border: 1px solid #ccc;
+    background-color: var(--json-background);
+    color: var(--json-text);
 }
 
 .app { height: 100vh; }
