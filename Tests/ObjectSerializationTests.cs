@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using FracturedJson;
 
 namespace Tests;
@@ -21,7 +22,13 @@ public class ObjectSerializationTests
         var formatter = new Formatter() { Options = fracturedJsonOptions };
         var output = formatter.Serialize(input, 0, serialOptions);
 
-        StringAssert.Contains(output, "\"Eras\": [1]");
+        // Ugly Regex.  We expect, across multiple lines, to find "Eras":[1], but potentially with
+        // whitespace before and after the colon.
+        const string pattern =
+            """
+            .*"Eras"\s*:\s*\[1].*
+            """;
+        StringAssert.Matches(output, new Regex(pattern, RegexOptions.Multiline));
         StringAssert.Contains(output, "SolarCalendar");
     }
 
@@ -34,7 +41,13 @@ public class ObjectSerializationTests
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Serialize(input, 0);
 
-        StringAssert.Contains(output, "\"CurrencySymbol\": \"\\u00A4\"");
+        // Ugly Regex.  We expect, across multiple lines, to find "CurrencySymbol":"\u00A4", but potentially with
+        // whitespace before and after the colon.
+        const string pattern =
+            """
+            .*"CurrencySymbol"\s*:\s*\"\\u00A4".*
+            """;
+        StringAssert.Matches(output, new Regex(pattern, RegexOptions.Multiline));
     }
 
     [DataTestMethod]

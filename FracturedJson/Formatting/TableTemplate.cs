@@ -58,6 +58,11 @@ internal class TableTemplate
     public bool IsNumberList { get; private set; }
 
     /// <summary>
+    /// True if any row would require multiple lines (which makes table formatting impossible).
+    /// </summary>
+    public bool RequiresMultipleLines { get; private set; }
+
+    /// <summary>
     /// Length of the value for this template when things are complicated.  For arrays and objects, it's the sum of
     /// all the child templates' lengths, plus brackets and commas and such.  For number lists, it's the space
     /// required to align them as appropriate.
@@ -81,6 +86,7 @@ internal class TableTemplate
         _numberListAlignment = numberListAlignment;
         AllowNumberNormalization = (numberListAlignment == NumberListAlignment.Normalize);
         IsNumberList = true;
+        RequiresMultipleLines = false;
     }
 
     /// <summary>
@@ -234,6 +240,7 @@ internal class TableTemplate
 
         // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
         IsRowDataCompatible &= !rowSegment.RequiresMultipleLines;
+        RequiresMultipleLines |= rowSegment.RequiresMultipleLines;
 
         // Update the numbers.
         RowCount += 1;

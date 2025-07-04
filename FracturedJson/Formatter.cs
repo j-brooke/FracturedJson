@@ -362,7 +362,7 @@ public class Formatter
         // similar, IsRowDataCompatible will be false.
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item);
-        if (!template.IsRowDataCompatible)
+        if (template.RequiresMultipleLines)
             return false;
 
         // If the rows won't fit with everything (including descendants) tabular, try dropping the columns for
