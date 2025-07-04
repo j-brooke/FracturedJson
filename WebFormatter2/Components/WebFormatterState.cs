@@ -73,14 +73,19 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
     {
         try
         {
+            var input = (ViewOptions.ViewMode==ViewMode.Unified)? _combinedJson : _inputJson;
             _formatter.Options = Options;
-            OutputJson = _formatter.Reformat(InputJson, 0);
+            OutputJson = _formatter.Reformat(input, 0);
             CombinedJson = OutputJson;
+            StandaloneErrorMsg = string.Empty;
         }
         catch (FracturedJsonException e)
         {
             OutputJson = e.Message;
             StandaloneErrorMsg = e.Message;
+
+            if (e.InputPosition != null)
+                Task.Run(() => SetSelectedText(e.InputPosition.Value.Index, e.InputPosition.Value.Index + 1));
         }
     }
 
@@ -88,14 +93,19 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
     {
         try
         {
+            var input = (ViewOptions.ViewMode==ViewMode.Unified)? _combinedJson : _inputJson;
             _formatter.Options = Options;
-            OutputJson = _formatter.Minify(InputJson);
+            OutputJson = _formatter.Minify(input);
             CombinedJson = OutputJson;
+            StandaloneErrorMsg = string.Empty;
         }
         catch (FracturedJsonException e)
         {
             OutputJson = e.Message;
             StandaloneErrorMsg = e.Message;
+
+            if (e.InputPosition != null)
+                Task.Run(() => SetSelectedText(e.InputPosition.Value.Index, e.InputPosition.Value.Index + 1));
         }
     }
 
@@ -132,21 +142,29 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
 
     public void SetModeOverUnder()
     {
-        ViewOptions.ViewMode = ViewMode.OverUnder;
-        SaveViewOptions();
-        SomethingHappened?.Invoke();
+        SetViewMode(ViewMode.OverUnder);
     }
 
     public void SetModeSideBySide()
     {
-        ViewOptions.ViewMode = ViewMode.SideBySide;
-        SaveViewOptions();
-        SomethingHappened?.Invoke();
+        SetViewMode(ViewMode.SideBySide);
     }
 
     public void SetModeUnified()
     {
-        ViewOptions.ViewMode = ViewMode.Unified;
+        SetViewMode(ViewMode.Unified);
+    }
+
+    public void SetViewMode(ViewMode newMode)
+    {
+        if (newMode == ViewOptions.ViewMode)
+            return;
+        if (newMode == ViewMode.Unified)
+            _combinedJson = _inputJson;
+        if (ViewOptions.ViewMode == ViewMode.Unified)
+            _inputJson = _combinedJson;
+
+        ViewOptions.ViewMode = newMode;
         SaveViewOptions();
         SomethingHappened?.Invoke();
     }
@@ -164,6 +182,7 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         InputJson = SampleJson.PureJson.ReplaceLineEndings(string.Empty);
         OutputJson = string.Empty;
         CombinedJson = SampleJson.PureJson;
+        StandaloneErrorMsg = string.Empty;
     }
 
     public void SetSampleWithComments()
@@ -171,6 +190,7 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         InputJson = SampleJson.JsonWithComments;
         OutputJson = string.Empty;
         CombinedJson = SampleJson.JsonWithComments;
+        StandaloneErrorMsg = string.Empty;
     }
 
     public void Dispose()
@@ -241,6 +261,12 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
         await _jsRuntime.InvokeVoidAsync("document.documentElement.setAttribute",
             "dark-theme",
             ViewOptions.DarkTheme.ToString().ToLower());
+    }
+
+    public async Task SetSelectedText(int startIndex, int endIndex)
+    {
+        await _jsRuntime.InvokeVoidAsync("setTextareaSelection", "jsonInput", startIndex, endIndex);
+        SomethingHappened?.Invoke();
     }
 
     /// <summary>

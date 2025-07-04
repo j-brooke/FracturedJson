@@ -43,6 +43,7 @@
 .json-area-unified {
     height: 100%;
     display: grid;
+    grid-template-rows: min-content 1fr;
 }
 
 .json-panel {
@@ -59,6 +60,11 @@
     border: 1px solid #ccc;
     background-color: var(--json-background);
     color: var(--json-text);
+}
+
+.json-error {
+    color: var(--text-color);
+    background-color: var(--error-background);
 }
 
 .app { height: 100vh; }

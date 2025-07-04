@@ -5,6 +5,7 @@
     --json-background: #cee2e2;
     --json-text: #155a15;
     --link-color: #7ebae5;
+    --error-background: #f44336;
 }
 
 [dark-theme="true"] {
@@ -13,6 +14,7 @@
     --json-background: #3e3e4e;
     --json-text: #86bf86;
     --link-color: #0071c1;
+    --error-background: #751e17;
 }
 
 /* Basic items */

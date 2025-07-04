@@ -28,11 +28,25 @@ Copyright (c) 2019-2025 The Bootstrap Authors.
                 <div class="json-area-stack">
                     <div class="json-panel">
                         <label for="jsonInput">JSON Input:</label>
-                        <textarea class="json-box" @bind="State.InputJson"  autofocus id="jsonInput" spellcheck="false" placeholder="Paste JSON data here or press a Sample Data button."></textarea>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.InputJson"
+                            autofocus
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
                     </div>
                     <div class="json-panel">
                         <label for="jsonOutput">Formatted Output:</label>
-                        <textarea class="json-box" @bind="State.OutputJson" readonly id="jsonOutput" spellcheck="false" placeholder="Formatted JSON will appear here."></textarea>
+                        <textarea
+                            class="json-box"
+                            @bind="State.OutputJson"
+                            readonly id="jsonOutput"
+                            spellcheck="false"
+                            placeholder="Formatted JSON will appear here.">
+                        </textarea>
                     </div>
                 </div>
                 break;
@@ -40,19 +54,48 @@ Copyright (c) 2019-2025 The Bootstrap Authors.
                 <div class="json-area-side">
                     <div class="json-panel">
                         <label for="jsonInput">JSON Input:</label>
-                        <textarea class="json-box" @bind="State.InputJson" autofocus id="jsonInput" spellcheck="false" placeholder="Paste JSON data here or press a Sample Data button."></textarea>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.InputJson"
+                            autofocus
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
                     </div>
                     <div class="json-panel">
                         <label for="jsonOutput">Formatted Output:</label>
-                        <textarea class="json-box" @bind="State.OutputJson" readonly id="jsonOutput" spellcheck="false" placeholder="Formatted JSON will appear here."></textarea>
+                        <textarea
+                            class="json-box"
+                            @bind="State.OutputJson"
+                            readonly
+                            id="jsonOutput"
+                            spellcheck="false"
+                            placeholder="Formatted JSON will appear here.">
+                        </textarea>
                     </div>
                 </div>
                 break;
             default:
                 <div class="json-area-unified">
+                    <div class="json-error">
+                        @if (State.StandaloneErrorMsg.Length > 0)
+                        {
+                            <p>@State.StandaloneErrorMsg</p>
+                        }
+                    </div>
                     <div class="json-panel">
-                        <label for="jsonUnified">JSON Document:</label>
-                        <textarea class="json-box" @bind="State.CombinedJson" autofocus id="jsonUnified" spellcheck="false" placeholder="Paste JSON data here or press a Sample Data button."></textarea>
+                        <label for="jsonInput">JSON Document:</label>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.CombinedJson"
+                            autofocus
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
                     </div>
                 </div>
                 break;
@@ -66,5 +109,8 @@ Copyright (c) 2019-2025 The Bootstrap Authors.
     {
         State.SomethingHappened += StateHasChanged;
         await State.RestoreOptionsFromLocalStorage();
+        await _focusThing.FocusAsync();
     }
+
+    private ElementReference _focusThing;
 }
