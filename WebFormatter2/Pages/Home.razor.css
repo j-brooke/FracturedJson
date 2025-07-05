@@ -11,11 +11,13 @@
 
 .header {
     grid-area: h;
+    margin: 0.3em;
 }
 
 .side {
     grid-area: s;
     overflow: scroll;
+    margin: 0.3em;
 }
 
 .buttons {
@@ -24,6 +26,7 @@
 
 .main {
     grid-area: m;
+    margin: 0.2em;
 }
 
 .json-area-stack {

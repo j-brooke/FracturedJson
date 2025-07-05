@@ -1,7 +1,7 @@
 .button-panel {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: flex-start;
 }
 
 .format-group {
@@ -12,6 +12,8 @@
 .sample-group {
     display: flex;
     flex-direction: row;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
 }
 
 .view-group {
@@ -36,6 +38,7 @@
     display: flex;
     align-items: center;
     font-size: 12px;
+    text-wrap: nowrap;
 }
 
 .sample-btn > img {
