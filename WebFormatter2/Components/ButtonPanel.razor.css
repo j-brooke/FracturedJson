@@ -1,0 +1,51 @@
+.button-panel {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.format-group {
+    display: flex;
+    flex-direction: row;
+}
+
+.sample-group {
+    display: flex;
+    flex-direction: row;
+}
+
+.view-group {
+    display: flex;
+    flex-direction: row;
+}
+
+.fmt-btn {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+}
+
+.fmt-btn > img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.sample-btn {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+}
+
+.sample-btn > img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.mode-btn {
+    display: flex;
+    align-items: center;
+}
