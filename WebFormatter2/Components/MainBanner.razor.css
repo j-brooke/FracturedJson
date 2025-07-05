@@ -1,13 +1,13 @@
 img.logo {
-    width: 100px;
-    grid-area: 1 / 1 / 2 / 2;
+    width: 90px;
 }
 
 .main-banner {
-    display: grid;
-    grid-template-columns: max-content auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 h1 {
-    margin: 0;
+    margin: 0.2em;
 }
