@@ -6,7 +6,7 @@
     <div>
         <div class="settings-title">
             <h2>Settings</h2>
-            <button type="button" class="open-btn" @onclick="State.HideSettings">
+            <button type="button" class="open-btn" @onclick="State.HideSettings" title="Hide settings">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-double-left" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
                     <path fill-rule="evenodd" d="M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
@@ -36,23 +36,23 @@
 
             <div class="section-label">Miscellaneous</div>
             <div>
-                <InputSelect @bind-Value="@State.Options.NumberListAlignment">
+                <InputSelect @bind-Value="@State.Options.NumberListAlignment" id="number-align">
                     @foreach (var alignOpt in Enum.GetValues<NumberListAlignment>())
                     {
                         <option value="@alignOpt">@alignOpt</option>
                     }
                 </InputSelect>
-                <label>Number List Alignment</label>
+                <label for="number-align">Number List Alignment</label>
             </div>
 
             <div>
                 <!-- We're shortening a few names to keep the settings a manageable width. -->
-                <InputSelect @bind-Value="@State.Options.TableCommaPlacement">
+                <InputSelect @bind-Value="@State.Options.TableCommaPlacement" id="table-comma">
                     <option value="BeforePadding">BeforePadding</option>
                     <option value="AfterPadding">AfterPadding</option>
                     <option value="BeforePaddingExceptNumbers">BeforeExceptNumbers</option>
                 </InputSelect>
-                <label>Table Commas</label>
+                <label for="table-comma">Table Commas</label>
             </div>
 
             <div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
@@ -66,7 +66,7 @@
 }
 else
 {
-    <button type="button" class="open-btn" @onclick="State.ShowSettings">
+    <button type="button" class="open-btn" @onclick="State.ShowSettings" title="Show settings">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sliders" viewBox="0 0 16 16">
             <path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1z"/>
         </svg>
