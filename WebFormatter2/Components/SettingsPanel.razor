@@ -76,11 +76,8 @@ else
 
 
 @code {
-    private EditContext? _editContext;
-
     protected override void OnInitialized()
     {
-        _editContext = new EditContext(State.Options);
         State.SomethingHappened += StateHasChanged;
     }
 

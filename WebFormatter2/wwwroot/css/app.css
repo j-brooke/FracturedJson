@@ -3,9 +3,11 @@
     --background-color: #1b6ec2;
     --text-color: #000000;
     --json-background: #cee2e2;
-    --json-text: #155a15;
+    --json-text: #004c00;
     --link-color: #7ebae5;
     --error-background: #f44336;
+    --button-background: #a4a6ce;
+    --control-background: #cee2e2;
 }
 
 [dark-theme="true"] {
@@ -15,6 +17,8 @@
     --json-text: #86bf86;
     --link-color: #0071c1;
     --error-background: #751e17;
+    --button-background: #8696c1;
+    --control-background: #84849c;
 }
 
 /* Basic items */
@@ -32,6 +36,11 @@ html, body {
 
 a, .btn-link {
     color: var(--link-color);
+}
+
+/* Note - scoped CSS doesn't work for Blazor InputSelect, so we use global instead. */
+select {
+    background-color: var(--button-background);
 }
 
 .btn-primary {

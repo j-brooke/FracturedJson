@@ -20,3 +20,10 @@ input.number {
 .settings-title > h2 {
     margin: 6px 0 6px 0;
 }
+
+input {
+    background-color: var(--control-background);
+}
+button {
+    background-color: var(--button-background);
+}
