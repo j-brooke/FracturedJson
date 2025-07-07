@@ -1,0 +1,186 @@
+/* /Components/ButtonPanel.razor.rz.scp.css */
+.button-panel[b-dn6wg45smt] {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+.format-group[b-dn6wg45smt] {
+    display: flex;
+    flex-direction: row;
+}
+
+.sample-group[b-dn6wg45smt] {
+    display: flex;
+    flex-direction: row;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+}
+
+.view-group[b-dn6wg45smt] {
+    display: flex;
+    flex-direction: row;
+}
+
+.fmt-btn[b-dn6wg45smt] {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    background-color: var(--button-background);
+}
+
+.fmt-btn > img[b-dn6wg45smt] {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.sample-btn[b-dn6wg45smt] {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    text-wrap: nowrap;
+    background-color: var(--button-background);
+}
+
+.sample-btn > img[b-dn6wg45smt] {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.mode-btn[b-dn6wg45smt] {
+    display: flex;
+    align-items: center;
+    background-color: var(--button-background);
+}
+/* /Components/MainBanner.razor.rz.scp.css */
+img.logo[b-s595xlexcr] {
+    width: 90px;
+}
+
+.main-banner[b-s595xlexcr] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.title-text[b-s595xlexcr] {
+    margin-left: 0.5em;
+}
+
+h1[b-s595xlexcr] {
+    margin: 0.2em;
+}
+
+a[b-s595xlexcr] {
+    font-size: 14px;
+}
+/* /Components/SettingsPanel.razor.rz.scp.css */
+input.number[b-o5s4du36yn] {
+    width: 5em;
+}
+
+.section-label[b-o5s4du36yn] {
+    font-weight: bold;
+    padding-top: 1ch;
+}
+
+.open-btn[b-o5s4du36yn] {
+    padding: 0.3em;
+}
+
+.settings-title[b-o5s4du36yn] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-title > h2[b-o5s4du36yn] {
+    margin: 6px 0 6px 0;
+}
+
+input[b-o5s4du36yn] {
+    background-color: var(--control-background);
+}
+button[b-o5s4du36yn] {
+    background-color: var(--button-background);
+}
+/* /Pages/Home.razor.rz.scp.css */
+.page[b-dlnbzpxcif] {
+    height: 100%;
+    display: grid;
+    grid-template-areas:
+        "h h"
+        "s b"
+        "s m";
+    grid-template-columns: minmax(min-content, auto) 1fr;
+    grid-template-rows: minmax(min-content, auto) auto 1fr;
+}
+
+.header[b-dlnbzpxcif] {
+    grid-area: h;
+    margin: 0.3em;
+}
+
+.side[b-dlnbzpxcif] {
+    grid-area: s;
+    overflow: scroll;
+    margin: 0.3em;
+}
+
+.buttons[b-dlnbzpxcif] {
+    grid-area: b;
+    margin: 0.2em;
+}
+
+.main[b-dlnbzpxcif] {
+    grid-area: m;
+    margin: 0.2em;
+}
+
+.json-area-stack[b-dlnbzpxcif] {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+}
+
+.json-area-side[b-dlnbzpxcif] {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.json-area-unified[b-dlnbzpxcif] {
+    height: 100%;
+    display: grid;
+    grid-template-rows: min-content 1fr;
+}
+
+.json-panel[b-dlnbzpxcif] {
+    display: grid;
+    grid-template-rows: min-content 1fr;
+}
+
+.json-panel > textarea[b-dlnbzpxcif] {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid #ccc;
+    font-family: monospace;
+    background-color: var(--json-background);
+    color: var(--json-text);
+}
+
+.json-error[b-dlnbzpxcif] {
+    color: var(--text-color);
+    background-color: var(--error-background);
+}
+
+.app[b-dlnbzpxcif] { height: 100vh; }

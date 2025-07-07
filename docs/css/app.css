@@ -1,44 +1,59 @@
-﻿
+/* -- Light/Dark mode -- */
+:root {
+    --background-color: #1b6ec2;
+    --text-color: #000000;
+    --json-background: #cee2e2;
+    --json-text: #004c00;
+    --link-color: #7ebae5;
+    --error-background: #f44336;
+    --button-background: #a4a6ce;
+    --control-background: #cee2e2;
+}
+
+[dark-theme="true"] {
+    --background-color: #171744;
+    --text-color: #aaaaaa;
+    --json-background: #3e3e4e;
+    --json-text: #86bf86;
+    --link-color: #0071c1;
+    --error-background: #751e17;
+    --button-background: #8696c1;
+    --control-background: #84849c;
+}
+
+/* Basic items */
+* {
+    box-sizing: border-box; /* Ensure consistent sizing across the app */
+}
+
 html, body {
-    font-family: Helvetica, Arial, sans-serif;
-    background-color: slategray;
-    color: midnightblue;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100vh;
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 a, .btn-link {
-    color: darkmagenta;
+    color: var(--link-color);
 }
 
-.content {
-    padding-top: 1.1rem;
+/* Note - scoped CSS doesn't work for Blazor InputSelect, so we use global instead. */
+select {
+    background-color: var(--button-background);
 }
 
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
 }
 
-.invalid {
-    outline: 1px solid red;
+#app {
+    height: 100%;
 }
 
-.validation-message {
-    color: red;
-}
-
-textarea.json-box {
-    font-family: monospace;
-    background-color: silver;
-    color: darkgreen;
-}
-
-input {
-    background-color: silver;
-}
-
-button {
-    background-color: cadetblue;
-}
-
+/* Blazor stuff */
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
@@ -67,3 +82,38 @@ button {
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    margin: 20vh auto 1rem auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #1b6ec2;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+
+
