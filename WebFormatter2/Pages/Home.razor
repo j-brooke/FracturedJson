@@ -1,0 +1,113 @@
+﻿@page "/"
+@using WebFormatter2.Components
+@inject WebFormatterState State
+
+<!--
+Fractured Json Web Formatter
+
+Bootstrap Icons (https://icons.getbootstrap.com) are licensed under the MIT License.
+Copyright (c) 2019-2025 The Bootstrap Authors.
+-->
+
+<PageTitle>FracturedJson Web Formatter</PageTitle>
+
+<div class="page">
+    <div class="header">
+        <MainBanner></MainBanner>
+    </div>
+    <div class="side">
+        <SettingsPanel></SettingsPanel>
+    </div>
+    <div class="buttons">
+        <ButtonPanel></ButtonPanel>
+    </div>
+    <div class="main">
+        @switch (State.ViewOptions.ViewMode)
+        {
+            case ViewMode.OverUnder:
+                <div class="json-area-stack">
+                    <div class="json-panel">
+                        <label for="jsonInput">JSON Input:</label>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.InputJson"
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
+                    </div>
+                    <div class="json-panel">
+                        <label for="jsonOutput">Formatted Output:</label>
+                        <textarea
+                            class="json-box"
+                            @bind="State.OutputJson"
+                            readonly id="jsonOutput"
+                            spellcheck="false"
+                            placeholder="Formatted JSON will appear here.">
+                        </textarea>
+                    </div>
+                </div>
+                break;
+            case ViewMode.SideBySide:
+                <div class="json-area-side">
+                    <div class="json-panel">
+                        <label for="jsonInput">JSON Input:</label>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.InputJson"
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
+                    </div>
+                    <div class="json-panel">
+                        <label for="jsonOutput">Formatted Output:</label>
+                        <textarea
+                            class="json-box"
+                            @bind="State.OutputJson"
+                            readonly
+                            id="jsonOutput"
+                            spellcheck="false"
+                            placeholder="Formatted JSON will appear here.">
+                        </textarea>
+                    </div>
+                </div>
+                break;
+            default:
+                <div class="json-area-unified">
+                    <div class="json-error">
+                        @if (State.StandaloneErrorMsg.Length > 0)
+                        {
+                            <p>@State.StandaloneErrorMsg</p>
+                        }
+                    </div>
+                    <div class="json-panel">
+                        <label for="jsonInput">JSON Document:</label>
+                        <textarea
+                            @ref="_focusThing"
+                            class="json-box"
+                            @bind="State.CombinedJson"
+                            id="jsonInput"
+                            spellcheck="false"
+                            placeholder="Paste JSON data here or press a Sample Data button.">
+                        </textarea>
+                    </div>
+                </div>
+                break;
+        }
+    </div>
+</div>
+
+@code
+{
+    protected override async Task OnInitializedAsync()
+    {
+        State.SomethingHappened += StateHasChanged;
+        await State.RestoreOptionsFromLocalStorage();
+        await _focusThing.FocusAsync();
+    }
+
+    private ElementReference _focusThing;
+}

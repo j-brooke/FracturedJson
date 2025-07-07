@@ -1,0 +1,29 @@
+input.number {
+    width: 5em;
+}
+
+.section-label {
+    font-weight: bold;
+    padding-top: 1ch;
+}
+
+.open-btn {
+    padding: 0.3em;
+}
+
+.settings-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-title > h2 {
+    margin: 6px 0 6px 0;
+}
+
+input {
+    background-color: var(--control-background);
+}
+button {
+    background-color: var(--button-background);
+}

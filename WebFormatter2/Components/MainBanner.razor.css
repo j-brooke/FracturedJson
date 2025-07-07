@@ -1,0 +1,21 @@
+img.logo {
+    width: 90px;
+}
+
+.main-banner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.title-text {
+    margin-left: 0.5em;
+}
+
+h1 {
+    margin: 0.2em;
+}
+
+a {
+    font-size: 14px;
+}

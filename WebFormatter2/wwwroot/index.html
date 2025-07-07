@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FracturedJson Web Formatter</title>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="img/favicon.ico" />
+    <link href="WebFormatter2.styles.css" rel="stylesheet" />
+    <script src="js/app.js"></script>
+
+    <script>
+        // When running locally, base needs to be / .  Running from Github Pages, it needs to be /FracturedJson/ .
+        const isLocal = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+        const base = document.createElement('base');
+        base.href = isLocal ? '/' : '/FracturedJson/';
+        document.head.appendChild(base);
+    </script>
+</head>
+
+<body>
+    <div id="app">
+        <p>FracturedJson is a family of utilities that format
+            <a href="(https://json.org/" target="_blank" rel="noopener">JSON data</a> in a way that's easy for
+            humans to read, but fairly compact.  Arrays and objects are written on single lines, as long as they're
+            neither too long nor too complex.  When several such lines are similar in structure, they're written with
+            fields aligned like a table.  Long arrays are written with multiple items per line across multiple lines.</p>
+
+        <p>There are lots of settings available to control the output, but for the most part you can ignore them.
+            FracturedJson produces nice-looking output from any set of JSON data automatically.</p>
+
+        <p>Loading...</p>
+
+        <noscript>
+            <hr>
+            <p>This website requires JavaScript to function.  All processing is done locally - your data isn't sent anywhere.</p>
+            <hr>
+        </noscript>
+
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>
