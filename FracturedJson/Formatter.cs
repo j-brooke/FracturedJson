@@ -636,6 +636,10 @@ public class Formatter
                 InlineTableRawObject(template, item);
             if (commaPos == CommaPosition.BeforeValuePadding)
                 _buffer.Add(commaType);
+
+            // Special adjustment if the object/array is shorter than the literal "null".
+            if (template.ShorterThanNullAdjustment > 0)
+                _buffer.Add(_pads.Spaces(template.ShorterThanNullAdjustment));
         }
         else if (template.IsNumberList)
         {

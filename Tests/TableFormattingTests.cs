@@ -382,4 +382,26 @@ public class TableFormattingTests
         Assert.AreEqual(outputLines[2].IndexOf("// x", StringComparison.Ordinal),
             outputLines[3].IndexOf("/* y", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void HandlesNullsWithArraysTableColumns()
+    {
+        // Special case issue.  If a non-empty array has a shorter length than the literal "null", and the column
+        // also contains a null, the array needs to be padded out to the size of null.
+        var input =
+            """
+            [
+                {"Thing": null /* q */}, 
+                {"Thing": [5] /* r */} 
+            ]
+            """;
+
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        TestHelpers.TestInstancesLineUp(outputLines, "}");
+        TestHelpers.TestInstancesLineUp(outputLines, "*/");
+    }
 }

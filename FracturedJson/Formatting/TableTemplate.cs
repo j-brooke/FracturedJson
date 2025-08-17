@@ -68,7 +68,18 @@ internal class TableTemplate
     /// Length of the entire template, including space for the value, property name, and all comments.
     /// </summary>
     public int TotalLength { get; private set; }
-    
+
+    /// <summary>
+    /// If the row contains non-empty array or objects whose value is shorter than the literal null, an extra adjustment
+    /// is needed.
+    /// </summary>
+    public int ShorterThanNullAdjustment { get; private set; }
+
+    /// <summary>
+    /// True if at least one row in the column this represents has a null value.
+    /// </summary>
+    public bool ContainsNull { get; private set; }
+
     /// <summary>
     /// If this TableTemplate corresponds to an object or array, Children contains sub-templates
     /// for the array/object's children.
@@ -223,6 +234,7 @@ internal class TableTemplate
         {
             _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, _pads.LiteralNullLen);
             _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, _pads.LiteralNullLen);
+            ContainsNull = true;
         }
         else
         {
@@ -351,6 +363,11 @@ internal class TableTemplate
                                    + Math.Max(0, _pads.CommaLen * (Children.Count - 1))
                                    + _pads.ArrStartLen(PadType)
                                    + _pads.ArrEndLen(PadType);
+            if (ContainsNull && CompositeValueLength < _pads.LiteralNullLen)
+            {
+                ShorterThanNullAdjustment = _pads.LiteralNullLen - CompositeValueLength;
+                CompositeValueLength = _pads.LiteralNullLen;
+            }
         }
         else
         {
