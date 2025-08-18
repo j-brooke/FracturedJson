@@ -16,7 +16,8 @@
 
 .side {
     grid-area: s;
-    overflow: scroll;
+    overflow-x: clip;
+    overflow-y: auto;
     margin: 0.3em;
 }
 
