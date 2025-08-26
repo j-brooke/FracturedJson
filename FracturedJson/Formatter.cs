@@ -236,7 +236,18 @@ public class Formatter
         {
             if (FormatContainerInline(item, depth, includeTrailingComma))
                 return;
-            if (FormatContainerCompactMultiline(item, depth, includeTrailingComma))
+        }
+
+        // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
+        // similar, IsRowDataCompatible will be false.
+        var recursiveTemplate = item.Complexity <= Options.MaxCompactArrayComplexity ||
+                                item.Complexity <= Options.MaxTableRowComplexity + 1;
+        var template = new TableTemplate(_pads, Options.NumberListAlignment);
+        template.MeasureTableRoot(item, recursiveTemplate);
+
+        if (depth > Options.AlwaysExpandDepth)
+        {
+            if (FormatContainerCompactMultiline(item, depth, includeTrailingComma, template))
                 return;
         }
 
@@ -245,7 +256,7 @@ public class Formatter
         // as a table, since a table's children are always inlined (and thus not expanded).
         if (depth >= Options.AlwaysExpandDepth)
         {
-            if (FormatContainerTable(item, depth, includeTrailingComma))
+            if (FormatContainerTable(item, depth, includeTrailingComma, template))
                 return;
         }
 
@@ -277,7 +288,7 @@ public class Formatter
     /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma)
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template)
     {
         if (item.Type != JsonItemType.Array)
             return false;
@@ -285,10 +296,6 @@ public class Formatter
             return false;
         if (item.RequiresMultipleLines)
             return false;
-
-        // If all items are alike, we'll want to format each element as if it were a table row.
-        var template = new TableTemplate(_pads, Options.NumberListAlignment);
-        template.MeasureTableRoot(item);
 
         var useTableFormatting = template.Type is not (TableRowType.Simple or TableRowType.Unknown or TableRowType.Mixed);
 
@@ -345,7 +352,7 @@ public class Formatter
     /// are consistent for all rows.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma)
+    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template)
     {
         // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
@@ -360,10 +367,6 @@ public class Formatter
         if (isChildTooLong)
             return false;
 
-        // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
-        // similar, IsRowDataCompatible will be false.
-        var template = new TableTemplate(_pads, Options.NumberListAlignment);
-        template.MeasureTableRoot(item);
         if (template.RequiresMultipleLines || template.Type is TableRowType.Mixed)
             return false;
 

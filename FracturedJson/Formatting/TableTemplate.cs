@@ -83,12 +83,12 @@ internal class TableTemplate
     /// Analyzes an object/array for formatting as a potential table.  The tableRoot is a container that
     /// is split out across many lines.  Each "row" is a single child written inline.
     /// </summary>
-    public void MeasureTableRoot(JsonItem tableRoot)
+    public void MeasureTableRoot(JsonItem tableRoot, bool recursive)
     {
         // For each row of the potential table, measure it and its children, making room for everything.
         // (Or, if there are incompatible types at any level, set CanBeUsedInTable to false.)
         foreach(var child in tableRoot.Children)
-            MeasureRowSegment(child);
+            MeasureRowSegment(child, recursive);
 
         // Get rid of incomplete junk and figure out our size.
         PruneAndRecompute(int.MaxValue);
@@ -192,7 +192,7 @@ internal class TableTemplate
     /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
     /// </summary>
     /// <param name="rowSegment"></param>
-    private void MeasureRowSegment(JsonItem rowSegment)
+    private void MeasureRowSegment(JsonItem rowSegment, bool recursive)
     {
         // Standalone comments and blank lines don't figure into template measurements
         if (rowSegment.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
@@ -240,7 +240,7 @@ internal class TableTemplate
         if (RequiresMultipleLines || rowSegment.Type is JsonItemType.Null)
             return;
         
-        if (Type is TableRowType.Array)
+        if (Type is TableRowType.Array && recursive)
         {
             // For each row in this rowSegment, find or create this TableTemplate's child template for
             // the that array index, and then measure recursively.
@@ -249,10 +249,10 @@ internal class TableTemplate
                 if (Children.Count <= i)
                     Children.Add(new(_pads, _numberListAlignment));
                 var subTemplate = Children[i];
-                subTemplate.MeasureRowSegment(rowSegment.Children[i]);
+                subTemplate.MeasureRowSegment(rowSegment.Children[i], true);
             }
         }
-        else if (Type is TableRowType.Object)
+        else if (Type is TableRowType.Object && recursive)
         {
             // If this object has multiple children with the same property name, which is allowed by the JSON standard
             // although it's hard to imagine anyone would deliberately do it, we can't format it as part of a table.
@@ -275,7 +275,7 @@ internal class TableTemplate
                     subTemplate = new(_pads, _numberListAlignment) { LocationInParent = rowSegChild.Name };
                     Children.Add(subTemplate);
                 }
-                subTemplate.MeasureRowSegment(rowSegChild);
+                subTemplate.MeasureRowSegment(rowSegChild, true);
             }
         }
         else if (Type is TableRowType.Number)
