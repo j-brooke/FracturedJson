@@ -24,17 +24,7 @@ internal class TableTemplate
     /// </summary>
     public string? LocationInParent { get; private set; }
 
-    /// <summary>
-    /// The type of values in the column, if they're uniform.  There's some wiggle-room here: for instance,
-    /// true and false have different JsonItemTypes but are considered the same type for table purposes.
-    /// </summary>
-    public JsonItemType Type { get; private set; } = JsonItemType.Null;
-    
-    /// <summary>
-    /// Assessment of whether this is a viable column.  The main qualifying factor is that all corresponding pieces
-    /// of each row are the same type.
-    /// </summary>
-    public bool IsRowDataCompatible { get; private set; } = true;
+    public TableRowType Type { get; private set; } = TableRowType.Unknown;
     public int RowCount { get; private set; }
     
     public int NameLength { get; private set; }
@@ -51,11 +41,7 @@ internal class TableTemplate
     /// </summary>
     public bool AllowNumberNormalization { get; private set; }
 
-    /// <summary>
-    /// True if this column contains only numbers and nulls.  Number columns are formatted specially, depending on
-    /// settings.
-    /// </summary>
-    public bool IsNumberList { get; private set; }
+    public bool RequiresMultipleLines { get; private set; }
 
     /// <summary>
     /// Length of the value for this template when things are complicated.  For arrays and objects, it's the sum of
@@ -91,7 +77,6 @@ internal class TableTemplate
         _pads = pads;
         _numberListAlignment = numberListAlignment;
         AllowNumberNormalization = (numberListAlignment == NumberListAlignment.Normalize);
-        IsNumberList = true;
     }
 
     /// <summary>
@@ -107,9 +92,6 @@ internal class TableTemplate
 
         // Get rid of incomplete junk and figure out our size.
         PruneAndRecompute(int.MaxValue);
-
-        // If there are fewer than 2 actual data rows (i.e., not standalone comments), no point making a table.
-        IsRowDataCompatible &= (RowCount >= 2);
     }
 
     /// <summary>
@@ -215,37 +197,33 @@ internal class TableTemplate
         // Standalone comments and blank lines don't figure into template measurements
         if (rowSegment.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
             return;
-        
-        // Make sure this rowSegment's type is compatible with the ones we've seen so far.  Null is compatible
-        // with all types.  It the types aren't compatible, we can still align this element and its comments,
-        // but not any children for arrays/objects.
-        if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
+
+        var rowTableType = rowSegment.Type switch
         {
-            IsRowDataCompatible &= (Type is JsonItemType.True or JsonItemType.Null);
-            Type = JsonItemType.True;
-            IsNumberList = false;
-        }
-        else if (rowSegment.Type is JsonItemType.Number)
-        {
-            IsRowDataCompatible &= (Type is JsonItemType.Number or JsonItemType.Null);
-            Type = JsonItemType.Number;
-        }
-        else if (rowSegment.Type is JsonItemType.Null)
+            JsonItemType.Null => TableRowType.Unknown,
+            JsonItemType.Number => TableRowType.Number,
+            JsonItemType.Array => TableRowType.Array,
+            JsonItemType.Object => TableRowType.Object,
+            _ => TableRowType.Simple,
+        };
+
+        if (Type is TableRowType.Unknown)
+            Type = rowTableType;
+        else if (rowTableType is not TableRowType.Unknown && Type != rowTableType)
+            Type = TableRowType.Mixed;
+
+        if (rowSegment.Type is JsonItemType.Null)
         {
             _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, _pads.LiteralNullLen);
             _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, _pads.LiteralNullLen);
             ContainsNull = true;
         }
-        else
-        {
-            IsRowDataCompatible &= (Type == rowSegment.Type || Type == JsonItemType.Null);
-            if (Type is JsonItemType.Null)
-                Type = rowSegment.Type;
-            IsNumberList = false;
-        }
 
-        // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
-        IsRowDataCompatible &= !rowSegment.RequiresMultipleLines;
+        if (rowSegment.RequiresMultipleLines)
+        {
+            RequiresMultipleLines = true;
+            Type = TableRowType.Mixed;
+        }
 
         // Update the numbers.
         RowCount += 1;
@@ -259,11 +237,10 @@ internal class TableTemplate
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
 
-        // Everything after this is moot if the column doesn't have a uniform type.
-        if (!IsRowDataCompatible)
+        if (RequiresMultipleLines || rowSegment.Type is JsonItemType.Null)
             return;
         
-        if (rowSegment.Type == JsonItemType.Array)
+        if (Type is TableRowType.Array)
         {
             // For each row in this rowSegment, find or create this TableTemplate's child template for
             // the that array index, and then measure recursively.
@@ -275,7 +252,7 @@ internal class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegment.Children[i]);
             }
         }
-        else if (rowSegment.Type == JsonItemType.Object)
+        else if (Type is TableRowType.Object)
         {
             // If this object has multiple children with the same property name, which is allowed by the JSON standard
             // although it's hard to imagine anyone would deliberately do it, we can't format it as part of a table.
@@ -284,7 +261,7 @@ internal class TableTemplate
                 .Count();
             if (distinctChildKeyCount != rowSegment.Children.Count)
             {
-                IsRowDataCompatible = false;
+                Type = TableRowType.Simple;
                 return;
             }
 
@@ -301,7 +278,7 @@ internal class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegChild);
             }
         }
-        else if (rowSegment.Type == JsonItemType.Number && IsNumberList)
+        else if (Type is TableRowType.Number)
         {
             // So far, everything in this column is a number (or null).  We need to reevaluate whether we're allowed
             // to normalize the numbers - write them all with the same number of digits after the decimal point.
@@ -337,7 +314,7 @@ internal class TableTemplate
                 Math.Max(_maxDigAfterDecRaw, (indexOfDotRaw >= 0) ? rowSegment.ValueLength - indexOfDotRaw - 1 : 0);
         }
 
-        AllowNumberNormalization &= IsNumberList;
+        AllowNumberNormalization &= (Type is TableRowType.Number);
     }
 
     /// <summary>
@@ -347,13 +324,13 @@ internal class TableTemplate
     /// </summary>
     private void PruneAndRecompute(int maxAllowedComplexity)
     {
-        if (maxAllowedComplexity <= 0 || !IsRowDataCompatible)
+        if (maxAllowedComplexity <= 0 || (Type is not (TableRowType.Array or TableRowType.Object)))
             Children.Clear();
         
         foreach(var subTemplate in Children)
             subTemplate.PruneAndRecompute(maxAllowedComplexity-1);
 
-        if (IsNumberList)
+        if (Type is TableRowType.Number)
         {
             CompositeValueLength = GetNumberFieldWidth();
         }

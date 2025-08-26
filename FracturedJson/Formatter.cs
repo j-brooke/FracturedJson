@@ -290,11 +290,13 @@ public class Formatter
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item);
 
+        var useTableFormatting = template.Type is not (TableRowType.Simple or TableRowType.Unknown or TableRowType.Mixed);
+
         // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
         // be better.
         var likelyAvailableLineSpace = AvailableLineSpace(depth+1);
         var avgItemWidth = _pads.CommaLen
-                           + ((template.IsRowDataCompatible)
+                           + ((useTableFormatting)
                                ? template.TotalLength
                                : item.Children.Sum(ch => ch.MinimumTotalLength) / item.Children.Count);
         if (avgItemWidth * Options.MinCompactArrayRowItems > likelyAvailableLineSpace)
@@ -313,7 +315,7 @@ public class Formatter
             var child = item.Children[i];
             var needsComma = (i < item.Children.Count - 1);
             var spaceNeededForNext = ((needsComma) ? _pads.CommaLen : 0) +
-                                     ((template.IsRowDataCompatible) ? template.TotalLength : child.MinimumTotalLength);
+                                     ((useTableFormatting) ? template.TotalLength : child.MinimumTotalLength);
 
             if (remainingLineSpace < spaceNeededForNext)
             {
@@ -322,7 +324,7 @@ public class Formatter
             }
 
             // Write it out
-            if (template.IsRowDataCompatible)
+            if (useTableFormatting)
                 InlineTableRowSegment(template, child, needsComma, false);
             else
                 InlineElement(child, needsComma);
@@ -362,7 +364,7 @@ public class Formatter
         // similar, IsRowDataCompatible will be false.
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item);
-        if (!template.IsRowDataCompatible)
+        if (template.RequiresMultipleLines || template.Type is TableRowType.Mixed)
             return false;
 
         // If the rows won't fit with everything (including descendants) tabular, try dropping the columns for
@@ -605,7 +607,7 @@ public class Formatter
         // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
         var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
                              || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
-                             && !template.IsNumberList;
+                             && (template.Type is not TableRowType.Number);
         CommaPosition commaPos;
         if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
         {
@@ -630,7 +632,7 @@ public class Formatter
 
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
-            if (template.Type is JsonItemType.Array)
+            if (template.Type is TableRowType.Array)
                 InlineTableRawArray(template, item);
             else
                 InlineTableRawObject(template, item);
@@ -641,7 +643,7 @@ public class Formatter
             if (template.ShorterThanNullAdjustment > 0)
                 _buffer.Add(_pads.Spaces(template.ShorterThanNullAdjustment));
         }
-        else if (template.IsNumberList)
+        else if (template.Type is TableRowType.Number)
         {
             var numberCommaType = (commaPos == CommaPosition.BeforeValuePadding) ? commaType : string.Empty;
             template.FormatNumber(_buffer, item, numberCommaType);
