@@ -334,7 +334,7 @@ public class Formatter
             if (useTableFormatting)
                 InlineTableRowSegment(template, child, needsComma, false);
             else
-                InlineElement(child, needsComma, parentTemplate);
+                InlineElement(child, needsComma, null);
             remainingLineSpace -= spaceNeededForNext;
         }
 
