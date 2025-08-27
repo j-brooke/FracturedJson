@@ -324,7 +324,7 @@ internal class TableTemplate
     /// </summary>
     private void PruneAndRecompute(int maxAllowedComplexity)
     {
-        if (maxAllowedComplexity <= 0 || (Type is not (TableRowType.Array or TableRowType.Object)))
+        if (maxAllowedComplexity <= 0 || (Type is not (TableRowType.Array or TableRowType.Object)) || RowCount<2)
             Children.Clear();
         
         foreach(var subTemplate in Children)

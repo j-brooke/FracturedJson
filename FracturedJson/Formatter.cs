@@ -127,7 +127,7 @@ public class Formatter
         foreach(var item in docModel)
         {
             ComputeItemLengths(item);
-            FormatItem(item, startingDepth, false);
+            FormatItem(item, startingDepth, false, null);
         }
 
         _buffer = new NullBuffer();
@@ -200,13 +200,13 @@ public class Formatter
     /// Adds a formatted version of any item to the buffer, including indentation and newlines as needed.  This
     /// could span multiple lines.
     /// </summary>
-    private void FormatItem(JsonItem item, int depth, bool includeTrailingComma)
+    private void FormatItem(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
         switch (item.Type)
         {
             case JsonItemType.Array:
             case JsonItemType.Object:
-                FormatContainer(item, depth, includeTrailingComma);
+                FormatContainer(item, depth, includeTrailingComma, parentTemplate);
                 break;
             case JsonItemType.BlankLine:
                 FormatBlankLine();
@@ -217,9 +217,9 @@ public class Formatter
                 break;
             default:
                 if (item.RequiresMultipleLines)
-                    FormatSplitKeyValue(item, depth, includeTrailingComma);
+                    FormatSplitKeyValue(item, depth, includeTrailingComma, parentTemplate);
                 else
-                    FormatInlineElement(item, depth, includeTrailingComma);
+                    FormatInlineElement(item, depth, includeTrailingComma, parentTemplate);
                 break;
         }
     }
@@ -228,13 +228,13 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.
     /// The array/object might be formatted inline, compact multiline, table, or expanded, according to circumstances.
     /// </summary>
-    private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma)
+    private void FormatContainer(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
         // Try to inline of compact-multiline format, as long as we're deeper than AlwaysExpandDepth.  Of course,
         // there may be other disqualifying factors that are discovered along the way.
         if (depth > Options.AlwaysExpandDepth)
         {
-            if (FormatContainerInline(item, depth, includeTrailingComma))
+            if (FormatContainerInline(item, depth, includeTrailingComma, parentTemplate))
                 return;
         }
 
@@ -247,7 +247,7 @@ public class Formatter
 
         if (depth > Options.AlwaysExpandDepth)
         {
-            if (FormatContainerCompactMultiline(item, depth, includeTrailingComma, template))
+            if (FormatContainerCompactMultiline(item, depth, includeTrailingComma, template, parentTemplate))
                 return;
         }
 
@@ -256,11 +256,11 @@ public class Formatter
         // as a table, since a table's children are always inlined (and thus not expanded).
         if (depth >= Options.AlwaysExpandDepth)
         {
-            if (FormatContainerTable(item, depth, includeTrailingComma, template))
+            if (FormatContainerTable(item, depth, includeTrailingComma, template, parentTemplate))
                 return;
         }
 
-        FormatContainerExpanded(item, depth, includeTrailingComma);
+        FormatContainerExpanded(item, depth, includeTrailingComma, template, parentTemplate);
     }
 
     /// <summary>
@@ -268,7 +268,7 @@ public class Formatter
     /// etc., if the array/object qualifies.
     /// </summary>
     /// <returns>True if the content was added.</returns>
-    private bool FormatContainerInline(JsonItem item, int depth, bool includeTrailingComma)
+    private bool FormatContainerInline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
         if (item.RequiresMultipleLines)
             return false;
@@ -277,7 +277,7 @@ public class Formatter
             return false;
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        InlineElement(item, includeTrailingComma);
+        InlineElement(item, includeTrailingComma, parentTemplate);
         _buffer.EndLine(_pads.EOL);
 
         return true;
@@ -288,7 +288,7 @@ public class Formatter
     /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template)
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
     {
         if (item.Type != JsonItemType.Array)
             return false;
@@ -311,7 +311,7 @@ public class Formatter
 
 
         // Add prefixString, indent, prefix comment, starting bracket (with no EOL).
-        var depthAfterColon = StandardFormatStart(item, depth);
+        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
 
         var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
@@ -334,7 +334,7 @@ public class Formatter
             if (useTableFormatting)
                 InlineTableRowSegment(template, child, needsComma, false);
             else
-                InlineElement(child, needsComma);
+                InlineElement(child, needsComma, parentTemplate);
             remainingLineSpace -= spaceNeededForNext;
         }
 
@@ -352,10 +352,13 @@ public class Formatter
     /// are consistent for all rows.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template)
+    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
     {
         // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
+            return false;
+
+        if (template.RequiresMultipleLines)
             return false;
 
         var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
@@ -365,9 +368,6 @@ public class Formatter
             .Where(ch => ch.Type is not (JsonItemType.BlankLine or JsonItemType.LineComment or JsonItemType.BlockComment))
             .Any(ch => ch.MinimumTotalLength > availableSpace);
         if (isChildTooLong)
-            return false;
-
-        if (template.RequiresMultipleLines || template.Type is TableRowType.Mixed)
             return false;
 
         // If the rows won't fit with everything (including descendants) tabular, try dropping the columns for
@@ -386,7 +386,7 @@ public class Formatter
         if (!template.TryToFit(availableSpace))
             return false;
 
-        var depthAfterColon = StandardFormatStart(item, depth);
+        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
@@ -421,16 +421,16 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
     /// broken out on separate lines.  This is the most general case that always works.
     /// </summary>
-    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma)
+    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
     {
-        var depthAfterColon = StandardFormatStart(item, depth);
+        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
         var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex));
+            FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex), template);
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);
@@ -455,10 +455,10 @@ public class Formatter
     /// <summary>
     /// Adds an element to the buffer that can be written as a single line, including indents and newlines.
     /// </summary>
-    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma)
+    private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-        InlineElement(item, includeTrailingComma);
+        InlineElement(item, includeTrailingComma, parentTemplate);
         _buffer.EndLine(_pads.EOL);
     }
 
@@ -466,9 +466,9 @@ public class Formatter
     /// Adds an item to the buffer, including comments and indents and such, where a comment between the
     /// prop name and prop value needs to span multiple lines.
     /// </summary>
-    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma)
+    private void FormatSplitKeyValue(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
-        StandardFormatStart(item, depth);
+        StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(item.Value);
         StandardFormatEnd(item, includeTrailingComma);
     }
@@ -478,10 +478,30 @@ public class Formatter
     /// </summary>
     /// <returns>Depth number to be used for everything after this.  In some cases, we print a prop label
     /// on one line, and then the value on another, at a greater indentation level.</returns>
-    private int StandardFormatStart(JsonItem item, int depth)
+    private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
     {
         // Everything is straightforward until the colon
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+
+        if (parentTemplate != null)
+        {
+            if (parentTemplate.PrefixCommentLength > 0)
+                _buffer.Add(item.PrefixComment,
+                    _pads.Spaces(parentTemplate.PrefixCommentLength - item.PrefixCommentLength),
+                    _pads.Comment);
+
+            if (parentTemplate.NameLength > 0)
+                _buffer.Add(item.Name,
+                    _pads.Spaces(parentTemplate.NameLength - item.NameLength),
+                    _pads.Colon);
+
+            if (parentTemplate.MiddleCommentLength > 0)
+                _buffer.Add(item.MiddleComment,
+                    _pads.Spaces(parentTemplate.MiddleCommentLength - item.MiddleCommentLength),
+                    _pads.Comment);
+            return depth;
+        }
+
         if (item.PrefixCommentLength > 0)
             _buffer.Add(item.PrefixComment, _pads.Comment);
 
@@ -530,19 +550,39 @@ public class Formatter
     /// comments and children when appropriate.  It DOES NOT include indentation, newlines, or any of that.  This
     /// should only be called if item.RequiresMultipleLines is false.
     /// </summary>
-    private void InlineElement(JsonItem item, bool includeTrailingComma)
+    private void InlineElement(JsonItem item, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
 
-        if (item.PrefixCommentLength > 0)
-            _buffer.Add(item.PrefixComment, _pads.Comment);
+        if (parentTemplate != null)
+        {
+            if (parentTemplate.PrefixCommentLength > 0)
+                _buffer.Add(item.PrefixComment,
+                    _pads.Spaces(parentTemplate.PrefixCommentLength - item.PrefixCommentLength),
+                    _pads.Comment);
 
-        if (item.NameLength > 0)
-            _buffer.Add(item.Name, _pads.Colon);
+            if (parentTemplate.NameLength > 0)
+                _buffer.Add(item.Name,
+                    _pads.Spaces(parentTemplate.NameLength - item.NameLength),
+                    _pads.Colon);
 
-        if (item.MiddleCommentLength > 0)
-            _buffer.Add(item.MiddleComment, _pads.Comment);
+            if (parentTemplate.MiddleCommentLength > 0)
+                _buffer.Add(item.MiddleComment,
+                    _pads.Spaces(parentTemplate.MiddleCommentLength - item.MiddleCommentLength),
+                    _pads.Comment);
+        }
+        else
+        {
+            if (item.PrefixCommentLength > 0)
+                _buffer.Add(item.PrefixComment, _pads.Comment);
+
+            if (item.NameLength > 0)
+                _buffer.Add(item.Name, _pads.Colon);
+
+            if (item.MiddleCommentLength > 0)
+                _buffer.Add(item.MiddleComment, _pads.Comment);
+        }
 
         InlineElementRaw(item);
 
@@ -566,7 +606,7 @@ public class Formatter
             _buffer.Add(_pads.ArrStart(padType));
 
             for (var i=0; i<item.Children.Count; ++i)
-                InlineElement(item.Children[i], (i<item.Children.Count-1));
+                InlineElement(item.Children[i], (i<item.Children.Count-1), null);
 
             _buffer.Add(_pads.ArrEnd(padType));
         }
@@ -576,7 +616,7 @@ public class Formatter
             _buffer.Add(_pads.ObjStart(padType));
 
             for (var i=0; i<item.Children.Count; ++i)
-                InlineElement(item.Children[i], (i<item.Children.Count-1));
+                InlineElement(item.Children[i], (i<item.Children.Count-1), null);
 
             _buffer.Add(_pads.ObjEnd(padType));
         }
