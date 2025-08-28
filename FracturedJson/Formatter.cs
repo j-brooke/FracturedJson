@@ -272,7 +272,19 @@ public class Formatter
     {
         if (item.RequiresMultipleLines)
             return false;
-        var lengthToConsider = item.MinimumTotalLength + ((includeTrailingComma) ? _pads.CommaLen : 0);
+
+        // TODO: Clean this up.  A lot.
+        var propNameLength = (parentTemplate != null)
+            ? ((parentTemplate.PrefixCommentLength > 0) ? parentTemplate.PrefixCommentLength + _pads.CommentLen : 0)
+              + ((parentTemplate.NameLength > 0) ? parentTemplate.NameLength + _pads.ColonLen : 0)
+            : ((item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0)
+              + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0);
+        var lengthToConsider = propNameLength
+                               + +((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
+                               + item.ValueLength
+                               + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
+
+
         if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
             return false;
 
