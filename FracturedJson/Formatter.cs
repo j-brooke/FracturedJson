@@ -282,7 +282,8 @@ public class Formatter
         var lengthToConsider = propNameLength
                                + +((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
                                + item.ValueLength
-                               + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
+                               + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0)
+                               + ((includeTrailingComma) ? _pads.CommaLen : 0);
 
 
         if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
@@ -495,30 +496,22 @@ public class Formatter
         // Everything is straightforward until the colon
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
 
+        var prefixPad = 0;
+        var namePad = 0;
+        var middlePad = 0;
+
         if (parentTemplate != null)
         {
-            if (parentTemplate.PrefixCommentLength > 0)
-                _buffer.Add(item.PrefixComment,
-                    _pads.Spaces(parentTemplate.PrefixCommentLength - item.PrefixCommentLength),
-                    _pads.Comment);
-
-            if (parentTemplate.NameLength > 0)
-                _buffer.Add(item.Name,
-                    _pads.Spaces(parentTemplate.NameLength - item.NameLength),
-                    _pads.Colon);
-
-            if (parentTemplate.MiddleCommentLength > 0)
-                _buffer.Add(item.MiddleComment,
-                    _pads.Spaces(parentTemplate.MiddleCommentLength - item.MiddleCommentLength),
-                    _pads.Comment);
-            return depth;
+            prefixPad = parentTemplate.PrefixCommentLength - item.PrefixCommentLength;
+            namePad = parentTemplate.NameLength - item.NameLength;
+            middlePad = parentTemplate.MiddleCommentLength - item.MiddleCommentLength;
         }
 
         if (item.PrefixCommentLength > 0)
-            _buffer.Add(item.PrefixComment, _pads.Comment);
+            _buffer.Add(item.PrefixComment, _pads.Spaces(prefixPad), _pads.Comment);
 
         if (item.NameLength > 0)
-            _buffer.Add(item.Name, _pads.Colon);
+            _buffer.Add(item.Name, _pads.Spaces(namePad), _pads.Colon);
 
         if (item.MiddleCommentLength == 0)
             return depth;
@@ -526,7 +519,7 @@ public class Formatter
         // If there's a middle comment, we write it on the same line and move along.  Easy.
         if (!item.MiddleComment.Contains('\n'))
         {
-            _buffer.Add(item.MiddleComment, _pads.Comment);
+            _buffer.Add(item.MiddleComment, _pads.Spaces(middlePad), _pads.Comment);
             return depth;
         }
 
