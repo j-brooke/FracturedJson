@@ -310,7 +310,7 @@ public class Formatter
         if (item.RequiresMultipleLines)
             return false;
 
-        var useTableFormatting = template.Type is not (TableRowType.Simple or TableRowType.Unknown or TableRowType.Mixed);
+        var useTableFormatting = template.Type is not (TableRowType.Unknown or TableRowType.Mixed);
 
         // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
         // be better.
@@ -439,11 +439,15 @@ public class Formatter
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
+        var templateToPass = (template.NameLength - template.NameMinimum <= Options.AlignPropsMaxNameLengthDiff)
+            ? template
+            : null;
+
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
         var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
-            FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex), template);
+            FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex), templateToPass);
 
         _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);

@@ -28,6 +28,7 @@ internal class TableTemplate
     public int RowCount { get; private set; }
     
     public int NameLength { get; private set; }
+    public int NameMinimum { get; private set; } = int.MaxValue;
     public int SimpleValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
@@ -100,7 +101,7 @@ internal class TableTemplate
     /// </summary>
     public bool TryToFit(int maximumLength)
     {
-        for (var complexity = GetTemplateComplexity(); complexity >= 0; --complexity)
+        for (var complexity = GetTemplateComplexity(); complexity >= 1; --complexity)
         {
             if (TotalLength <= maximumLength)
                 return true;
@@ -228,6 +229,7 @@ internal class TableTemplate
         // Update the numbers.
         RowCount += 1;
         NameLength = Math.Max(NameLength, rowSegment.NameLength);
+        NameMinimum = Math.Min(NameMinimum, rowSegment.NameLength);
         SimpleValueLength = Math.Max(SimpleValueLength, rowSegment.ValueLength);
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);

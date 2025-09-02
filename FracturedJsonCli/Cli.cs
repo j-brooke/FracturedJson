@@ -31,6 +31,7 @@ namespace FracturedJsonCli
                 {
                     { "a|allow", "allow comments and trailing commas", _ => allowComments = true },
                     { "c|complexity=", "maximum inline complexity", (int n) => options.MaxInlineComplexity = n },
+                    { "d|diff=", "max name length diff", (int n) => options.AlignPropsMaxNameLengthDiff = n},
                     { "e|expand=", "always-expand depth", (int n) => options.AlwaysExpandDepth = n },
                     { "f|file=", "input from file instead of stdin", s => fileName = s },
                     { "h|help", "show this help info and exit", _ => showHelp = true },

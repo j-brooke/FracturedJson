@@ -50,6 +50,8 @@ public record FracturedJsonOptions
     /// </summary>
     public int MaxTableRowComplexity { get; set; } = 2;
 
+    public int AlignPropsMaxNameLengthDiff { get; set; } = 16;
+
     /// <summary>
     /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
     /// element that preceeds them.
