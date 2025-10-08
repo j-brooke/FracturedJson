@@ -57,6 +57,13 @@ public record FracturedJsonOptions
     public int MaxAlignPropsPadding { get; set; } = 16;
 
     /// <summary>
+    /// When lining up object properties on different lines, if true, the colon will come before the padding spaces
+    /// (right next to the property name); if false, the colons will be after the padding, all lined up with each
+    /// other.  This applies to table and expanded formatting.
+    /// </summary>
+    public bool ColonBeforePropNamePadding { get; set; } = false;
+
+    /// <summary>
     /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
     /// element that precedes them.
     /// </summary>

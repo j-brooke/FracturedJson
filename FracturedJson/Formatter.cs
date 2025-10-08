@@ -238,8 +238,9 @@ public class Formatter
                 return;
         }
 
-        // Create a helper object to measure how much space we'll need.  If this item's children aren't sufficiently
-        // similar, IsRowDataCompatible will be false.
+        // Create a helper object to measure how much space we'll need.  If there's a chance that we'll be able to
+        // format this container as a table or compact array, we need to measure recursively.  Otherwise, we still
+        // might need top level measurements for aligning properties and such.
         var recursiveTemplate = item.Complexity <= Options.MaxCompactArrayComplexity ||
                                 item.Complexity <= Options.MaxTableRowComplexity + 1;
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
@@ -310,7 +311,7 @@ public class Formatter
         if (item.RequiresMultipleLines)
             return false;
 
-        var useTableFormatting = template.Type is not (TableRowType.Unknown or TableRowType.Mixed);
+        var useTableFormatting = template.Type is not (TableColumnType.Unknown or TableColumnType.Mixed);
 
         // If we can't fit lots of them on a line, compact multiline isn't a good choice.  Table would likely
         // be better.
@@ -515,7 +516,13 @@ public class Formatter
             _buffer.Add(item.PrefixComment, _pads.Spaces(prefixPad), _pads.Comment);
 
         if (item.NameLength > 0)
-            _buffer.Add(item.Name, _pads.Spaces(namePad), _pads.Colon);
+        {
+            _buffer.Add(item.Name);
+            if (Options.ColonBeforePropNamePadding)
+                _buffer.Add(_pads.Colon, _pads.Spaces(namePad));
+            else
+                _buffer.Add(_pads.Spaces(namePad), _pads.Colon);
+        }
 
         if (item.MiddleCommentLength == 0)
             return depth;
@@ -572,9 +579,14 @@ public class Formatter
                     _pads.Comment);
 
             if (parentTemplate.NameLength > 0)
-                _buffer.Add(item.Name,
-                    _pads.Spaces(parentTemplate.NameLength - item.NameLength),
-                    _pads.Colon);
+            {
+                _buffer.Add(item.Name);
+
+                if (Options.ColonBeforePropNamePadding)
+                    _buffer.Add(_pads.Colon, _pads.Spaces(parentTemplate.NameLength - item.NameLength));
+                else
+                    _buffer.Add(_pads.Spaces(parentTemplate.NameLength - item.NameLength), _pads.Colon);
+            }
 
             if (parentTemplate.MiddleCommentLength > 0)
                 _buffer.Add(item.MiddleComment,
@@ -647,9 +659,13 @@ public class Formatter
                 _pads.Comment);
 
         if (template.NameLength > 0)
-            _buffer.Add(item.Name,
-                _pads.Spaces(template.NameLength - item.NameLength),
-                _pads.Colon);
+        {
+            _buffer.Add(item.Name);
+            if (Options.ColonBeforePropNamePadding)
+                _buffer.Add( _pads.Colon, _pads.Spaces(template.NameLength - item.NameLength));
+            else
+                _buffer.Add(_pads.Spaces(template.NameLength - item.NameLength), _pads.Colon);
+        }
 
         if (template.MiddleCommentLength > 0)
             _buffer.Add(item.MiddleComment,
@@ -659,7 +675,7 @@ public class Formatter
         // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
         var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
                              || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
-                             && (template.Type is not TableRowType.Number);
+                             && (template.Type is not TableColumnType.Number);
         CommaPosition commaPos;
         if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
         {
@@ -684,7 +700,7 @@ public class Formatter
 
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
-            if (template.Type is TableRowType.Array)
+            if (template.Type is TableColumnType.Array)
                 InlineTableRawArray(template, item);
             else
                 InlineTableRawObject(template, item);
@@ -695,7 +711,7 @@ public class Formatter
             if (template.ShorterThanNullAdjustment > 0)
                 _buffer.Add(_pads.Spaces(template.ShorterThanNullAdjustment));
         }
-        else if (template.Type is TableRowType.Number)
+        else if (template.Type is TableColumnType.Number)
         {
             var numberCommaType = (commaPos == CommaPosition.BeforeValuePadding) ? commaType : string.Empty;
             template.FormatNumber(_buffer, item, numberCommaType);

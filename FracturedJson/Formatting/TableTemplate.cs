@@ -24,7 +24,7 @@ internal class TableTemplate
     /// </summary>
     public string? LocationInParent { get; private set; }
 
-    public TableRowType Type { get; private set; } = TableRowType.Unknown;
+    public TableColumnType Type { get; private set; } = TableColumnType.Unknown;
     public int RowCount { get; private set; }
     
     public int NameLength { get; private set; }
@@ -193,6 +193,7 @@ internal class TableTemplate
     /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
     /// </summary>
     /// <param name="rowSegment"></param>
+    /// <param name="recursive">true if the measurement should include children for arrays/objects.</param>
     private void MeasureRowSegment(JsonItem rowSegment, bool recursive)
     {
         // Standalone comments and blank lines don't figure into template measurements
@@ -201,17 +202,17 @@ internal class TableTemplate
 
         var rowTableType = rowSegment.Type switch
         {
-            JsonItemType.Null => TableRowType.Unknown,
-            JsonItemType.Number => TableRowType.Number,
-            JsonItemType.Array => TableRowType.Array,
-            JsonItemType.Object => TableRowType.Object,
-            _ => TableRowType.Simple,
+            JsonItemType.Null => TableColumnType.Unknown,
+            JsonItemType.Number => TableColumnType.Number,
+            JsonItemType.Array => TableColumnType.Array,
+            JsonItemType.Object => TableColumnType.Object,
+            _ => TableColumnType.Simple,
         };
 
-        if (Type is TableRowType.Unknown)
+        if (Type is TableColumnType.Unknown)
             Type = rowTableType;
-        else if (rowTableType is not TableRowType.Unknown && Type != rowTableType)
-            Type = TableRowType.Mixed;
+        else if (rowTableType is not TableColumnType.Unknown && Type != rowTableType)
+            Type = TableColumnType.Mixed;
 
         if (rowSegment.Type is JsonItemType.Null)
         {
@@ -223,7 +224,7 @@ internal class TableTemplate
         if (rowSegment.RequiresMultipleLines)
         {
             RequiresMultipleLines = true;
-            Type = TableRowType.Mixed;
+            Type = TableColumnType.Mixed;
         }
 
         // Update the numbers.
@@ -242,7 +243,7 @@ internal class TableTemplate
         if (RequiresMultipleLines || rowSegment.Type is JsonItemType.Null)
             return;
         
-        if (Type is TableRowType.Array && recursive)
+        if (Type is TableColumnType.Array && recursive)
         {
             // For each row in this rowSegment, find or create this TableTemplate's child template for
             // the that array index, and then measure recursively.
@@ -254,7 +255,7 @@ internal class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegment.Children[i], true);
             }
         }
-        else if (Type is TableRowType.Object && recursive)
+        else if (Type is TableColumnType.Object && recursive)
         {
             // If this object has multiple children with the same property name, which is allowed by the JSON standard
             // although it's hard to imagine anyone would deliberately do it, we can't format it as part of a table.
@@ -263,7 +264,7 @@ internal class TableTemplate
                 .Count();
             if (distinctChildKeyCount != rowSegment.Children.Count)
             {
-                Type = TableRowType.Simple;
+                Type = TableColumnType.Simple;
                 return;
             }
 
@@ -280,7 +281,7 @@ internal class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegChild, true);
             }
         }
-        else if (Type is TableRowType.Number)
+        else if (Type is TableColumnType.Number)
         {
             // So far, everything in this column is a number (or null).  We need to reevaluate whether we're allowed
             // to normalize the numbers - write them all with the same number of digits after the decimal point.
@@ -316,7 +317,7 @@ internal class TableTemplate
                 Math.Max(_maxDigAfterDecRaw, (indexOfDotRaw >= 0) ? rowSegment.ValueLength - indexOfDotRaw - 1 : 0);
         }
 
-        AllowNumberNormalization &= (Type is TableRowType.Number);
+        AllowNumberNormalization &= (Type is TableColumnType.Number);
     }
 
     /// <summary>
@@ -326,13 +327,13 @@ internal class TableTemplate
     /// </summary>
     private void PruneAndRecompute(int maxAllowedComplexity)
     {
-        if (maxAllowedComplexity <= 0 || (Type is not (TableRowType.Array or TableRowType.Object)) || RowCount<2)
+        if (maxAllowedComplexity <= 0 || (Type is not (TableColumnType.Array or TableColumnType.Object)) || RowCount<2)
             Children.Clear();
         
         foreach(var subTemplate in Children)
             subTemplate.PruneAndRecompute(maxAllowedComplexity-1);
 
-        if (Type is TableRowType.Number)
+        if (Type is TableColumnType.Number)
         {
             CompositeValueLength = GetNumberFieldWidth();
         }
