@@ -88,7 +88,7 @@ public class TableFormattingTests
         {
             MaxTotalLineLength = 74,
             JsonEolStyle = EolStyle.Lf,
-            AlignPropsMaxNameLengthDiff = 0,
+            MaxAlignPropsPadding = 0,
         };
 
         var formatter = new Formatter() { Options = opts };

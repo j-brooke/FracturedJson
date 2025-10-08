@@ -50,11 +50,15 @@ public record FracturedJsonOptions
     /// </summary>
     public int MaxTableRowComplexity { get; set; } = 2;
 
-    public int AlignPropsMaxNameLengthDiff { get; set; } = 16;
+    /// <summary>
+    /// Maximum size difference between property name lengths in an object to qualify for property alignment
+    /// in expanded objects (not tables).
+    /// </summary>
+    public int MaxAlignPropsPadding { get; set; } = 16;
 
     /// <summary>
     /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
-    /// element that preceeds them.
+    /// element that precedes them.
     /// </summary>
     public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.AfterPadding;
 
