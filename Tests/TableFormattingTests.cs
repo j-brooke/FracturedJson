@@ -84,7 +84,12 @@ public class TableFormattingTests
         var input = string.Join("\n", inputLines).Replace('\'', '"');
 
         // In this case, it's too small to do any table formatting.  But each row should still be inlined.
-        var opts = new FracturedJsonOptions() { MaxTotalLineLength = 74, JsonEolStyle = EolStyle.Lf };
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 74,
+            JsonEolStyle = EolStyle.Lf,
+            AlignPropsMaxNameLengthDiff = 0,
+        };
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
