@@ -54,7 +54,7 @@ public record FracturedJsonOptions
     /// Maximum size difference between property name lengths in an object to qualify for property alignment
     /// in expanded objects (not tables).
     /// </summary>
-    public int MaxAlignPropsPadding { get; set; } = 16;
+    public int MaxPropNamePadding { get; set; } = 16;
 
     /// <summary>
     /// When lining up object properties on different lines, if true, the colon will come before the padding spaces

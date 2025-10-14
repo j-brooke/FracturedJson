@@ -452,7 +452,7 @@ public class Formatter
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
-        var templateToPass = (template.NameLength - template.NameMinimum <= Options.MaxAlignPropsPadding)
+        var templateToPass = (template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding)
             ? template
             : null;
 
