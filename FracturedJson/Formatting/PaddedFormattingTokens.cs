@@ -146,7 +146,6 @@ internal class PaddedFormattingTokens
 
     public string Spaces(int quantity)
     {
-        // todo - make smarter
         return new string(' ', quantity);
     }
 

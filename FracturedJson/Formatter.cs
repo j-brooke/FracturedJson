@@ -274,13 +274,25 @@ public class Formatter
         if (item.RequiresMultipleLines)
             return false;
 
-        // TODO: Clean this up.  A lot.
-        var propNameLength = (parentTemplate != null)
-            ? ((parentTemplate.PrefixCommentLength > 0) ? parentTemplate.PrefixCommentLength + _pads.CommentLen : 0)
-              + ((parentTemplate.NameLength > 0) ? parentTemplate.NameLength + _pads.ColonLen : 0)
-            : ((item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0)
-              + ((item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0);
-        var lengthToConsider = propNameLength
+        // If we need to line up this item's value with others from the parent container, use the parentTemplate's
+        // measurements to account for padding.
+        int prefixLength;
+        int nameLength;
+        if (parentTemplate != null)
+        {
+            prefixLength = (parentTemplate.PrefixCommentLength > 0)
+                ? parentTemplate.PrefixCommentLength + _pads.CommentLen
+                : 0;
+            nameLength = (parentTemplate.NameLength > 0) ? parentTemplate.NameLength + _pads.ColonLen : 0;
+        }
+        else
+        {
+            prefixLength = (item.PrefixCommentLength > 0) ? item.PrefixCommentLength + _pads.CommentLen : 0;
+            nameLength = (item.NameLength > 0) ? item.NameLength + _pads.ColonLen : 0;
+        }
+
+        var lengthToConsider = prefixLength
+                               + nameLength
                                + +((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
                                + item.ValueLength
                                + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0)
@@ -498,13 +510,13 @@ public class Formatter
     /// on one line, and then the value on another, at a greater indentation level.</returns>
     private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
     {
-        // Everything is straightforward until the colon
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
 
         var prefixPad = 0;
         var namePad = 0;
         var middlePad = 0;
 
+        // parentTemplate will exist if we're supposed to line up some of this element with its siblings.
         if (parentTemplate != null)
         {
             prefixPad = parentTemplate.PrefixCommentLength - item.PrefixCommentLength;
@@ -571,6 +583,7 @@ public class Formatter
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
 
+        // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.
         if (parentTemplate != null)
         {
             if (parentTemplate.PrefixCommentLength > 0)
