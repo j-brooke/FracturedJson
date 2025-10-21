@@ -318,6 +318,8 @@ public class Formatter
     {
         if (item.Type != JsonItemType.Array)
             return false;
+        if (item.Children.Count == 0)
+             return false;
         if (item.Complexity > Options.MaxCompactArrayComplexity)
             return false;
         if (item.RequiresMultipleLines)
@@ -384,10 +386,16 @@ public class Formatter
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
             return false;
 
+        // If any particular row would require multiple lines, we can't table format this as a table.
         if (template.RequiresMultipleLines)
             return false;
 
-        var availableSpace = AvailableLineSpace(depth + 1) - _pads.CommaLen;
+        // Figure out the space available to each row, not counting ending commas.  Note that if there's a middle
+        // comment with a newline, we'll be indenting more than normal.
+        var availableSpaceDepth = (item.MiddleCommentLength > 0 && item.MiddleComment.Contains('\n'))
+            ? depth + 2
+            : depth + 1;
+        var availableSpace = AvailableLineSpace(availableSpaceDepth) - _pads.CommaLen;
 
         // If any child element is too long even without formatting, don't bother.
         var isChildTooLong = item.Children

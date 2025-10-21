@@ -31,7 +31,7 @@ public class UniversalJsonTests
         {
             var fileData = File.ReadAllText(file.FullName);
             foreach (var options in GenerateOptions())
-                yield return new object[] { fileData, options };
+                yield return [fileData, options];
         }
 
         var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
@@ -45,7 +45,7 @@ public class UniversalJsonTests
                     CommentPolicy = CommentPolicy.Preserve,
                     PreserveBlankLines = true,
                 };
-                yield return new object[] { fileData, moddedOpts };
+                yield return [fileData, moddedOpts];
             }
         }
     }
@@ -56,19 +56,29 @@ public class UniversalJsonTests
     /// </summary>
     private static IEnumerable<FracturedJsonOptions> GenerateOptions()
     {
+        // Try lots of combinations of max complexity settings.
+        for (var inline = -1; inline <= 3; ++inline)
+            for (var array = -1; array <= 3; ++array)
+                for (var table = -1; table <= 3; ++table)
+                    yield return new FracturedJsonOptions()
+                    {
+                        MaxInlineComplexity = inline,
+                        MaxCompactArrayComplexity = array,
+                        MaxTableRowComplexity = table,
+                    };
+
+        // Try a bunch of line lengths.
+        for (var len = 12; len <= 55; ++len)
+            yield return new FracturedJsonOptions() { MaxTotalLineLength = len };
+
+        // Miscellaneous settings.
         yield return new();
         yield return new() { MaxInlineComplexity = 10000 };
-        yield return new() { MaxInlineLength = int.MaxValue };
         yield return new() { MaxInlineLength = 23 };
         yield return new() { MaxInlineLength = 59 };
-        yield return new() { MaxTotalLineLength = 59 };
         yield return new() { JsonEolStyle = EolStyle.Crlf };
         yield return new() { JsonEolStyle = EolStyle.Lf };
         yield return new() { JsonEolStyle = EolStyle.Default };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 2, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 2, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 2 };
         yield return new()
         {
             MaxInlineComplexity = 10,
@@ -249,10 +259,16 @@ public class UniversalJsonTests
                 continue;
             }
 
-            // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one line.
-            Assert.IsTrue(nestLevel <= options.MaxInlineComplexity
-                          || nestLevel <= options.MaxCompactArrayComplexity
-                          || nestLevel <= options.MaxTableRowComplexity);
+            // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one
+            // line.  The best we can do is make sure it's un
+            var biggestComplexity = new[]
+            {
+                options.MaxInlineComplexity,
+                options.MaxCompactArrayComplexity,
+                options.MaxTableRowComplexity,
+                0
+            }.Max();
+            Assert.IsTrue(nestLevel <= biggestComplexity);
         }
     }
 
