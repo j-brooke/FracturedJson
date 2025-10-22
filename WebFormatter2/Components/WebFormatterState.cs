@@ -223,7 +223,6 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
             MaxTotalLineLength = 100,
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,
-            OmitTrailingWhitespace = true,
             TableCommaPlacement = TableCommaPlacement.BeforePadding,
         };
     }

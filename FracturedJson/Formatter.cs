@@ -30,7 +30,7 @@ public class Formatter
     /// </summary>
     public string Reformat(IEnumerable<char> jsonText, int startingDepth = 0)
     {
-        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
+        var buffer = new StringBuilderBuffer();
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
@@ -45,7 +45,7 @@ public class Formatter
     /// </summary>
     public void Reformat(IEnumerable<char> jsonText, int startingDepth, TextWriter writer)
     {
-        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
+        var buffer = new LineWriterBuffer(writer);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         FormatTopLevel(docModel, startingDepth, buffer);
@@ -58,7 +58,7 @@ public class Formatter
     /// </summary>
     public string Serialize<T>(T obj, int startingDepth = 0, JsonSerializerOptions? serOpts = null)
     {
-        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
+        var buffer = new StringBuilderBuffer();
         var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
         FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
 
@@ -71,7 +71,7 @@ public class Formatter
     /// </summary>
     public void Serialize<T>(T obj, int startingDepth, TextWriter writer, JsonSerializerOptions? serOpts = null)
     {
-        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
+        var buffer = new LineWriterBuffer(writer);
         var rootElem = DomConverter.Convert(JsonSerializer.SerializeToElement(obj, serOpts), null);
         FormatTopLevel(new[] { rootElem }, startingDepth, buffer);
 
@@ -84,7 +84,7 @@ public class Formatter
     /// </summary>
     public string Minify(IEnumerable<char> jsonText)
     {
-        var buffer = new StringBuilderBuffer(Options.OmitTrailingWhitespace);
+        var buffer = new StringBuilderBuffer();
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
@@ -99,7 +99,7 @@ public class Formatter
     /// </summary>
     public void Minify(IEnumerable<char> jsonText, TextWriter writer)
     {
-        var buffer = new LineWriterBuffer(writer, Options.OmitTrailingWhitespace);
+        var buffer = new LineWriterBuffer(writer);
         var parser = new Parser() { Options = Options };
         var docModel = parser.ParseTopLevel(jsonText, true);
         MinifyTopLevel(docModel, buffer);
@@ -404,7 +404,7 @@ public class Formatter
         if (isChildTooLong)
             return false;
 
-        // If the rows won't fit with everything (including descendants) tabular, try dropping the columns for
+        // If the rows don't fit with everything (including descendants) tabular, try dropping the columns for
         // the deepest nested items, repeatedly, until it either fits or we give up.
         //
         // For instance, here's an example of what fully tabular would look like:
@@ -891,7 +891,7 @@ public class Formatter
         }
         else if (item.Type is JsonItemType.BlankLine)
         {
-            // Make sure we're starting on a new line before inserting a blank line.  Otherwise some can be lost.
+            // Make sure we're starting on a new line before inserting a blank line.  Otherwise, some can be lost.
             if (!atStartOfNewLine)
                 _buffer.Add(newline);
             _buffer.Add(newline);

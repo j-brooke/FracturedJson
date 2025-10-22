@@ -45,8 +45,8 @@ public class NumberFormattingTests
         const string input = "[[1, 2.1, 3, -99],[5, 6, 7, 8]]";
         const string expectedOutput =
             "[\n" +
-            "    [1, 2.1, 3, -99], \n" +
-            "    [5, 6.0, 7,   8]  \n" +
+            "    [1, 2.1, 3, -99],\n" +
+            "    [5, 6.0, 7,   8]\n" +
             "]";
 
         // Since this is table formatting, each column is consistent, but not siblings in the same array.
@@ -110,7 +110,7 @@ public class NumberFormattingTests
     public void OverflowDoubleInvalidatesAlignment()
     {
         const string input = "[1e500, 4.0]";
-        const string expectedOutput = "[\n    1e500, 4.0  \n]";
+        const string expectedOutput = "[\n    1e500, 4.0\n]";
 
         // If a number is too big to fit in a 64-bit float, we shouldn't try to reformat its column/array.
         // If we did, it would turn into "Infinity", isn't a valid JSON token.
@@ -126,7 +126,7 @@ public class NumberFormattingTests
     public void UnderflowDoubleInvalidatesAlignment()
     {
         const string input = "[1e-500, 4.0]";
-        const string expectedOutput = "[\n    1e-500, 4.0   \n]";
+        const string expectedOutput = "[\n    1e-500, 4.0\n]";
 
         // If a number is too small to fit in a 64-bit float, we shouldn't try to reformat its column/array.
         // Doing so would change it to zero, which might be an unwelcome loss of precision.
@@ -141,7 +141,7 @@ public class NumberFormattingTests
     [TestMethod]
     public void AccurateCompositeLengthForNormalized()
     {
-        // Make sure the the inner TableTemplate is accurately reporting the CompositeLength.  Otherwise,
+        // Make sure the inner TableTemplate is accurately reporting the CompositeLength.  Otherwise,
         // the null row won't have the right number of spaces.
         var inputRows = new[]
         {
@@ -158,7 +158,6 @@ public class NumberFormattingTests
         {
             MaxTotalLineLength = 40,
             JsonEolStyle = EolStyle.Lf,
-            OmitTrailingWhitespace = true,
             NumberListAlignment = NumberListAlignment.Normalize
         };
 
@@ -246,7 +245,6 @@ public class NumberFormattingTests
         {
             MaxTotalLineLength = 60,
             JsonEolStyle = EolStyle.Lf,
-            OmitTrailingWhitespace = true,
             NumberListAlignment = align
         };
 
@@ -258,14 +256,14 @@ public class NumberFormattingTests
     }
 
 
-    private static readonly string[] _numberTable = new[]
-    {
+    private static readonly string[] _numberTable =
+    [
         "[",
         "    [ 123.456, 0, 0 ],",
         "    [ 234567.8, 0, 0 ],",
         "    [ 3, 0.00000, 7e2 ],",
         "    [ null, 2e-1, 80e1 ],",
         "    [ 5.6789, 3.5e-1, 0 ]",
-        "]",
-    };
+        "]"
+    ];
 }

@@ -121,15 +121,6 @@ public class UniversalJsonTests
         };
     }
 
-    private static string SkipPrefixAndIndent(FracturedJsonOptions options, string line)
-    {
-        // Skip past the prefix string and whitespace.
-        if (!line.StartsWith(options.PrefixString))
-            throw new Exception("Output line does not begin with prefix string");
-        var lineAfterPrefix = line.Substring(options.PrefixString.Length).TrimStart();
-        return lineAfterPrefix;
-    }
-
     /// <summary>
     /// Tests that the output is actually valid JSON.
     /// </summary>
@@ -196,8 +187,7 @@ public class UniversalJsonTests
                 continue;
 
             // We'll consider it a single element if there's no more than one comma.
-            var content = SkipPrefixAndIndent(options, line);
-            var commaCount = content.Count(ch => ch == ',');
+            var commaCount = line.Count(ch => ch == ',');
             Assert.IsTrue(commaCount <= 1);
         }
     }
@@ -213,15 +203,13 @@ public class UniversalJsonTests
         // Look at each line of the output separately, counting the nesting level in each.
         foreach (var line in outputLines)
         {
-            var content = SkipPrefixAndIndent(options, line);
-
             // Keep a running total of opens vs closes.  Since Formatter treats empty arrays and objects as complexity
             // zero just like primitives, we don't update nestLevel until we see something other than an empty.
             var openCount = 0;
             var nestLevel = 0;
             var topLevelCommaSeen = false;
             var multipleTopLevelItems = false;
-            foreach (var ch in content)
+            foreach (var ch in line)
             {
                 switch (ch)
                 {
@@ -302,9 +290,7 @@ public class UniversalJsonTests
     [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
     public void NoTrailingWhitespace(string inputText, FracturedJsonOptions options)
     {
-        var modifiedOptions = options with { OmitTrailingWhitespace = true };
-
-        var formatter = new Formatter() { Options = modifiedOptions };
+        var formatter = new Formatter() { Options = options };
         var outputText = formatter.Reformat(inputText, 0);
         var outputLines = outputText.TrimEnd().Split(EolString(options));
 

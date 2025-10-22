@@ -106,14 +106,6 @@ public record FracturedJsonOptions
     public bool CommentPadding { get; set; } = true;
 
     /// <summary>
-    /// If true, there won't be any spaces or tabs at the end of lines.  Normally there are a variety of cases where
-    /// whitespace can be created or preserved at the ends of lines.  The most noticeable case is when
-    /// <see cref="CommaPadding"/> is true.  Setting this to true gets rid of all of that (including inside multi-
-    /// line comments).
-    /// </summary>
-    public bool OmitTrailingWhitespace { get; set; } = false;
-
-    /// <summary>
     /// Controls how lists or columns of numbers (possibly with nulls) are aligned, and whether their precision
     /// may be normalized.
     /// </summary>
@@ -168,7 +160,6 @@ public record FracturedJsonOptions
         return new FracturedJsonOptions() with
         {
             TableCommaPlacement = TableCommaPlacement.BeforePadding,
-            OmitTrailingWhitespace = true,
         };
     }
 }

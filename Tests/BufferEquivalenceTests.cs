@@ -7,7 +7,7 @@ namespace Tests;
 public class BufferEquivalenceTests
 {
     /// <summary>
-    /// Generates combos of input JSON and Formatter options to feed to all of the tests.
+    /// Generates combos of input JSON and Formatter options to feed to all the tests.
     /// </summary>
     public static IEnumerable<object[]> GenerateUniversalParams()
     {
@@ -16,7 +16,7 @@ public class BufferEquivalenceTests
         {
             var fileData = File.ReadAllText(file.FullName);
             foreach (var options in GenerateOptions())
-                yield return new object[] { fileData, options };
+                yield return [fileData, options];
         }
 
         var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
@@ -30,7 +30,7 @@ public class BufferEquivalenceTests
                     CommentPolicy = CommentPolicy.Preserve,
                     PreserveBlankLines = true,
                 };
-                yield return new object[] { fileData, moddedOpts };
+                yield return [fileData, moddedOpts];
             }
         }
     }
@@ -41,7 +41,7 @@ public class BufferEquivalenceTests
     private static IEnumerable<FracturedJsonOptions> GenerateOptions()
     {
         yield return new();
-        yield return new() { OmitTrailingWhitespace = true, JsonEolStyle = EolStyle.Lf };
+        yield return new() { JsonEolStyle = EolStyle.Lf };
         yield return new()
         {
             NestedBracketPadding = false,
