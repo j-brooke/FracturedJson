@@ -318,7 +318,7 @@ public class Formatter
     {
         if (item.Type != JsonItemType.Array)
             return false;
-        if (item.Children.Count == 0)
+        if (item.Children.Count == 0 || item.Children.Count < Options.MinCompactArrayRowItems)
              return false;
         if (item.Complexity > Options.MaxCompactArrayComplexity)
             return false;

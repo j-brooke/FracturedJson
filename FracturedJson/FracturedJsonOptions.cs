@@ -19,21 +19,26 @@ public record FracturedJsonOptions
     /// <summary>
     /// Maximum degree of nesting of arrays/objects that may be written on a single line.  0 disables inlining (but see
     /// related settings).  1 allows inlining of arrays/objects that contain only simple items.  2 allows inlining of
-    /// arrays/objects that contain other arrays/objects as long as the child containers only contain simple items.  Etc.
+    /// arrays/objects that contain other arrays/objects as long as the child containers only contain simple items. Etc.
     /// <seealso cref="MaxCompactArrayComplexity"/>
     /// <seealso cref="MaxTableRowComplexity"/>
     /// </summary>
     public int MaxInlineComplexity { get; set; } = 2;
 
     /// <summary>
-    /// Maximum degree of nesting of arrays formatted as with multiple items per row across multiple rows.
+    /// Maximum degree of nesting of arrays formatted as with multiple items per row across multiple rows.  Use 0
+    /// to disable multi-line arrays with multiple items per line.
     /// <seealso cref="MaxInlineComplexity"/>
     /// <seealso cref="MaxTableRowComplexity"/>
+    /// <seealso cref="MinCompactArrayRowItems"/>
     /// </summary>
-    public int MaxCompactArrayComplexity { get; set; } = 1;
+    public int MaxCompactArrayComplexity { get; set; } = 2;
 
     /// <summary>
-    /// Maximum degree of nesting of arrays/objects formatted as table rows.
+    /// Maximum degree of nesting of arrays/objects formatted as table rows.  0 only allows a single column of simple
+    /// types or empty arrays/objects to be formatted as a table. When set to 1, each row can be an array or object
+    /// containing only simple types.  2 allows arrays/objects that contain other arrays/objects that contain only
+    /// simple types.  Etc.
     /// <seealso cref="MaxCompactArrayComplexity"/>
     /// <seealso cref="MaxInlineComplexity"/>
     /// </summary>
@@ -56,7 +61,7 @@ public record FracturedJsonOptions
     /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
     /// element that precedes them.
     /// </summary>
-    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.AfterPadding;
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePadding;
 
     /// <summary>
     /// Minimum number of items allowed per row to format an array as with multiple items per line across multiple
@@ -107,9 +112,11 @@ public record FracturedJsonOptions
 
     /// <summary>
     /// Controls how lists or columns of numbers (possibly with nulls) are aligned, and whether their precision
-    /// may be normalized.
+    /// may be normalized.  When set to <see cref="NumberListAlignment.Normalize"/>, numbers will be rewritten to
+    /// with the same number of digits after a decimal place as their peers.  Other values preserve the numbers exactly
+    /// as they're written in the input document.
     /// </summary>
-    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Normalize;
+    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Decimal;
 
     /// <summary>
     /// Number of spaces to use per indent level.  If <see cref="UseTabToIndent"/> is true, spaces won't be used but
@@ -157,9 +164,8 @@ public record FracturedJsonOptions
     /// </summary>
     public static FracturedJsonOptions Recommended()
     {
-        return new FracturedJsonOptions() with
-        {
-            TableCommaPlacement = TableCommaPlacement.BeforePadding,
-        };
+        // At the beginning of version 5, the defaults are the recommended settings.  This may change in future
+        // minor versions.
+        return new FracturedJsonOptions();
     }
 }

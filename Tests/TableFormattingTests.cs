@@ -23,7 +23,8 @@ public class TableFormattingTests
         var input = string.Join("\n", inputLines).Replace('\'', '"');
 
         // With default options (except EOL), this will be neatly formatted as a table.
-        var opts = new FracturedJsonOptions() { JsonEolStyle = EolStyle.Lf };
+        var opts = new FracturedJsonOptions()
+            { JsonEolStyle = EolStyle.Lf, NumberListAlignment = NumberListAlignment.Normalize};
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
