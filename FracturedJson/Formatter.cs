@@ -840,12 +840,11 @@ public class Formatter
 
     /// <summary>
     /// Figures out how much room is allowed for inlining at this indentation level, considering
-    /// <see cref="FracturedJsonOptions.MaxTotalLineLength"/> and <see cref="FracturedJsonOptions.MaxInlineLength"/>.
+    /// <see cref="FracturedJsonOptions.MaxTotalLineLength"/>, indentation size, and prefix string length.
     /// </summary>
     private int AvailableLineSpace(int depth)
     {
-        return Math.Min(Options.MaxInlineLength,
-            Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth);
+        return Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth;
     }
 
     /// <summary>

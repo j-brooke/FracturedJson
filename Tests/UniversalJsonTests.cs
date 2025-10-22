@@ -12,7 +12,7 @@ namespace Tests;
 /// <list type="bullet">
 ///     <item>The input is valid JSON</item>
 ///     <item>Input strings may not contain any of []{}:,\n</item>
-///     <item>Values given to PrefixString" may only contain whitespace.</item>
+///     <item>Values given to "PrefixString" may only contain whitespace.</item>
 /// </list>
 ///
 /// <para>Those rules exist to make the output easy to test without understanding the grammar.  Other files might contain
@@ -22,7 +22,7 @@ namespace Tests;
 public class UniversalJsonTests
 {
     /// <summary>
-    /// Generates combos of input JSON and Formatter options to feed to all of the tests.
+    /// Generates combos of input JSON and Formatter options to feed to all the tests.
     /// </summary>
     public static IEnumerable<object[]> GenerateUniversalParams()
     {
@@ -74,8 +74,6 @@ public class UniversalJsonTests
         // Miscellaneous settings.
         yield return new();
         yield return new() { MaxInlineComplexity = 10000 };
-        yield return new() { MaxInlineLength = 23 };
-        yield return new() { MaxInlineLength = 59 };
         yield return new() { JsonEolStyle = EolStyle.Crlf };
         yield return new() { JsonEolStyle = EolStyle.Lf };
         yield return new() { JsonEolStyle = EolStyle.Default };
@@ -119,7 +117,6 @@ public class UniversalJsonTests
         {
             EolStyle.Crlf => "\r\n",
             EolStyle.Lf => "\n",
-            EolStyle.Default => Environment.NewLine,
             _ => Environment.NewLine
         };
     }
@@ -194,13 +191,12 @@ public class UniversalJsonTests
 
         foreach (var line in outputLines)
         {
-            var content = SkipPrefixAndIndent(options, line);
-
             // If the content is shorter than the max, it's all good.
-            if (content.Length <= options.MaxInlineLength && line.Length <= options.MaxTotalLineLength)
+            if (line.Length <= options.MaxTotalLineLength)
                 continue;
 
             // We'll consider it a single element if there's no more than one comma.
+            var content = SkipPrefixAndIndent(options, line);
             var commaCount = content.Count(ch => ch == ',');
             Assert.IsTrue(commaCount <= 1);
         }

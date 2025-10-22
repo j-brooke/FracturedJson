@@ -14,7 +14,7 @@ public class LengthAndComplexityTests
     /// </summary>
     [DataTestMethod]
     [DataRow(4, 1)] // All on one line
-    [DataRow(3, 3)] // Outer-most brackets on their own lines
+    [DataRow(3, 3)] // Outermost brackets on their own lines
     [DataRow(2, 6)] // Q & R each get their own rows, plus outer [ {...} ]
     [DataRow(1, 9)] // Q gets broken up.  R stays inline.
     [DataRow(0, 14)] // Maximum expansion, basically
@@ -75,16 +75,12 @@ public class LengthAndComplexityTests
     /// lines with the expected output.
     /// </summary>
     [DataTestMethod]
-    [DataRow(120, 100, 3, 1)] // All on one line
-    [DataRow(120, 90, 3, 4)] // Two row compact multiline array, + two for []
-    [DataRow(120, 70, 3, 5)] // Three row compact multiline array, + two for []
-    [DataRow(120, 50, 3, 9)] // Not a compact multiline array.  1 per inner array, + two for [].
-    [DataRow(120, 50, 2, 6)] // Four row compact multiline array, + two for []
-    [DataRow(90, 120, 3, 4)] // Two row compact multiline array, + two for []
-    [DataRow(70, 120, 3, 4)] // Also two row compact multiline array, + two for []
-    [DataRow(65, 120, 3, 5)] // Three row compact multiline array, + two for []
-    public void CorrectLineCountForLineLength(int inlineLength, int totalLength, int minItemsPerRow,
-        int expectedNumberOfLines)
+    [DataRow(100, 3, 1)] // All on one line
+    [DataRow(90, 3, 4)] // Two row compact multiline array, + two for []
+    [DataRow(70, 3, 5)] // Three row compact multiline array, + two for []
+    [DataRow(50, 3, 9)] // Not a compact multiline array.  1 per inner array, + two for [].
+    [DataRow(50, 2, 6)] // Four row compact multiline array, + two for []
+    public void CorrectLineCountForLineLength(int totalLength, int minItemsPerRow, int expectedNumberOfLines)
     {
         var inputLines = new[]
         {
@@ -96,7 +92,6 @@ public class LengthAndComplexityTests
 
         var opts = new FracturedJsonOptions()
         {
-            MaxInlineLength = inlineLength,
             MaxTotalLineLength = totalLength,
             JsonEolStyle = EolStyle.Lf,
             MaxInlineComplexity = 2,

@@ -220,7 +220,6 @@ public class WebFormatterState : IDisposable, IAsyncDisposable
     {
         return new()
         {
-            MaxInlineLength = 500000,
             MaxTotalLineLength = 100,
             CommentPolicy = CommentPolicy.Preserve,
             PreserveBlankLines = true,

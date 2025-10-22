@@ -11,19 +11,8 @@ public record FracturedJsonOptions
     public EolStyle JsonEolStyle { get; set; } = EolStyle.Default;
 
     /// <summary>
-    /// Maximum length that the formatter can use when combining complex elements into a single line.  This
-    /// includes comments, property names, etc. - everything except indentation and any PrefixString.  Note that
-    /// lines containing only a single element can exceed this: a long string, or an element with a long prefix
-    /// or postfix comment, for example.
-    /// <seealso cref="MaxTotalLineLength"/>
-    /// </summary>
-    public int MaxInlineLength { get; set; } = int.MaxValue;
-
-    /// <summary>
     /// Maximum length that the formatter can use when combining complex elements into a single line, from the start
-    /// of the line.  This is identical to <see cref="MaxInlineLength"/> except that this one DOES count indentation
-    /// and any PrefixString.
-    /// <seealso cref="MaxInlineLength"/>
+    /// of the line.  (It's still possible for individual values to exceed this length.  For example, a long string.)
     /// </summary>
     public int MaxTotalLineLength { get; set; } = 120;
 
