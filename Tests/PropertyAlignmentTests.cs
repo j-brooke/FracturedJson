@@ -102,4 +102,55 @@ public class PropertyAlignmentTests
         StringAssert.Contains(outputLines[2], "\"string\": \"testing");
         StringAssert.Contains(outputLines[3], "\"arrayWithLongName\": [");
     }
+
+    [TestMethod]
+    public void DontAlignPropValsWhenMultilineComment()
+    {
+        const string input =
+            """
+            {
+                "foo": // this is foo
+                    [1, 2, 4],
+                "bar": null,
+                "bazzzz": /* this is baz */ [0]
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+            { CommentPolicy = CommentPolicy.Preserve, ColonBeforePropNamePadding = false };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // Since there's a comment with a line break between a prop label and value, we shouldn't even try to align
+        // property values here.
+        Assert.AreEqual(11, outputLines.Length);
+        Assert.AreNotEqual(outputLines[9].IndexOf(':'), outputLines[8].IndexOf(':'));
+    }
+
+    [TestMethod]
+    public void AlignPropValsWhenSimpleComment()
+    {
+        const string input =
+            """
+            {
+                "foo": /* this is foo */
+                    [1, 2, 4],
+                "bar": null,
+                "bazzzz": /* this is baz */ [0]
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+            { CommentPolicy = CommentPolicy.Preserve, ColonBeforePropNamePadding = false, MaxTotalLineLength = 80 };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // Since the comments can all be inlined, this should be table-formatted.
+        Assert.AreEqual(5, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, "[");
+    }
 }

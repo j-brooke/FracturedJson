@@ -509,6 +509,7 @@ public class Parser
             }
 
             element.MiddleComment = combined;
+            element.MiddleCommentHasNewline = combined.Contains('\n');
         }
         
         

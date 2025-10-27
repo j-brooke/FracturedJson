@@ -392,9 +392,7 @@ public class Formatter
 
         // Figure out the space available to each row, not counting ending commas.  Note that if there's a middle
         // comment with a newline, we'll be indenting more than normal.
-        var availableSpaceDepth = (item.MiddleCommentLength > 0 && item.MiddleComment.Contains('\n'))
-            ? depth + 2
-            : depth + 1;
+        var availableSpaceDepth = (item.MiddleCommentHasNewline) ? depth + 2 : depth + 1;
         var availableSpace = AvailableLineSpace(availableSpaceDepth) - _pads.CommaLen;
 
         // If any child element is too long even without formatting, don't bother.
@@ -455,12 +453,14 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
     /// broken out on separate lines.  This is the most general case that always works.
     /// </summary>
-    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
+    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate template, TableTemplate? parentTemplate)
     {
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
-        var templateToPass = (template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding)
+        var templateToPass = (template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
+                              && !template.AnyMiddleCommentHasNewline)
             ? template
             : null;
 
@@ -547,8 +547,8 @@ public class Formatter
         if (item.MiddleCommentLength == 0)
             return depth;
 
-        // If there's a middle comment, we write it on the same line and move along.  Easy.
-        if (!item.MiddleComment.Contains('\n'))
+        // If there's an inlineable middle comment, we write it on the same line and move along.  Easy.
+        if (!item.MiddleCommentHasNewline)
         {
             _buffer.Add(item.MiddleComment, _pads.Spaces(middlePad), _pads.Comment);
             return depth;

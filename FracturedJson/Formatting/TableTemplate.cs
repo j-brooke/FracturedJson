@@ -24,6 +24,11 @@ internal class TableTemplate
     /// </summary>
     public string? LocationInParent { get; private set; }
 
+    /// <summary>
+    /// Type of the column, for table formatting purposes.  Numbers have special options.  Arrays or objects can
+    /// have recursive sub-columns.  If they're other simple types or if there's a mix of types, we bascially
+    /// treat them as strings (no recursion).
+    /// </summary>
     public TableColumnType Type { get; private set; } = TableColumnType.Unknown;
     public int RowCount { get; private set; }
     
@@ -32,6 +37,7 @@ internal class TableTemplate
     public int SimpleValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
+    public bool AnyMiddleCommentHasNewline { get; private set; }
     public int PostfixCommentLength { get; private set; }
     public bool IsAnyPostCommentLineStyle { get; set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
@@ -236,6 +242,7 @@ internal class TableTemplate
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
         IsAnyPostCommentLineStyle |= rowSegment.IsPostCommentLineStyle;
+        AnyMiddleCommentHasNewline |= rowSegment.MiddleCommentHasNewline;
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
