@@ -31,19 +31,30 @@ internal class TableTemplate
     /// </summary>
     public TableColumnType Type { get; private set; } = TableColumnType.Unknown;
     public int RowCount { get; private set; }
-    
+
+    /// <summary>
+    /// Length of the longest property name.
+    /// </summary>
     public int NameLength { get; private set; }
+
+    /// <summary>
+    /// Length of the shortest property name.
+    /// </summary>
     public int NameMinimum { get; private set; } = int.MaxValue;
+
+    /// <summary>
+    /// Largest length for the value parts of the column, not counting any table formatting padding.
+    /// </summary>
     public int SimpleValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public bool AnyMiddleCommentHasNewline { get; private set; }
     public int PostfixCommentLength { get; private set; }
-    public bool IsAnyPostCommentLineStyle { get; set; }
+    public bool IsAnyPostCommentLineStyle { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
 
     /// <summary>
-    /// True if this is a number column and we're allowed by settings to normalize numbers (rewrite them with the same
+    /// True if this is a number column, and we're allowed by settings to normalize numbers (rewrite them with the same
     /// precision), and if none of the numbers have too many digits or require scientific notation.
     /// </summary>
     public bool AllowNumberNormalization { get; private set; }
