@@ -53,12 +53,6 @@ internal class TableTemplate
     public bool IsAnyPostCommentLineStyle { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
 
-    /// <summary>
-    /// True if this is a number column, and we're allowed by settings to normalize numbers (rewrite them with the same
-    /// precision), and if none of the numbers have too many digits or require scientific notation.
-    /// </summary>
-    public bool AllowNumberNormalization { get; private set; }
-
     public bool RequiresMultipleLines { get; private set; }
 
     /// <summary>
@@ -94,7 +88,6 @@ internal class TableTemplate
     {
         _pads = pads;
         _numberListAlignment = numberListAlignment;
-        AllowNumberNormalization = (numberListAlignment == NumberListAlignment.Normalize);
     }
 
     /// <summary>
@@ -134,12 +127,8 @@ internal class TableTemplate
     /// </summary>
     public void FormatNumber(IBuffer buffer, JsonItem item, string commaBeforePadType)
     {
-        var formatType = (_numberListAlignment is NumberListAlignment.Normalize && !AllowNumberNormalization)
-            ? NumberListAlignment.Left
-            : _numberListAlignment;
-
         // The easy cases.  Use the value exactly as it was in the source doc.
-        switch (formatType)
+        switch (_numberListAlignment)
         {
             case NumberListAlignment.Left:
                 buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(SimpleValueLength - item.ValueLength));
@@ -150,7 +139,7 @@ internal class TableTemplate
         }
 
         // Normalize case - rewrite the number with the appropriate precision.
-        if (formatType is NumberListAlignment.Normalize)
+        if (_numberListAlignment is NumberListAlignment.Normalize)
         {
             if (item.Type is JsonItemType.Null)
             {
@@ -195,7 +184,7 @@ internal class TableTemplate
 
     private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
     private readonly PaddedFormattingTokens _pads;
-    private readonly NumberListAlignment _numberListAlignment;
+    private NumberListAlignment _numberListAlignment;
     private int _maxDigBeforeDecRaw = 0;
     private int _maxDigAfterDecRaw = 0;
     private int _maxDigBeforeDecNorm = 0;
@@ -299,12 +288,13 @@ internal class TableTemplate
                 subTemplate.MeasureRowSegment(rowSegChild, true);
             }
         }
-        else if (Type is TableColumnType.Number)
+        else if (Type is TableColumnType.Number
+                 && _numberListAlignment is (NumberListAlignment.Decimal or NumberListAlignment.Normalize))
         {
             // So far, everything in this column is a number (or null).  We need to reevaluate whether we're allowed
             // to normalize the numbers - write them all with the same number of digits after the decimal point.
             // We also need to take some measurements for both contingencies.
-            const int maxChars = 15;
+            const int maxChars = 16;
             var parsedVal = double.Parse(rowSegment.Value, CultureInfo.InvariantCulture);
             var normalizedStr = parsedVal.ToString("G", CultureInfo.InvariantCulture);
 
@@ -312,11 +302,15 @@ internal class TableTemplate
             // 1e-500 becomes 0.  In either of those cases, we shouldn't try to reformat the column.  Likewise,
             // if there are too many digits or it needs to be expressed in scientific notation, we're better off
             // not even trying.
-            AllowNumberNormalization &= !double.IsNaN(parsedVal)
-                                  && !double.IsInfinity(parsedVal)
-                                  && normalizedStr.Length <= maxChars
-                                  && !normalizedStr.Contains('E')
-                                  && (parsedVal!=0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
+            var canNormalize = _numberListAlignment is NumberListAlignment.Normalize
+                               && !double.IsNaN(parsedVal)
+                               && !double.IsInfinity(parsedVal)
+                               && normalizedStr.Length <= maxChars
+                               && !normalizedStr.Contains('E')
+                               && (parsedVal != 0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
+            if (!canNormalize && _numberListAlignment is NumberListAlignment.Normalize)
+                _numberListAlignment = NumberListAlignment.Left;
+
 
             // Measure the number of digits before and after the decimal point if we write it as a standard,
             // non-scientific notation number.
@@ -334,8 +328,6 @@ internal class TableTemplate
             _maxDigAfterDecRaw =
                 Math.Max(_maxDigAfterDecRaw, (indexOfDotRaw >= 0) ? rowSegment.ValueLength - indexOfDotRaw - 1 : 0);
         }
-
-        AllowNumberNormalization &= (Type is TableColumnType.Number);
     }
 
     /// <summary>
@@ -388,7 +380,7 @@ internal class TableTemplate
 
     private int GetNumberFieldWidth()
     {
-        if (_numberListAlignment == NumberListAlignment.Normalize && AllowNumberNormalization)
+        if (_numberListAlignment == NumberListAlignment.Normalize)
         {
             var normDecLen = (_maxDigAfterDecNorm > 0) ? 1 : 0;
             return _maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm;

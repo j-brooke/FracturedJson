@@ -93,8 +93,9 @@ public class NumberFormattingTests
     [TestMethod]
     public void BigNumbersInvalidateAlignment2()
     {
-        const string input = "[1, 2.1, 3, 1234567890123456]";
-        const string expectedOutput = "[\n    1               , 2.1             , 3               , 1234567890123456\n]";
+        const string input = "[1, 2.1, 3, 12345678901234567]";
+        const string expectedOutput =
+            "[\n    1                , 2.1              , 3                , 12345678901234567\n]";
 
         // If there's a number with too many significant digits, don't try to justify the numbers.
         var opts = new FracturedJsonOptions()
