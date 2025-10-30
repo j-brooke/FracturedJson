@@ -149,11 +149,12 @@ internal class TableTemplate
         if (_numberListAlignment is NumberListAlignment.Normalize)
         {
              // Create a .NET format string, if we don't already have one.
-            _numberFormat ??= $"{{0,{CompositeValueLength}:F{_maxDigAfterDec}}}";
+             _numberFormat ??= "F" + _maxDigAfterDec;
 
-            var parsedVal = double.Parse(item.Value, CultureInfo.InvariantCulture);
-            var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, parsedVal);
-            buffer.Add(reformattedStr, commaBeforePadType);
+            var parsedVal = double.Parse(item.Value, _invarFormatProvider);
+            var reformattedStr = parsedVal.ToString(_numberFormat, _invarFormatProvider);
+            buffer.Add(_pads.Spaces(CompositeValueLength-reformattedStr.Length),
+                reformattedStr, commaBeforePadType);
             return;
         }
 
@@ -175,16 +176,18 @@ internal class TableTemplate
         buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
     }
 
+    // Regex to help us distinguish between numbers that truly have a zero value - which can take many forms like
+    // 0, 0.000, and 0.0e75 - and numbers too small for a 64bit float, such as 1e-500.
+    private static readonly Regex _trulyZeroValString = new Regex("^-?[0.]+([eE].*)?$");
+
+    private static readonly IFormatProvider _invarFormatProvider = CultureInfo.InvariantCulture;
     private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
+
     private readonly PaddedFormattingTokens _pads;
     private NumberListAlignment _numberListAlignment;
     private int _maxDigBeforeDec = 0;
     private int _maxDigAfterDec = 0;
     private string? _numberFormat;
-
-    // Regex to help us distinguish between numbers that truly have a zero value - which can take many forms like
-    // 0, 0.000, and 0.0e75 - and numbers too small for a 64bit float, such as 1e-500.
-    private static readonly Regex _trulyZeroValString = new Regex("^-?[0.]+([eE].*)?$");
 
     /// <summary>
     /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
@@ -290,8 +293,8 @@ internal class TableTemplate
         if (_numberListAlignment is NumberListAlignment.Normalize)
         {
             const int maxChars = 16;
-            var parsedVal = double.Parse(rowSegment.Value, CultureInfo.InvariantCulture);
-            normalizedStr = parsedVal.ToString("G", CultureInfo.InvariantCulture);
+            var parsedVal = double.Parse(rowSegment.Value, _invarFormatProvider);
+            normalizedStr = parsedVal.ToString("G", _invarFormatProvider);
 
             // Normalize only works for numbers that can be faithfully represented without too many digits and without
             // scientific notation.  The JSON standard allows numbers of any length/precision.  If we detect any case
