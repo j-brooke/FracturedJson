@@ -153,8 +153,7 @@ internal class TableTemplate
 
             var parsedVal = double.Parse(item.Value, _invarFormatProvider);
             var reformattedStr = parsedVal.ToString(_numberFormat, _invarFormatProvider);
-            buffer.Add(_pads.Spaces(CompositeValueLength-reformattedStr.Length),
-                reformattedStr, commaBeforePadType);
+            buffer.Add(_pads.Spaces(CompositeValueLength - reformattedStr.Length), reformattedStr, commaBeforePadType);
             return;
         }
 
