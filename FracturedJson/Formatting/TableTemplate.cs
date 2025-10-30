@@ -45,7 +45,8 @@ internal class TableTemplate
     /// <summary>
     /// Largest length for the value parts of the column, not counting any table formatting padding.
     /// </summary>
-    public int SimpleValueLength { get; private set; }
+    public int MaxValueLength { get; private set; }
+    public int MaxSimpleValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public bool AnyMiddleCommentHasNewline { get; private set; }
@@ -131,10 +132,10 @@ internal class TableTemplate
         switch (_numberListAlignment)
         {
             case NumberListAlignment.Left:
-                buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(SimpleValueLength - item.ValueLength));
+                buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(MaxValueLength - item.ValueLength));
                 return;
             case NumberListAlignment.Right:
-                buffer.Add(_pads.Spaces(SimpleValueLength - item.ValueLength), item.Value, commaBeforePadType);
+                buffer.Add(_pads.Spaces(MaxValueLength - item.ValueLength), item.Value, commaBeforePadType);
                 return;
         }
 
@@ -173,6 +174,18 @@ internal class TableTemplate
         }
 
         buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
+    }
+
+    public int SimpleItemSize()
+    {
+        return NameLength
+               + _pads.ColonLen
+               + MiddleCommentLength
+               + ((MiddleCommentLength > 0) ? _pads.CommentLen : 0)
+               + MaxSimpleValueLength
+               + PostfixCommentLength
+               + ((PostfixCommentLength > 0) ? _pads.CommentLen : 0)
+               + _pads.CommaLen;
     }
 
     // Regex to help us distinguish between numbers that truly have a zero value - which can take many forms like
@@ -229,12 +242,15 @@ internal class TableTemplate
         RowCount += 1;
         NameLength = Math.Max(NameLength, rowSegment.NameLength);
         NameMinimum = Math.Min(NameMinimum, rowSegment.NameLength);
-        SimpleValueLength = Math.Max(SimpleValueLength, rowSegment.ValueLength);
+        MaxValueLength = Math.Max(MaxValueLength, rowSegment.ValueLength);
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
         IsAnyPostCommentLineStyle |= rowSegment.IsPostCommentLineStyle;
         AnyMiddleCommentHasNewline |= rowSegment.MiddleCommentHasNewline;
+
+        if (rowSegment.Type is not (JsonItemType.Array or JsonItemType.Object))
+            MaxSimpleValueLength = Math.Max(MaxSimpleValueLength, rowSegment.ValueLength);
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
@@ -346,7 +362,7 @@ internal class TableTemplate
         }
         else
         {
-            CompositeValueLength = SimpleValueLength;
+            CompositeValueLength = MaxValueLength;
         }
 
         TotalLength = ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
@@ -371,6 +387,6 @@ internal class TableTemplate
             return _maxDigBeforeDec + rawDecLen + _maxDigAfterDec;
         }
 
-        return SimpleValueLength;
+        return MaxValueLength;
     }
 }

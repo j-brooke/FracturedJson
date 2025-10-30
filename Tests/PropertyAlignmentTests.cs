@@ -153,4 +153,58 @@ public class PropertyAlignmentTests
         Assert.AreEqual(5, outputLines.Length);
         TestHelpers.TestInstancesLineUp(outputLines, "[");
     }
+
+    [TestMethod]
+    public void AlignPropValsWhenArrayWraps()
+    {
+        const string input =
+            """
+            {
+                "foo": /* this is foo */
+                    [1, 2, 4],
+                "bar": null,
+                "bazzzz": /* this is baz */ [0]
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+            { CommentPolicy = CommentPolicy.Preserve, ColonBeforePropNamePadding = false, MaxTotalLineLength = 38 };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // The lines are too short for foo to be inlined, so it's compact multiline.  But there's still enough room
+        // for bar if we align the props.
+        Assert.AreEqual(7, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, "[");
+        TestHelpers.TestInstancesLineUp(outputLines, ":");
+    }
+
+    [TestMethod]
+    public void DontAlignWhenSimpleValueTooLong()
+    {
+        const string input =
+            """
+            {
+                "foo": /* this is foo */
+                    [1, 2, 4],
+                "bar": null,
+                "bazzzz": /* this is baz */ [0]
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+            { CommentPolicy = CommentPolicy.Preserve, ColonBeforePropNamePadding = false, MaxTotalLineLength = 36 };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // If we tried to align the properties here, bar's null would exceed the line length due to the padding.
+        // FJ should give up on aligning properties in that case.
+        Assert.AreEqual(7, outputLines.Length);
+        StringAssert.Contains(output, "\"bar\":");
+        Assert.AreNotEqual(outputLines[1].IndexOf(':'), outputLines[5].IndexOf(':'));
+    }
 }

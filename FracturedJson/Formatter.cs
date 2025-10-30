@@ -453,16 +453,25 @@ public class Formatter
     /// Adds the representation for an array or object to the buffer, including all necessary indents, newlines, etc.,
     /// broken out on separate lines.  This is the most general case that always works.
     /// </summary>
+    /// <param name="item">The container we need to write</param>
+    /// <param name="depth">Indentation level</param>
+    /// <param name="includeTrailingComma">True if this container should have a comma after it.</param>
+    /// <param name="template">Measurements for *this* item and its children.  Used to line up the children's property
+    /// values.</param>
+    /// <param name="parentTemplate">Measurements for lining up this item's prop name/value with its siblings.</param>
     private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma,
         TableTemplate template, TableTemplate? parentTemplate)
     {
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
 
-        var templateToPass = (template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
-                              && !template.AnyMiddleCommentHasNewline)
-            ? template
-            : null;
+        // Decide whether to align this container's property values.  If so, pass this container's template along
+        // to its children so they know how to align their property values.
+        var alignProps = item.Type == JsonItemType.Object
+                         && template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
+                         && !template.AnyMiddleCommentHasNewline
+                         && AvailableLineSpace(depth + 1) >= template.SimpleItemSize();
+        var templateToPass = (alignProps) ? template : null;
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
