@@ -470,7 +470,7 @@ public class Formatter
         var alignProps = item.Type == JsonItemType.Object
                          && template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
                          && !template.AnyMiddleCommentHasNewline
-                         && AvailableLineSpace(depth + 1) >= template.SimpleItemSize();
+                         && AvailableLineSpace(depth + 1) >= template.AtomicItemSize();
         var templateToPass = (alignProps) ? template : null;
 
         // Take note of the position of the last actual element, for comma decisions.  The last element

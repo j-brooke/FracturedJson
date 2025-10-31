@@ -26,7 +26,7 @@ internal class TableTemplate
 
     /// <summary>
     /// Type of the column, for table formatting purposes.  Numbers have special options.  Arrays or objects can
-    /// have recursive sub-columns.  If they're other simple types or if there's a mix of types, we bascially
+    /// have recursive sub-columns.  If they're other simple types or if there's a mix of types, we basically
     /// treat them as strings (no recursion).
     /// </summary>
     public TableColumnType Type { get; private set; } = TableColumnType.Unknown;
@@ -46,14 +46,17 @@ internal class TableTemplate
     /// Largest length for the value parts of the column, not counting any table formatting padding.
     /// </summary>
     public int MaxValueLength { get; private set; }
-    public int MaxSimpleValueLength { get; private set; }
+
+    /// <summary>
+    /// Length of the largest value that can't be split apart; i.e., values other than arrays and objects.
+    /// </summary>
+    public int MaxAtomicValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
     public bool AnyMiddleCommentHasNewline { get; private set; }
     public int PostfixCommentLength { get; private set; }
     public bool IsAnyPostCommentLineStyle { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
-
     public bool RequiresMultipleLines { get; private set; }
 
     /// <summary>
@@ -92,8 +95,14 @@ internal class TableTemplate
     }
 
     /// <summary>
-    /// Analyzes an object/array for formatting as a potential table.  The tableRoot is a container that
-    /// is split out across many lines.  Each "row" is a single child written inline.
+    /// <para>Analyzes an object/array for formatting as a table, formatting as a compact multiline array, or
+    /// formatting as an expanded object with aligned properties.  In the first two cases, we measure recursively so
+    /// that values nested inside arrays and objects can be aligned too.</para>
+    /// <para>The item given is presumed to require multiple lines.  For table formatting, each of its children is
+    /// expected to be one row.  For compact multiline arrays, there will be multiple children per line, but they
+    /// will be given the same amount of space and lined up neatly when spanning multiple lines.  For expanded
+    /// object properties, the values may or may not span multiple lines, but the property names and the start of
+    /// their values will be on separate lines, lined up.</para>
     /// </summary>
     public void MeasureTableRoot(JsonItem tableRoot, bool recursive)
     {
@@ -102,7 +111,7 @@ internal class TableTemplate
         foreach(var child in tableRoot.Children)
             MeasureRowSegment(child, recursive);
 
-        // Get rid of incomplete junk and figure out our size.
+        // Get rid of incomplete junk and determine our final size.
         PruneAndRecompute(int.MaxValue);
     }
 
@@ -110,6 +119,22 @@ internal class TableTemplate
     /// Check if the template's width fits in the given size.  Repeatedly drop inner formatting and
     /// recompute to make it fit, if needed.
     /// </summary>
+    /// <example>
+    /// Fully expanded, an array might look like this when table-formatted.
+    /// <code>
+    /// [
+    ///     { "a": 3.4, "b":   8, "c": {"x": 2, "y": 16        } },
+    ///     { "a": 2,   "b": 301, "c": {        "y": -4, "z": 0} }
+    /// ]
+    /// </code>
+    /// If that's too wide, the template will give up trying to align the x,y,z properties but keep the rest.
+    /// <code>
+    /// [
+    ///     { "a": 3.4, "b":   8, "c": {"x": 2, "y": 16} },
+    ///     { "a": 2,   "b": 301, "c": {"y": -4, "z": 0} }
+    /// ]
+    /// </code>
+    /// </example>
     public bool TryToFit(int maximumLength)
     {
         for (var complexity = GetTemplateComplexity(); complexity >= 1; --complexity)
@@ -176,13 +201,17 @@ internal class TableTemplate
         buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
     }
 
-    public int SimpleItemSize()
+    /// <summary>
+    /// Length of the largest item - including property name, comments, and padding - that can't be split across
+    /// multiple lines.
+    /// </summary>
+    public int AtomicItemSize()
     {
         return NameLength
                + _pads.ColonLen
                + MiddleCommentLength
                + ((MiddleCommentLength > 0) ? _pads.CommentLen : 0)
-               + MaxSimpleValueLength
+               + MaxAtomicValueLength
                + PostfixCommentLength
                + ((PostfixCommentLength > 0) ? _pads.CommentLen : 0)
                + _pads.CommaLen;
@@ -250,7 +279,7 @@ internal class TableTemplate
         AnyMiddleCommentHasNewline |= rowSegment.MiddleCommentHasNewline;
 
         if (rowSegment.Type is not (JsonItemType.Array or JsonItemType.Object))
-            MaxSimpleValueLength = Math.Max(MaxSimpleValueLength, rowSegment.ValueLength);
+            MaxAtomicValueLength = Math.Max(MaxAtomicValueLength, rowSegment.ValueLength);
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
