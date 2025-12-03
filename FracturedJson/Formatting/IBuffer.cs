@@ -16,6 +16,9 @@ public interface IBuffer
     /// </summary>
     public IBuffer Add(params string[] values);
 
+    /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
     public IBuffer Spaces(int count);
 
     /// <summary>

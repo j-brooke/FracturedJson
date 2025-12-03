@@ -21,6 +21,9 @@ public class NullBuffer : IBuffer
         return this;
     }
 
+    /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
     public IBuffer Spaces(int count)
     {
         return this;

@@ -568,7 +568,7 @@ public class Formatter
 
     /// <summary>
     /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
-    /// comments.
+    /// comments.  This is only called when it's the last thing on the line.
     /// </summary>
     private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
     {
@@ -592,7 +592,8 @@ public class Formatter
         if (item.RequiresMultipleLines)
             throw new FracturedJsonException("Logic error - trying to inline invalid element");
 
-        // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.
+        // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.  (This
+        // typically means that the parent container can't be table formatted, but we are aligning property values.)
         if (parentTemplate != null)
         {
             AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, parentTemplate.PrefixCommentLength,
@@ -910,6 +911,10 @@ public class Formatter
         return false;
     }
 
+    /// <summary>
+    /// Adds a string and a separator to the buffer.  For example, a prefix comment and the prefix separator.
+    /// Neither is added if valueWidth is zero.
+    /// </summary>
     private void AddToBuffer(string value, int valueWidth, string separator)
     {
         if (valueWidth <= 0)
@@ -917,6 +922,10 @@ public class Formatter
         _buffer.Add(value, separator);
     }
 
+    /// <summary>
+    /// Adds a string and separator to the buffer, as well as enough padding spaces to make it fit the requested width.
+    /// Nothing is added if fieldWidth is zero.
+    /// </summary>
     private void AddToBufferFixed(string value, int valueWidth, int fieldWidth, string separator,
         bool separatorBeforePadding)
     {

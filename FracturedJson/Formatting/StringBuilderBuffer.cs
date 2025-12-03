@@ -27,6 +27,9 @@ public class StringBuilderBuffer : IBuffer
         return this;
     }
 
+    /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
     public IBuffer Spaces(int count)
     {
         _buff.Append(' ', count);
