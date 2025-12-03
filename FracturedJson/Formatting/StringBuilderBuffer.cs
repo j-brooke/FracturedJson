@@ -27,6 +27,12 @@ public class StringBuilderBuffer : IBuffer
         return this;
     }
 
+    public IBuffer Spaces(int count)
+    {
+        _buff.Append(' ', count);
+        return this;
+    }
+
     /// <summary>
     /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
     /// extra post-processing, like trimming trailing whitespace.

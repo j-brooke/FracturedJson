@@ -16,6 +16,8 @@ public interface IBuffer
     /// </summary>
     public IBuffer Add(params string[] values);
 
+    public IBuffer Spaces(int count);
+
     /// <summary>
     /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
     /// extra post-processing, like trimming trailing whitespace.

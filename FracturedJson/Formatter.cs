@@ -551,7 +551,7 @@ public class Formatter
             var middlePad = (parentTemplate != null)
                 ? parentTemplate.MiddleCommentLength - item.MiddleCommentLength
                 : 0;
-            _buffer.Add(item.MiddleComment, _pads.Spaces(middlePad), _pads.Comment);
+            _buffer.Add(item.MiddleComment).Spaces(middlePad).Add(_pads.Comment);
             return depth;
         }
 
@@ -701,7 +701,7 @@ public class Formatter
 
             // Special adjustment if the object/array is shorter than the literal "null".
             if (template.ShorterThanNullAdjustment > 0)
-                _buffer.Add(_pads.Spaces(template.ShorterThanNullAdjustment));
+                _buffer.Spaces(template.ShorterThanNullAdjustment);
         }
         else if (template.Type is TableColumnType.Number)
         {
@@ -713,7 +713,7 @@ public class Formatter
             InlineElementRaw(item);
             if (commaPos == CommaPosition.BeforeValuePadding)
                 _buffer.Add(commaType);
-            _buffer.Add(_pads.Spaces(template.CompositeValueLength - item.ValueLength));
+            _buffer.Spaces(template.CompositeValueLength - item.ValueLength);
         }
 
         if (commaPos == CommaPosition.AfterValuePadding)
@@ -725,7 +725,7 @@ public class Formatter
         if (commaPos == CommaPosition.BeforeCommentPadding)
             _buffer.Add(commaType);
 
-        _buffer.Add(_pads.Spaces(template.PostfixCommentLength - item.PostfixCommentLength));
+        _buffer.Spaces(template.PostfixCommentLength - item.PostfixCommentLength);
 
         if (commaPos == CommaPosition.AfterCommentPadding)
             _buffer.Add(commaType);
@@ -747,7 +747,7 @@ public class Formatter
             if (isPastEndOfArray)
             {
                 // We're done writing this array's children out.  Now we just need to add space to line up with others.
-                _buffer.Add(_pads.Spaces(subTemplate.TotalLength));
+                _buffer.Spaces(subTemplate.TotalLength);
                 if (!isLastInTemplate)
                     _buffer.Add(_pads.DummyComma);
             }
@@ -793,7 +793,7 @@ public class Formatter
             }
             else
             {
-                _buffer.Add(_pads.Spaces(subTemplate.TotalLength));
+                _buffer.Spaces(subTemplate.TotalLength);
                 if (!isLastInTemplate)
                     _buffer.Add(_pads.DummyComma);
             }
@@ -924,9 +924,9 @@ public class Formatter
             return;
         var padWidth = fieldWidth - valueWidth;
         if (separatorBeforePadding)
-            _buffer.Add(value, separator, _pads.Spaces(padWidth));
+            _buffer.Add(value, separator).Spaces(padWidth);
         else
-            _buffer.Add(value, _pads.Spaces(padWidth), separator);
+            _buffer.Add(value).Spaces(padWidth).Add(separator);
     }
 
     /// <summary>

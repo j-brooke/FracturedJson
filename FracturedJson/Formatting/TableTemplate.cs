@@ -157,17 +157,17 @@ internal class TableTemplate
         switch (_numberListAlignment)
         {
             case NumberListAlignment.Left:
-                buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(MaxValueLength - item.ValueLength));
+                buffer.Add(item.Value, commaBeforePadType).Spaces(MaxValueLength - item.ValueLength);
                 return;
             case NumberListAlignment.Right:
-                buffer.Add(_pads.Spaces(MaxValueLength - item.ValueLength), item.Value, commaBeforePadType);
+                buffer.Spaces(MaxValueLength - item.ValueLength).Add(item.Value, commaBeforePadType);
                 return;
         }
 
         if (item.Type is JsonItemType.Null)
         {
-            buffer.Add(_pads.Spaces(_maxDigBeforeDec - item.ValueLength), item.Value,
-                commaBeforePadType, _pads.Spaces(CompositeValueLength - _maxDigBeforeDec));
+            buffer.Spaces(_maxDigBeforeDec - item.ValueLength)
+                .Add(item.Value, commaBeforePadType).Spaces(CompositeValueLength - _maxDigBeforeDec);
             return;
         }
 
@@ -179,7 +179,7 @@ internal class TableTemplate
 
             var parsedVal = double.Parse(item.Value, _invarFormatProvider);
             var reformattedStr = parsedVal.ToString(_numberFormat, _invarFormatProvider);
-            buffer.Add(_pads.Spaces(CompositeValueLength - reformattedStr.Length), reformattedStr, commaBeforePadType);
+            buffer.Spaces(CompositeValueLength - reformattedStr.Length).Add(reformattedStr, commaBeforePadType);
             return;
         }
 
@@ -198,7 +198,7 @@ internal class TableTemplate
             rightPad = CompositeValueLength - _maxDigBeforeDec;
         }
 
-        buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
+        buffer.Spaces(leftPad).Add(item.Value, commaBeforePadType).Spaces(rightPad);
     }
 
     /// <summary>
