@@ -529,28 +529,17 @@ public class Formatter
     {
         _buffer.Add(Options.PrefixString, _pads.Indent(depth));
 
-        var prefixPad = 0;
-        var namePad = 0;
-        var middlePad = 0;
-
-        // parentTemplate will exist if we're supposed to line up some of this element with its siblings.
         if (parentTemplate != null)
         {
-            prefixPad = parentTemplate.PrefixCommentLength - item.PrefixCommentLength;
-            namePad = parentTemplate.NameLength - item.NameLength;
-            middlePad = parentTemplate.MiddleCommentLength - item.MiddleCommentLength;
+            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, parentTemplate.PrefixCommentLength,
+                _pads.Comment, false);
+            AddToBufferFixed(item.Name, item.NameLength, parentTemplate.NameLength, _pads.Colon,
+                Options.ColonBeforePropNamePadding);
         }
-
-        if (item.PrefixCommentLength > 0)
-            _buffer.Add(item.PrefixComment, _pads.Spaces(prefixPad), _pads.Comment);
-
-        if (item.NameLength > 0)
+        else
         {
-            _buffer.Add(item.Name);
-            if (Options.ColonBeforePropNamePadding)
-                _buffer.Add(_pads.Colon, _pads.Spaces(namePad));
-            else
-                _buffer.Add(_pads.Spaces(namePad), _pads.Colon);
+            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
+            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
         }
 
         if (item.MiddleCommentLength == 0)
@@ -559,6 +548,9 @@ public class Formatter
         // If there's an inlineable middle comment, we write it on the same line and move along.  Easy.
         if (!item.MiddleCommentHasNewline)
         {
+            var middlePad = (parentTemplate != null)
+                ? parentTemplate.MiddleCommentLength - item.MiddleCommentLength
+                : 0;
             _buffer.Add(item.MiddleComment, _pads.Spaces(middlePad), _pads.Comment);
             return depth;
         }
@@ -603,36 +595,18 @@ public class Formatter
         // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.
         if (parentTemplate != null)
         {
-            if (parentTemplate.PrefixCommentLength > 0)
-                _buffer.Add(item.PrefixComment,
-                    _pads.Spaces(parentTemplate.PrefixCommentLength - item.PrefixCommentLength),
-                    _pads.Comment);
-
-            if (parentTemplate.NameLength > 0)
-            {
-                _buffer.Add(item.Name);
-
-                if (Options.ColonBeforePropNamePadding)
-                    _buffer.Add(_pads.Colon, _pads.Spaces(parentTemplate.NameLength - item.NameLength));
-                else
-                    _buffer.Add(_pads.Spaces(parentTemplate.NameLength - item.NameLength), _pads.Colon);
-            }
-
-            if (parentTemplate.MiddleCommentLength > 0)
-                _buffer.Add(item.MiddleComment,
-                    _pads.Spaces(parentTemplate.MiddleCommentLength - item.MiddleCommentLength),
-                    _pads.Comment);
+            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, parentTemplate.PrefixCommentLength,
+                _pads.Comment, false);
+            AddToBufferFixed(item.Name, item.NameLength, parentTemplate.NameLength, _pads.Colon,
+                Options.ColonBeforePropNamePadding);
+            AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, parentTemplate.MiddleCommentLength,
+                _pads.Comment, false);
         }
         else
         {
-            if (item.PrefixCommentLength > 0)
-                _buffer.Add(item.PrefixComment, _pads.Comment);
-
-            if (item.NameLength > 0)
-                _buffer.Add(item.Name, _pads.Colon);
-
-            if (item.MiddleCommentLength > 0)
-                _buffer.Add(item.MiddleComment, _pads.Comment);
+            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
+            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
+            AddToBuffer(item.MiddleComment, item.MiddleCommentLength, _pads.Comment);
         }
 
         InlineElementRaw(item);
@@ -683,24 +657,12 @@ public class Formatter
     private void InlineTableRowSegment(TableTemplate template, JsonItem item, bool includeTrailingComma,
         bool isWholeRow)
     {
-        if (template.PrefixCommentLength > 0)
-            _buffer.Add(item.PrefixComment,
-                _pads.Spaces(template.PrefixCommentLength - item.PrefixCommentLength),
-                _pads.Comment);
-
-        if (template.NameLength > 0)
-        {
-            _buffer.Add(item.Name);
-            if (Options.ColonBeforePropNamePadding)
-                _buffer.Add( _pads.Colon, _pads.Spaces(template.NameLength - item.NameLength));
-            else
-                _buffer.Add(_pads.Spaces(template.NameLength - item.NameLength), _pads.Colon);
-        }
-
-        if (template.MiddleCommentLength > 0)
-            _buffer.Add(item.MiddleComment,
-                _pads.Spaces(template.MiddleCommentLength - item.MiddleCommentLength),
-                _pads.Comment);
+        AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, template.PrefixCommentLength,
+            _pads.Comment, false);
+        AddToBufferFixed(item.Name, item.NameLength, template.NameLength, _pads.Colon,
+            Options.ColonBeforePropNamePadding);
+        AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, template.MiddleCommentLength,
+            _pads.Comment, false);
 
         // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
         var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
@@ -946,6 +908,25 @@ public class Formatter
         }
 
         return false;
+    }
+
+    private void AddToBuffer(string value, int valueWidth, string separator)
+    {
+        if (valueWidth <= 0)
+            return;
+        _buffer.Add(value, separator);
+    }
+
+    private void AddToBufferFixed(string value, int valueWidth, int fieldWidth, string separator,
+        bool separatorBeforePadding)
+    {
+        if (fieldWidth <= 0)
+            return;
+        var padWidth = fieldWidth - valueWidth;
+        if (separatorBeforePadding)
+            _buffer.Add(value, separator, _pads.Spaces(padWidth));
+        else
+            _buffer.Add(value, _pads.Spaces(padWidth), separator);
     }
 
     /// <summary>
