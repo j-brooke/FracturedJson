@@ -83,10 +83,11 @@ public class LineWriterBuffer : IBuffer
                 break;
             newLength -= 1;
         }
+        _lineBuff.Length = newLength;
+        _lineBuff.Append(eolString);
 
         // Write only up to the selected end to the Writer.
-        _writer.Write(_lineBuff.ToString(0, newLength));
-        _writer.Write(eolString);
+        _writer.Write(_lineBuff.ToString());
         _lineBuff.Clear();
     }
 }
