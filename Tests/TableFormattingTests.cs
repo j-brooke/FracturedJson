@@ -23,7 +23,8 @@ public class TableFormattingTests
         var input = string.Join("\n", inputLines).Replace('\'', '"');
 
         // With default options (except EOL), this will be neatly formatted as a table.
-        var opts = new FracturedJsonOptions() { JsonEolStyle = EolStyle.Lf };
+        var opts = new FracturedJsonOptions()
+            { JsonEolStyle = EolStyle.Lf, NumberListAlignment = NumberListAlignment.Normalize};
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
@@ -84,7 +85,12 @@ public class TableFormattingTests
         var input = string.Join("\n", inputLines).Replace('\'', '"');
 
         // In this case, it's too small to do any table formatting.  But each row should still be inlined.
-        var opts = new FracturedJsonOptions() { MaxTotalLineLength = 74, JsonEolStyle = EolStyle.Lf };
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 74,
+            JsonEolStyle = EolStyle.Lf,
+            MaxPropNamePadding = 0,
+        };
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Reformat(input, 0);
@@ -403,5 +409,37 @@ public class TableFormattingTests
 
         TestHelpers.TestInstancesLineUp(outputLines, "}");
         TestHelpers.TestInstancesLineUp(outputLines, "*/");
+    }
+
+    [TestMethod]
+    public void ColonsHugPropNames()
+    {
+        const string input =
+            """
+            {
+                "twos": [2, 4, 6, 8],
+                "threes": [3, 6, 9, 12],
+                "fours": [4, 8, 12, 16]
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 40,
+            ColonBeforePropNamePadding = true,
+        };
+
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // This should be table-formatted (so the square brackets line up), but the colons should be right next
+        // to the property names, rather than lined up in front of the opening square brackets.
+        Assert.AreEqual(5, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, "[");
+        TestHelpers.TestInstancesLineUp(outputLines, "]");
+        StringAssert.Contains(outputLines[1], "\":");
+        StringAssert.Contains(outputLines[2], "\":");
+        StringAssert.Contains(outputLines[3], "\":");
     }
 }

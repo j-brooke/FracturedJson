@@ -6,60 +6,68 @@
 public record FracturedJsonOptions
 {
     /// <summary>
-    /// Dictates which characters to use for line breaks.
+    /// Specifies the line break style (e.g., LF or CRLF) for the formatted JSON output. See <see cref="EolStyle"/>
+    /// for options.
     /// </summary>
     public EolStyle JsonEolStyle { get; set; } = EolStyle.Default;
 
     /// <summary>
-    /// Maximum length that the formatter can use when combining complex elements into a single line.  This
-    /// includes comments, property names, etc. - everything except indentation and any PrefixString.  Note that
-    /// lines containing only a single element can exceed this: a long string, or an element with a long prefix
-    /// or postfix comment, for example.
-    /// <seealso cref="MaxTotalLineLength"/>
-    /// </summary>
-    public int MaxInlineLength { get; set; } = int.MaxValue;
-
-    /// <summary>
-    /// Maximum length that the formatter can use when combining complex elements into a single line, from the start
-    /// of the line.  This is identical to <see cref="MaxInlineLength"/> except that this one DOES count indentation
-    /// and any PrefixString.
-    /// <seealso cref="MaxInlineLength"/>
+    /// Maximum length (in characters, including indentation) when more than one simple value is put on a line.
+    /// Individual values (e.g., long strings) may exceed this limit.
     /// </summary>
     public int MaxTotalLineLength { get; set; } = 120;
 
     /// <summary>
-    /// Maximum degree of nesting of arrays/objects that may be written on a single line.  0 disables inlining (but see
+    /// Maximum nesting level of arrays/objects that may be written on a single line.  0 disables inlining (but see
     /// related settings).  1 allows inlining of arrays/objects that contain only simple items.  2 allows inlining of
-    /// arrays/objects that contain other arrays/objects as long as the child containers only contain simple items.  Etc.
+    /// arrays/objects that contain other arrays/objects as long as the child containers only contain simple items.
+    /// Higher values allow deeper nesting.
     /// <seealso cref="MaxCompactArrayComplexity"/>
     /// <seealso cref="MaxTableRowComplexity"/>
     /// </summary>
     public int MaxInlineComplexity { get; set; } = 2;
 
     /// <summary>
-    /// Maximum degree of nesting of arrays formatted as with multiple items per row across multiple rows.
+    /// Maximum nesting level for arrays formatted with multiple items per row across multiple lines. Set to 0 to
+    /// disable this format.  1 allows arrays containing only simple values to be formatted this way.  2 allows arrays
+    /// containing arrays or elements that contain only simple values.  Higher values allow deeper nesting.
     /// <seealso cref="MaxInlineComplexity"/>
     /// <seealso cref="MaxTableRowComplexity"/>
+    /// <seealso cref="MinCompactArrayRowItems"/>
     /// </summary>
-    public int MaxCompactArrayComplexity { get; set; } = 1;
+    public int MaxCompactArrayComplexity { get; set; } = 2;
 
     /// <summary>
-    /// Maximum degree of nesting of arrays/objects formatted as table rows.
+    /// Maximum nesting level of the rows of an array or object formatted as a table with aligned columns.  When set
+    /// to 0, the rows may only be simple values and there will only be one column.  When set to 1, each row can be
+    /// an array or object containing only simple values.  Higher values allow deeper nesting.
     /// <seealso cref="MaxCompactArrayComplexity"/>
     /// <seealso cref="MaxInlineComplexity"/>
     /// </summary>
     public int MaxTableRowComplexity { get; set; } = 2;
 
     /// <summary>
-    /// Determines whether commas in table-formatted elements are lined up in their own column or right next to the
-    /// element that preceeds them.
+    /// Maximum length difference between property names in an object to align them vertically in expanded (non-table)
+    /// formatting.
     /// </summary>
-    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.AfterPadding;
+    public int MaxPropNamePadding { get; set; } = 16;
 
     /// <summary>
-    /// Minimum number of items allowed per row to format an array as with multiple items per line across multiple
-    /// lines.  This is an approximation, not a hard rule.  The idea is that if there will be too few items per row,
-    /// you'd probably rather see it as a table.
+    /// If true, colons in aligned object properties are placed right after the property name (e.g., 'name:    value');
+    /// if false, colons align vertically after padding (e.g., 'name   : value'). Applies to table and expanded
+    /// formatting.
+    /// </summary>
+    public bool ColonBeforePropNamePadding { get; set; } = false;
+
+    /// <summary>
+    /// Determines whether commas in table-formatted rows are lined up in their own column after padding or placed
+    /// directly after each element, before padding spaces.
+    /// </summary>
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePadding;
+
+    /// <summary>
+    /// Minimum items per row to format an array with multiple items per line across multiple lines.  This is a
+    /// guideline, not a strict rule.
     /// </summary>
     public int MinCompactArrayRowItems { get; set; } = 3;
 
@@ -86,6 +94,11 @@ public record FracturedJsonOptions
     /// will include spaces inside the brackets.
     /// <seealso cref="NestedBracketPadding"/>
     /// </summary>
+    /// <remarks>
+    /// Example: <br/>
+    /// true: [ [ 1, 2, 3 ], [ 4 ] ]
+    /// false: [ [1, 2, 3], [4] ] <br/>
+    /// </remarks>
     public bool SimpleBracketPadding { get; set; } = false;
 
     /// <summary>
@@ -99,23 +112,16 @@ public record FracturedJsonOptions
     public bool CommaPadding { get; set; } = true;
 
     /// <summary>
-    /// If true, spaces are included between prefix and postfix comments and their content.
+    /// If true, spaces are included between JSON data and comments that precede or follow them on the same line.
     /// </summary>
     public bool CommentPadding { get; set; } = true;
 
     /// <summary>
-    /// If true, there won't be any spaces or tabs at the end of lines.  Normally there are a variety of cases where
-    /// whitespace can be created or preserved at the ends of lines.  The most noticeable case is when
-    /// <see cref="CommaPadding"/> is true.  Setting this to true gets rid of all of that (including inside multi-
-    /// line comments).
+    /// Controls alignment of numbers in table columns or compact multiline arrays.  When set to
+    /// <see cref="NumberListAlignment.Normalize"/>, numbers are rewritten to have the same decimal precision as others
+    /// in the same column.  Other settings preserve input numbers exactly.
     /// </summary>
-    public bool OmitTrailingWhitespace { get; set; } = false;
-
-    /// <summary>
-    /// Controls how lists or columns of numbers (possibly with nulls) are aligned, and whether their precision
-    /// may be normalized.
-    /// </summary>
-    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Normalize;
+    public NumberListAlignment NumberListAlignment { get; set; } = NumberListAlignment.Decimal;
 
     /// <summary>
     /// Number of spaces to use per indent level.  If <see cref="UseTabToIndent"/> is true, spaces won't be used but
@@ -149,24 +155,20 @@ public record FracturedJsonOptions
     public bool PreserveBlankLines { get; set; } = false;
 
     /// <summary>
-    /// If true, arrays and objects that contain a comma after their last element are permitting.  The JSON standard
-    /// does not allow commas after the final element of an array or object, but some systems permit it, so
-    /// it's nice to have the option here.
+    /// If true, allows a comma after the last element in arrays or objects, which is non-standard JSON but supported
+    /// by some systems.
     /// </summary>
     public bool AllowTrailingCommas { get; set; } = false;
 
     /// <summary>
-    /// Returns a new <see cref="FracturedJsonOptions"/> object with the recommended default settings without concern
-    /// for backward compatibility.  The constructor's defaults should preserve the same behavior from one minor
-    /// revision to the next even if new features are added.  The instance created by this method will be updated
-    /// with new settings if they are more sensible for most cases.
+    /// Creates a new <see cref="FracturedJsonOptions"/> with recommended settings, prioritizing sensible defaults
+    /// over backward compatibility. Constructor defaults maintain consistent behavior across minor versions, while
+    /// this method may adopt newer, preferred settings.
     /// </summary>
     public static FracturedJsonOptions Recommended()
     {
-        return new FracturedJsonOptions() with
-        {
-            TableCommaPlacement = TableCommaPlacement.BeforePadding,
-            OmitTrailingWhitespace = true,
-        };
+        // At the beginning of version 5, the defaults are the recommended settings.  This may change in future
+        // minor versions.
+        return new FracturedJsonOptions();
     }
 }

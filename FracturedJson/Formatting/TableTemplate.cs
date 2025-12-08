@@ -25,37 +25,39 @@ internal class TableTemplate
     public string? LocationInParent { get; private set; }
 
     /// <summary>
-    /// The type of values in the column, if they're uniform.  There's some wiggle-room here: for instance,
-    /// true and false have different JsonItemTypes but are considered the same type for table purposes.
+    /// Type of the column, for table formatting purposes.  Numbers have special options.  Arrays or objects can
+    /// have recursive sub-columns.  If they're other simple types or if there's a mix of types, we basically
+    /// treat them as strings (no recursion).
     /// </summary>
-    public JsonItemType Type { get; private set; } = JsonItemType.Null;
-    
-    /// <summary>
-    /// Assessment of whether this is a viable column.  The main qualifying factor is that all corresponding pieces
-    /// of each row are the same type.
-    /// </summary>
-    public bool IsRowDataCompatible { get; private set; } = true;
+    public TableColumnType Type { get; private set; } = TableColumnType.Unknown;
     public int RowCount { get; private set; }
-    
+
+    /// <summary>
+    /// Length of the longest property name.
+    /// </summary>
     public int NameLength { get; private set; }
-    public int SimpleValueLength { get; private set; }
+
+    /// <summary>
+    /// Length of the shortest property name.
+    /// </summary>
+    public int NameMinimum { get; private set; } = int.MaxValue;
+
+    /// <summary>
+    /// Largest length for the value parts of the column, not counting any table formatting padding.
+    /// </summary>
+    public int MaxValueLength { get; private set; }
+
+    /// <summary>
+    /// Length of the largest value that can't be split apart; i.e., values other than arrays and objects.
+    /// </summary>
+    public int MaxAtomicValueLength { get; private set; }
     public int PrefixCommentLength { get; private set; }
     public int MiddleCommentLength { get; private set; }
+    public bool AnyMiddleCommentHasNewline { get; private set; }
     public int PostfixCommentLength { get; private set; }
-    public bool IsAnyPostCommentLineStyle { get; set; }
+    public bool IsAnyPostCommentLineStyle { get; private set; }
     public BracketPaddingType PadType { get; private set; } = BracketPaddingType.Simple;
-
-    /// <summary>
-    /// True if this is a number column and we're allowed by settings to normalize numbers (rewrite them with the same
-    /// precision), and if none of the numbers have too many digits or require scientific notation.
-    /// </summary>
-    public bool AllowNumberNormalization { get; private set; }
-
-    /// <summary>
-    /// True if this column contains only numbers and nulls.  Number columns are formatted specially, depending on
-    /// settings.
-    /// </summary>
-    public bool IsNumberList { get; private set; }
+    public bool RequiresMultipleLines { get; private set; }
 
     /// <summary>
     /// Length of the value for this template when things are complicated.  For arrays and objects, it's the sum of
@@ -90,35 +92,52 @@ internal class TableTemplate
     {
         _pads = pads;
         _numberListAlignment = numberListAlignment;
-        AllowNumberNormalization = (numberListAlignment == NumberListAlignment.Normalize);
-        IsNumberList = true;
     }
 
     /// <summary>
-    /// Analyzes an object/array for formatting as a potential table.  The tableRoot is a container that
-    /// is split out across many lines.  Each "row" is a single child written inline.
+    /// <para>Analyzes an object/array for formatting as a table, formatting as a compact multiline array, or
+    /// formatting as an expanded object with aligned properties.  In the first two cases, we measure recursively so
+    /// that values nested inside arrays and objects can be aligned too.</para>
+    /// <para>The item given is presumed to require multiple lines.  For table formatting, each of its children is
+    /// expected to be one row.  For compact multiline arrays, there will be multiple children per line, but they
+    /// will be given the same amount of space and lined up neatly when spanning multiple lines.  For expanded
+    /// object properties, the values may or may not span multiple lines, but the property names and the start of
+    /// their values will be on separate lines, lined up.</para>
     /// </summary>
-    public void MeasureTableRoot(JsonItem tableRoot)
+    public void MeasureTableRoot(JsonItem tableRoot, bool recursive)
     {
         // For each row of the potential table, measure it and its children, making room for everything.
         // (Or, if there are incompatible types at any level, set CanBeUsedInTable to false.)
         foreach(var child in tableRoot.Children)
-            MeasureRowSegment(child);
+            MeasureRowSegment(child, recursive);
 
-        // Get rid of incomplete junk and figure out our size.
+        // Get rid of incomplete junk and determine our final size.
         PruneAndRecompute(int.MaxValue);
-
-        // If there are fewer than 2 actual data rows (i.e., not standalone comments), no point making a table.
-        IsRowDataCompatible &= (RowCount >= 2);
     }
 
     /// <summary>
     /// Check if the template's width fits in the given size.  Repeatedly drop inner formatting and
     /// recompute to make it fit, if needed.
     /// </summary>
+    /// <example>
+    /// Fully expanded, an array might look like this when table-formatted.
+    /// <code>
+    /// [
+    ///     { "a": 3.4, "b":   8, "c": {"x": 2, "y": 16        } },
+    ///     { "a": 2,   "b": 301, "c": {        "y": -4, "z": 0} }
+    /// ]
+    /// </code>
+    /// If that's too wide, the template will give up trying to align the x,y,z properties but keep the rest.
+    /// <code>
+    /// [
+    ///     { "a": 3.4, "b":   8, "c": {"x": 2, "y": 16} },
+    ///     { "a": 2,   "b": 301, "c": {"y": -4, "z": 0} }
+    /// ]
+    /// </code>
+    /// </example>
     public bool TryToFit(int maximumLength)
     {
-        for (var complexity = GetTemplateComplexity(); complexity >= 0; --complexity)
+        for (var complexity = GetTemplateComplexity(); complexity >= 1; --complexity)
         {
             if (TotalLength <= maximumLength)
                 return true;
@@ -134,136 +153,141 @@ internal class TableTemplate
     /// </summary>
     public void FormatNumber(IBuffer buffer, JsonItem item, string commaBeforePadType)
     {
-        var formatType = (_numberListAlignment is NumberListAlignment.Normalize && !AllowNumberNormalization)
-            ? NumberListAlignment.Left
-            : _numberListAlignment;
-
         // The easy cases.  Use the value exactly as it was in the source doc.
-        switch (formatType)
+        switch (_numberListAlignment)
         {
             case NumberListAlignment.Left:
-                buffer.Add(item.Value, commaBeforePadType, _pads.Spaces(SimpleValueLength - item.ValueLength));
+                buffer.Add(item.Value, commaBeforePadType).Spaces(MaxValueLength - item.ValueLength);
                 return;
             case NumberListAlignment.Right:
-                buffer.Add(_pads.Spaces(SimpleValueLength - item.ValueLength), item.Value, commaBeforePadType);
+                buffer.Spaces(MaxValueLength - item.ValueLength).Add(item.Value, commaBeforePadType);
                 return;
         }
 
-        // Normalize case - rewrite the number with the appropriate precision.
-        if (formatType is NumberListAlignment.Normalize)
+        if (item.Type is JsonItemType.Null)
         {
-            if (item.Type is JsonItemType.Null)
-            {
-                buffer.Add(_pads.Spaces(_maxDigBeforeDecNorm - item.ValueLength), item.Value,
-                    commaBeforePadType, _pads.Spaces(CompositeValueLength - _maxDigBeforeDecNorm));
-                return;
-            }
+            buffer.Spaces(_maxDigBeforeDec - item.ValueLength)
+                .Add(item.Value, commaBeforePadType).Spaces(CompositeValueLength - _maxDigBeforeDec);
+            return;
+        }
 
-            // Create a .NET format string, if we don't already have one.
-            _numberFormat ??= $"{{0,{CompositeValueLength}:F{_maxDigAfterDecNorm}}}";
+        // Normalize case - rewrite the number with the appropriate precision.
+        if (_numberListAlignment is NumberListAlignment.Normalize)
+        {
+             // Create a .NET format string, if we don't already have one.
+             _numberFormat ??= "F" + _maxDigAfterDec;
 
-            var parsedVal = double.Parse(item.Value, CultureInfo.InvariantCulture);
-            var reformattedStr = string.Format(CultureInfo.InvariantCulture, _numberFormat, parsedVal);
-            buffer.Add(reformattedStr, commaBeforePadType);
+            var parsedVal = double.Parse(item.Value, _invarFormatProvider);
+            var reformattedStr = parsedVal.ToString(_numberFormat, _invarFormatProvider);
+            buffer.Spaces(CompositeValueLength - reformattedStr.Length).Add(reformattedStr, commaBeforePadType);
             return;
         }
 
         // Decimal case - line up the decimals (or E's) but leave the value exactly as it was in the source.
-        if (item.Type is JsonItemType.Null)
-        {
-            buffer.Add(_pads.Spaces(_maxDigBeforeDecRaw - item.ValueLength), item.Value,
-                commaBeforePadType, _pads.Spaces(CompositeValueLength - _maxDigBeforeDecRaw));
-            return;
-        }
-
         int leftPad;
         int rightPad;
         var indexOfDot = item.Value.IndexOfAny(_dotOrE);
         if (indexOfDot > 0)
         {
-            leftPad = _maxDigBeforeDecRaw - indexOfDot;
+            leftPad = _maxDigBeforeDec - indexOfDot;
             rightPad = CompositeValueLength - leftPad - item.ValueLength;
         }
         else
         {
-            leftPad = _maxDigBeforeDecRaw - item.ValueLength;
-            rightPad = CompositeValueLength - _maxDigBeforeDecRaw;
+            leftPad = _maxDigBeforeDec - item.ValueLength;
+            rightPad = CompositeValueLength - _maxDigBeforeDec;
         }
 
-        buffer.Add(_pads.Spaces(leftPad), item.Value, commaBeforePadType, _pads.Spaces(rightPad));
+        buffer.Spaces(leftPad).Add(item.Value, commaBeforePadType).Spaces(rightPad);
     }
 
-    private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
-    private readonly PaddedFormattingTokens _pads;
-    private readonly NumberListAlignment _numberListAlignment;
-    private int _maxDigBeforeDecRaw = 0;
-    private int _maxDigAfterDecRaw = 0;
-    private int _maxDigBeforeDecNorm = 0;
-    private int _maxDigAfterDecNorm = 0;
-    private string? _numberFormat;
+    /// <summary>
+    /// Length of the largest item - including property name, comments, and padding - that can't be split across
+    /// multiple lines.
+    /// </summary>
+    public int AtomicItemSize()
+    {
+        return NameLength
+               + _pads.ColonLen
+               + MiddleCommentLength
+               + ((MiddleCommentLength > 0) ? _pads.CommentLen : 0)
+               + MaxAtomicValueLength
+               + PostfixCommentLength
+               + ((PostfixCommentLength > 0) ? _pads.CommentLen : 0)
+               + _pads.CommaLen;
+    }
 
     // Regex to help us distinguish between numbers that truly have a zero value - which can take many forms like
     // 0, 0.000, and 0.0e75 - and numbers too small for a 64bit float, such as 1e-500.
     private static readonly Regex _trulyZeroValString = new Regex("^-?[0.]+([eE].*)?$");
 
+    private static readonly IFormatProvider _invarFormatProvider = CultureInfo.InvariantCulture;
+    private static readonly char[] _dotOrE = new[] { '.', 'e', 'E' };
+
+    private readonly PaddedFormattingTokens _pads;
+    private NumberListAlignment _numberListAlignment;
+    private int _maxDigBeforeDec = 0;
+    private int _maxDigAfterDec = 0;
+    private string? _numberFormat;
+
     /// <summary>
     /// Adjusts this TableTemplate (and its children) to make room for the given rowSegment (and its children).
     /// </summary>
     /// <param name="rowSegment"></param>
-    private void MeasureRowSegment(JsonItem rowSegment)
+    /// <param name="recursive">true if the measurement should include children for arrays/objects.</param>
+    private void MeasureRowSegment(JsonItem rowSegment, bool recursive)
     {
         // Standalone comments and blank lines don't figure into template measurements
         if (rowSegment.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
             return;
-        
-        // Make sure this rowSegment's type is compatible with the ones we've seen so far.  Null is compatible
-        // with all types.  It the types aren't compatible, we can still align this element and its comments,
-        // but not any children for arrays/objects.
-        if (rowSegment.Type is JsonItemType.False or JsonItemType.True)
+
+        var rowTableType = rowSegment.Type switch
         {
-            IsRowDataCompatible &= (Type is JsonItemType.True or JsonItemType.Null);
-            Type = JsonItemType.True;
-            IsNumberList = false;
-        }
-        else if (rowSegment.Type is JsonItemType.Number)
+            JsonItemType.Null => TableColumnType.Unknown,
+            JsonItemType.Number => TableColumnType.Number,
+            JsonItemType.Array => TableColumnType.Array,
+            JsonItemType.Object => TableColumnType.Object,
+            _ => TableColumnType.Simple,
+        };
+
+        if (Type is TableColumnType.Unknown)
+            Type = rowTableType;
+        else if (rowTableType is not TableColumnType.Unknown && Type != rowTableType)
+            Type = TableColumnType.Mixed;
+
+        if (rowSegment.Type is JsonItemType.Null)
         {
-            IsRowDataCompatible &= (Type is JsonItemType.Number or JsonItemType.Null);
-            Type = JsonItemType.Number;
-        }
-        else if (rowSegment.Type is JsonItemType.Null)
-        {
-            _maxDigBeforeDecNorm = Math.Max(_maxDigBeforeDecNorm, _pads.LiteralNullLen);
-            _maxDigBeforeDecRaw = Math.Max(_maxDigBeforeDecRaw, _pads.LiteralNullLen);
+            _maxDigBeforeDec = Math.Max(_maxDigBeforeDec, _pads.LiteralNullLen);
             ContainsNull = true;
         }
-        else
-        {
-            IsRowDataCompatible &= (Type == rowSegment.Type || Type == JsonItemType.Null);
-            if (Type is JsonItemType.Null)
-                Type = rowSegment.Type;
-            IsNumberList = false;
-        }
 
-        // If multiple lines are necessary for a row (probably due to pesky comments), we can't make a table.
-        IsRowDataCompatible &= !rowSegment.RequiresMultipleLines;
+        if (rowSegment.RequiresMultipleLines)
+        {
+            RequiresMultipleLines = true;
+            Type = TableColumnType.Mixed;
+        }
 
         // Update the numbers.
         RowCount += 1;
         NameLength = Math.Max(NameLength, rowSegment.NameLength);
-        SimpleValueLength = Math.Max(SimpleValueLength, rowSegment.ValueLength);
+        NameMinimum = Math.Min(NameMinimum, rowSegment.NameLength);
+        MaxValueLength = Math.Max(MaxValueLength, rowSegment.ValueLength);
         MiddleCommentLength = Math.Max(MiddleCommentLength, rowSegment.MiddleCommentLength);
         PrefixCommentLength = Math.Max(PrefixCommentLength, rowSegment.PrefixCommentLength);
         PostfixCommentLength = Math.Max(PostfixCommentLength, rowSegment.PostfixCommentLength);
         IsAnyPostCommentLineStyle |= rowSegment.IsPostCommentLineStyle;
+        AnyMiddleCommentHasNewline |= rowSegment.MiddleCommentHasNewline;
+
+        if (rowSegment.Type is not (JsonItemType.Array or JsonItemType.Object))
+            MaxAtomicValueLength = Math.Max(MaxAtomicValueLength, rowSegment.ValueLength);
 
         if (rowSegment.Complexity >= 2)
             PadType = BracketPaddingType.Complex;
 
-        // Everything after this is moot if the column doesn't have a uniform type.
-        if (!IsRowDataCompatible)
+        if (RequiresMultipleLines || rowSegment.Type is JsonItemType.Null)
             return;
         
-        if (rowSegment.Type == JsonItemType.Array)
+        if (Type is TableColumnType.Array && recursive)
         {
             // For each row in this rowSegment, find or create this TableTemplate's child template for
             // the that array index, and then measure recursively.
@@ -272,19 +296,19 @@ internal class TableTemplate
                 if (Children.Count <= i)
                     Children.Add(new(_pads, _numberListAlignment));
                 var subTemplate = Children[i];
-                subTemplate.MeasureRowSegment(rowSegment.Children[i]);
+                subTemplate.MeasureRowSegment(rowSegment.Children[i], true);
             }
         }
-        else if (rowSegment.Type == JsonItemType.Object)
+        else if (Type is TableColumnType.Object && recursive)
         {
-            // If this object has multiple children with the same property name, which is allowed by the JSON standard
+            // If this object has multiple children with the same property name, which is allowed by the JSON standard,
             // although it's hard to imagine anyone would deliberately do it, we can't format it as part of a table.
             var distinctChildKeyCount = rowSegment.Children.Select(item => item.Name)
                 .Distinct()
                 .Count();
             if (distinctChildKeyCount != rowSegment.Children.Count)
             {
-                IsRowDataCompatible = false;
+                Type = TableColumnType.Simple;
                 return;
             }
 
@@ -298,46 +322,42 @@ internal class TableTemplate
                     subTemplate = new(_pads, _numberListAlignment) { LocationInParent = rowSegChild.Name };
                     Children.Add(subTemplate);
                 }
-                subTemplate.MeasureRowSegment(rowSegChild);
+                subTemplate.MeasureRowSegment(rowSegChild, true);
             }
         }
-        else if (rowSegment.Type == JsonItemType.Number && IsNumberList)
+
+        // The rest is only relevant to number columns were we plan to align the decimal points.
+        if (Type is not TableColumnType.Number
+            || _numberListAlignment is (NumberListAlignment.Left or NumberListAlignment.Right))
+            return;
+
+        // For Decimal, we use the string exactly as it is from the input document.  For Normalize, we need to rewrite
+        // it before we count digits.
+        var normalizedStr = rowSegment.Value;
+        if (_numberListAlignment is NumberListAlignment.Normalize)
         {
-            // So far, everything in this column is a number (or null).  We need to reevaluate whether we're allowed
-            // to normalize the numbers - write them all with the same number of digits after the decimal point.
-            // We also need to take some measurements for both contingencies.
-            const int maxChars = 15;
-            var parsedVal = double.Parse(rowSegment.Value, CultureInfo.InvariantCulture);
-            var normalizedStr = parsedVal.ToString("G", CultureInfo.InvariantCulture);
+            const int maxChars = 16;
+            var parsedVal = double.Parse(rowSegment.Value, _invarFormatProvider);
+            normalizedStr = parsedVal.ToString("G", _invarFormatProvider);
 
-            // JSON allows numbers that won't fit in a 64-bit double.  For example, 1e500 becomes Infinity, and
-            // 1e-500 becomes 0.  In either of those cases, we shouldn't try to reformat the column.  Likewise,
-            // if there are too many digits or it needs to be expressed in scientific notation, we're better off
-            // not even trying.
-            AllowNumberNormalization &= !double.IsNaN(parsedVal)
-                                  && !double.IsInfinity(parsedVal)
-                                  && normalizedStr.Length <= maxChars
-                                  && !normalizedStr.Contains('E')
-                                  && (parsedVal!=0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
-
-            // Measure the number of digits before and after the decimal point if we write it as a standard,
-            // non-scientific notation number.
-            var indexOfDotNorm = normalizedStr.IndexOf('.');
-            _maxDigBeforeDecNorm =
-                Math.Max(_maxDigBeforeDecNorm, (indexOfDotNorm >= 0) ? indexOfDotNorm : normalizedStr.Length);
-            _maxDigAfterDecNorm =
-                Math.Max(_maxDigAfterDecNorm, (indexOfDotNorm >= 0) ? normalizedStr.Length - indexOfDotNorm - 1 : 0);
-
-            // Measure the number of digits before and after the decimal point (or E scientific notation with not
-            // decimal point), using the number exactly as it was in the input document.
-            var indexOfDotRaw = rowSegment.Value.IndexOfAny(_dotOrE);
-            _maxDigBeforeDecRaw =
-                Math.Max(_maxDigBeforeDecRaw, (indexOfDotRaw >= 0) ? indexOfDotRaw : rowSegment.ValueLength);
-            _maxDigAfterDecRaw =
-                Math.Max(_maxDigAfterDecRaw, (indexOfDotRaw >= 0) ? rowSegment.ValueLength - indexOfDotRaw - 1 : 0);
+            // Normalize only works for numbers that can be faithfully represented without too many digits and without
+            // scientific notation.  The JSON standard allows numbers of any length/precision.  If we detect any case
+            // where we'd lose precision, fall back to left alignment for this column.
+            var canNormalize = !double.IsNaN(parsedVal)
+                               && !double.IsInfinity(parsedVal)
+                               && normalizedStr.Length <= maxChars
+                               && !normalizedStr.Contains('E')
+                               && (parsedVal != 0.0 || _trulyZeroValString.IsMatch(rowSegment.Value));
+            if (!canNormalize)
+            {
+                _numberListAlignment = NumberListAlignment.Left;
+                return;
+            }
         }
 
-        AllowNumberNormalization &= IsNumberList;
+        var indexOfDot = normalizedStr.IndexOfAny(_dotOrE);
+        _maxDigBeforeDec = Math.Max(_maxDigBeforeDec, (indexOfDot >= 0) ? indexOfDot : normalizedStr.Length);
+        _maxDigAfterDec = Math.Max(_maxDigAfterDec, (indexOfDot >= 0) ? normalizedStr.Length - indexOfDot - 1 : 0);
     }
 
     /// <summary>
@@ -347,13 +367,13 @@ internal class TableTemplate
     /// </summary>
     private void PruneAndRecompute(int maxAllowedComplexity)
     {
-        if (maxAllowedComplexity <= 0 || !IsRowDataCompatible)
+        if (maxAllowedComplexity <= 0 || (Type is not (TableColumnType.Array or TableColumnType.Object)) || RowCount<2)
             Children.Clear();
         
         foreach(var subTemplate in Children)
             subTemplate.PruneAndRecompute(maxAllowedComplexity-1);
 
-        if (IsNumberList)
+        if (Type is TableColumnType.Number)
         {
             CompositeValueLength = GetNumberFieldWidth();
         }
@@ -371,7 +391,7 @@ internal class TableTemplate
         }
         else
         {
-            CompositeValueLength = SimpleValueLength;
+            CompositeValueLength = MaxValueLength;
         }
 
         TotalLength = ((PrefixCommentLength > 0) ? PrefixCommentLength + _pads.CommentLen : 0)
@@ -390,17 +410,12 @@ internal class TableTemplate
 
     private int GetNumberFieldWidth()
     {
-        if (_numberListAlignment == NumberListAlignment.Normalize && AllowNumberNormalization)
+        if (_numberListAlignment is (NumberListAlignment.Normalize or NumberListAlignment.Decimal))
         {
-            var normDecLen = (_maxDigAfterDecNorm > 0) ? 1 : 0;
-            return _maxDigBeforeDecNorm + normDecLen + _maxDigAfterDecNorm;
-        }
-        else if (_numberListAlignment == NumberListAlignment.Decimal)
-        {
-            var rawDecLen = (_maxDigAfterDecRaw > 0) ? 1 : 0;
-            return _maxDigBeforeDecRaw + rawDecLen + _maxDigAfterDecRaw;
+            var rawDecLen = (_maxDigAfterDec > 0) ? 1 : 0;
+            return _maxDigBeforeDec + rawDecLen + _maxDigAfterDec;
         }
 
-        return SimpleValueLength;
+        return MaxValueLength;
     }
 }

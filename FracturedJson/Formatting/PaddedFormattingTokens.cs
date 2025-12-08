@@ -17,7 +17,7 @@ internal class PaddedFormattingTokens
     public int LiteralTrueLen { get; }
     public int LiteralFalseLen { get; }
     public int PrefixStringLen { get; }
-    public string DummyComma => Spaces(CommaLen);
+    public string DummyComma { get; }
     
     public PaddedFormattingTokens(FracturedJsonOptions opts, Func<string,int> strLenFunc)
     {
@@ -70,6 +70,7 @@ internal class PaddedFormattingTokens
         LiteralTrueLen = strLenFunc("true");
         LiteralFalseLen = strLenFunc("false");
         PrefixStringLen = strLenFunc(opts.PrefixString);
+        DummyComma = new string(' ', CommaLen);
     }
 
     public string ArrStart(BracketPaddingType type)
@@ -142,12 +143,6 @@ internal class PaddedFormattingTokens
         }
 
         return _indentStrings[level];
-    }
-
-    public string Spaces(int quantity)
-    {
-        // todo - make smarter
-        return new string(' ', quantity);
     }
 
     private readonly string[] _arrStart;

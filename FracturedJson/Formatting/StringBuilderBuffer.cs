@@ -9,15 +9,6 @@ namespace FracturedJson.Formatting;
 public class StringBuilderBuffer : IBuffer
 {
     /// <summary>
-    /// Creates a new StringBuilderBuffer.
-    /// </summary>
-    /// <param name="trimTrailingWhitespace">If true, whitespace at the end of lines is removed.</param>
-    public StringBuilderBuffer(bool trimTrailingWhitespace)
-    {
-        _trimTrailingWhitespace = trimTrailingWhitespace;
-    }
-
-    /// <summary>
     /// Add a single string to the buffer.
     /// </summary>
     public IBuffer Add(string value)
@@ -33,6 +24,15 @@ public class StringBuilderBuffer : IBuffer
     {
         foreach (var val in values)
             _buff.Append(val);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
+    public IBuffer Spaces(int count)
+    {
+        _buff.Append(' ', count);
         return this;
     }
 
@@ -65,7 +65,6 @@ public class StringBuilderBuffer : IBuffer
     }
 
     private readonly StringBuilder _buff = new();
-    private readonly bool _trimTrailingWhitespace;
 
     /// <summary>
     /// Gets rid of spaces and tabs at the end of the buffer.  This should be called at the end of a line
@@ -73,9 +72,6 @@ public class StringBuilderBuffer : IBuffer
     /// </summary>
     private void TrimIfNeeded()
     {
-        if (!_trimTrailingWhitespace)
-            return;
-
         var newLength = _buff.Length;
         while (newLength > 0)
         {

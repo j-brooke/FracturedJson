@@ -12,7 +12,7 @@ namespace Tests;
 /// <list type="bullet">
 ///     <item>The input is valid JSON</item>
 ///     <item>Input strings may not contain any of []{}:,\n</item>
-///     <item>Values given to PrefixString" may only contain whitespace.</item>
+///     <item>Values given to "PrefixString" may only contain whitespace.</item>
 /// </list>
 ///
 /// <para>Those rules exist to make the output easy to test without understanding the grammar.  Other files might contain
@@ -22,7 +22,7 @@ namespace Tests;
 public class UniversalJsonTests
 {
     /// <summary>
-    /// Generates combos of input JSON and Formatter options to feed to all of the tests.
+    /// Generates combos of input JSON and Formatter options to feed to all the tests.
     /// </summary>
     public static IEnumerable<object[]> GenerateUniversalParams()
     {
@@ -31,7 +31,7 @@ public class UniversalJsonTests
         {
             var fileData = File.ReadAllText(file.FullName);
             foreach (var options in GenerateOptions())
-                yield return new object[] { fileData, options };
+                yield return [fileData, options];
         }
 
         var commentTestFilesDir = new DirectoryInfo("FilesWithComments");
@@ -45,7 +45,7 @@ public class UniversalJsonTests
                     CommentPolicy = CommentPolicy.Preserve,
                     PreserveBlankLines = true,
                 };
-                yield return new object[] { fileData, moddedOpts };
+                yield return [fileData, moddedOpts];
             }
         }
     }
@@ -56,19 +56,27 @@ public class UniversalJsonTests
     /// </summary>
     private static IEnumerable<FracturedJsonOptions> GenerateOptions()
     {
+        // Try lots of combinations of max complexity settings.
+        for (var inline = -1; inline <= 3; ++inline)
+            for (var array = -1; array <= 3; ++array)
+                for (var table = -1; table <= 3; ++table)
+                    yield return new FracturedJsonOptions()
+                    {
+                        MaxInlineComplexity = inline,
+                        MaxCompactArrayComplexity = array,
+                        MaxTableRowComplexity = table,
+                    };
+
+        // Try a bunch of line lengths.
+        for (var len = 12; len <= 55; ++len)
+            yield return new FracturedJsonOptions() { MaxTotalLineLength = len };
+
+        // Miscellaneous settings.
         yield return new();
         yield return new() { MaxInlineComplexity = 10000 };
-        yield return new() { MaxInlineLength = int.MaxValue };
-        yield return new() { MaxInlineLength = 23 };
-        yield return new() { MaxInlineLength = 59 };
-        yield return new() { MaxTotalLineLength = 59 };
         yield return new() { JsonEolStyle = EolStyle.Crlf };
         yield return new() { JsonEolStyle = EolStyle.Lf };
         yield return new() { JsonEolStyle = EolStyle.Default };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 2, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 2, MaxTableRowComplexity = 0 };
-        yield return new() { MaxInlineComplexity = 0, MaxCompactArrayComplexity = 0, MaxTableRowComplexity = 2 };
         yield return new()
         {
             MaxInlineComplexity = 10,
@@ -109,18 +117,8 @@ public class UniversalJsonTests
         {
             EolStyle.Crlf => "\r\n",
             EolStyle.Lf => "\n",
-            EolStyle.Default => Environment.NewLine,
             _ => Environment.NewLine
         };
-    }
-
-    private static string SkipPrefixAndIndent(FracturedJsonOptions options, string line)
-    {
-        // Skip past the prefix string and whitespace.
-        if (!line.StartsWith(options.PrefixString))
-            throw new Exception("Output line does not begin with prefix string");
-        var lineAfterPrefix = line.Substring(options.PrefixString.Length).TrimStart();
-        return lineAfterPrefix;
     }
 
     /// <summary>
@@ -184,14 +182,12 @@ public class UniversalJsonTests
 
         foreach (var line in outputLines)
         {
-            var content = SkipPrefixAndIndent(options, line);
-
             // If the content is shorter than the max, it's all good.
-            if (content.Length <= options.MaxInlineLength && line.Length <= options.MaxTotalLineLength)
+            if (line.Length <= options.MaxTotalLineLength)
                 continue;
 
             // We'll consider it a single element if there's no more than one comma.
-            var commaCount = content.Count(ch => ch == ',');
+            var commaCount = line.Count(ch => ch == ',');
             Assert.IsTrue(commaCount <= 1);
         }
     }
@@ -207,15 +203,13 @@ public class UniversalJsonTests
         // Look at each line of the output separately, counting the nesting level in each.
         foreach (var line in outputLines)
         {
-            var content = SkipPrefixAndIndent(options, line);
-
             // Keep a running total of opens vs closes.  Since Formatter treats empty arrays and objects as complexity
             // zero just like primitives, we don't update nestLevel until we see something other than an empty.
             var openCount = 0;
             var nestLevel = 0;
             var topLevelCommaSeen = false;
             var multipleTopLevelItems = false;
-            foreach (var ch in content)
+            foreach (var ch in line)
             {
                 switch (ch)
                 {
@@ -249,10 +243,16 @@ public class UniversalJsonTests
                 continue;
             }
 
-            // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one line.
-            Assert.IsTrue(nestLevel <= options.MaxInlineComplexity
-                          || nestLevel <= options.MaxCompactArrayComplexity
-                          || nestLevel <= options.MaxTableRowComplexity);
+            // Otherwise, we can't actually tell if it's a compact array, table, or inline by looking at just the one
+            // line.  The best we can do is make sure it's un
+            var biggestComplexity = new[]
+            {
+                options.MaxInlineComplexity,
+                options.MaxCompactArrayComplexity,
+                options.MaxTableRowComplexity,
+                0
+            }.Max();
+            Assert.IsTrue(nestLevel <= biggestComplexity);
         }
     }
 
@@ -290,9 +290,7 @@ public class UniversalJsonTests
     [DynamicData(nameof(GenerateUniversalParams), DynamicDataSourceType.Method)]
     public void NoTrailingWhitespace(string inputText, FracturedJsonOptions options)
     {
-        var modifiedOptions = options with { OmitTrailingWhitespace = true };
-
-        var formatter = new Formatter() { Options = modifiedOptions };
+        var formatter = new Formatter() { Options = options };
         var outputText = formatter.Reformat(inputText, 0);
         var outputLines = outputText.TrimEnd().Split(EolString(options));
 

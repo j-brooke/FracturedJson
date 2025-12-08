@@ -13,11 +13,9 @@ public class LineWriterBuffer : IBuffer
     /// Creates a new LineWriterBuffer.
     /// </summary>
     /// <param name="writer">TextWriter to which the sequence should be written.</param>
-    /// <param name="trimTrailingWhitespace">If true, whitespace at the end of lines is removed.</param>
-    public LineWriterBuffer(TextWriter writer, bool trimTrailingWhitespace)
+    public LineWriterBuffer(TextWriter writer)
     {
         _writer = writer;
-        _trimTrailingWhitespace = trimTrailingWhitespace;
     }
 
     /// <summary>
@@ -36,6 +34,15 @@ public class LineWriterBuffer : IBuffer
     {
         foreach(var item in values)
             _lineBuff.Append(item);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
+    public IBuffer Spaces(int count)
+    {
+        _lineBuff.Append(' ', count);
         return this;
     }
 
@@ -60,7 +67,6 @@ public class LineWriterBuffer : IBuffer
     }
 
     private readonly TextWriter _writer;
-    private readonly bool _trimTrailingWhitespace;
     private readonly StringBuilder _lineBuff = new();
 
     private void AddLineToWriter(string eolString)
@@ -68,22 +74,20 @@ public class LineWriterBuffer : IBuffer
         if (_lineBuff.Length == 0 && eolString.Length == 0)
             return;
 
+        // Figure out where the end of the line's non-whitespace characters is.
         var newLength = _lineBuff.Length;
-        if (_trimTrailingWhitespace)
+        while (newLength > 0)
         {
-            // Figure out where the end of the line's non-whitespace characters is.
-            while (newLength > 0)
-            {
-                var ch = _lineBuff[newLength - 1];
-                if (ch is not (' ' or '\t'))
-                    break;
-                newLength -= 1;
-            }
+            var ch = _lineBuff[newLength - 1];
+            if (ch is not (' ' or '\t'))
+                break;
+            newLength -= 1;
         }
+        _lineBuff.Length = newLength;
+        _lineBuff.Append(eolString);
 
         // Write only up to the selected end to the Writer.
-        _writer.Write(_lineBuff.ToString(0, newLength));
-        _writer.Write(eolString);
+        _writer.Write(_lineBuff.ToString());
         _lineBuff.Clear();
     }
 }

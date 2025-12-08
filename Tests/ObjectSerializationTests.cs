@@ -12,7 +12,7 @@ public class ObjectSerializationTests
     public void TestSerializeCalendar()
     {
         var input = CultureInfo.InvariantCulture.Calendar;
-        var fracturedJsonOptions = new FracturedJsonOptions();
+        var fracturedJsonOptions = new FracturedJsonOptions() { MaxPropNamePadding = 0 };
         var serialOptions = new JsonSerializerOptions()
         {
             Converters = { new JsonStringEnumConverter() }
@@ -29,7 +29,7 @@ public class ObjectSerializationTests
     public void TestSerializeNumberFormat()
     {
         var input = CultureInfo.InvariantCulture.NumberFormat;
-        var opts = new FracturedJsonOptions();
+        var opts = new FracturedJsonOptions() { MaxPropNamePadding = 0 };
 
         var formatter = new Formatter() { Options = opts };
         var output = formatter.Serialize(input, 0);

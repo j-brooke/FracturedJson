@@ -22,6 +22,14 @@ public class NullBuffer : IBuffer
     }
 
     /// <summary>
+    /// Adds the requested number of spaces to the buffer.
+    /// </summary>
+    public IBuffer Spaces(int count)
+    {
+        return this;
+    }
+
+    /// <summary>
     /// Call this only when sending an end-of-line symbol to the buffer.  Doing so helps the buffer with
     /// extra post-processing, like trimming trailing whitespace.
     /// </summary>
