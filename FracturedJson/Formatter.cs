@@ -415,7 +415,7 @@ public class Formatter
         //     { "a":   3, "b": { "x": 19, "y": -4 }   },
         //     { "a": 147, "b": { "y": 111, "z": -99 } }
         // ]
-        if (!template.TryToFit(availableSpace))
+        if (!template.TryToFit(availableSpace) || template.Type == TableColumnType.Mixed)
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);

@@ -442,4 +442,61 @@ public class TableFormattingTests
         StringAssert.Contains(outputLines[2], "\":");
         StringAssert.Contains(outputLines[3], "\":");
     }
+
+    [TestMethod]
+    public void SingleColumnsWithEolCommentsWork()
+    {
+        // We want this array to be a single-column table.  It can't be done as a compact multiline array since
+        // it has end-of-line comments.  But it should be table-formattable so that the comments line up neatly.
+        const string input =
+            """
+            {
+                "Beatles Songs": [
+                    "Taxman"        ,  // George
+                    "Hey Jude"      ,  // Paul
+                    "Act Naturally" ,  // Ringo
+                    "Ticket To Ride"   // John
+                ]
+            }
+            """;
+
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(8, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, "//");
+    }
+
+    [TestMethod]
+    public void SingleColumnsWithNumbersWork()
+    {
+        // If we turn off inline and complex array formatting, we'd like to see these numbers as a single-column table,
+        // with the decimal points aligned.
+        const string input =
+            """
+            {
+                "WeightsKg": {
+                    "Brown Bear": 389.0,
+                    "Golden Retriever": 29.0,
+                    "Garter Snake": 0.25
+                }
+            }
+            """;
+
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions()
+        {
+            MaxCompactArrayComplexity = -1,
+            MaxInlineComplexity = -1,
+            NumberListAlignment = NumberListAlignment.Decimal,
+            MaxTotalLineLength = 40,
+        };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(7, outputLines.Length);
+        TestHelpers.TestInstancesLineUp(outputLines, ".");
+    }
 }

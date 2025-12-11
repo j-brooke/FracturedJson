@@ -137,14 +137,16 @@ internal class TableTemplate
     /// </example>
     public bool TryToFit(int maximumLength)
     {
-        for (var complexity = GetTemplateComplexity(); complexity >= 1; --complexity)
+        var complexity = GetTemplateComplexity();
+        while (true)
         {
             if (TotalLength <= maximumLength)
                 return true;
-            PruneAndRecompute(complexity-1);
+            if (complexity <= 0)
+                return false;
+            complexity -= 1;
+            PruneAndRecompute(complexity);
         }
-
-        return false;
     }
 
     /// <summary>
