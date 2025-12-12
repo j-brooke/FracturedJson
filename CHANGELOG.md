@@ -1,5 +1,30 @@
 # FracturedJson Change Log
 
+## 5.0.0
+
+### Features
+
+Properties of expanded objects (ones that aren't inlined or table-formatted) are now aligned so that their values begin in the same column.  This makes for a more consistent look between table-formatted and expanded objects.  The new setting `MaxPropNamePadding` controls how much space FracturedJson is allowed to add, since it looks bad and wastes space if some property names are much longer than others.  (Set to `-1` to disable this feature.)
+
+Example:
+```json
+{
+  "Name"                     : "*",
+  "PlayerTeamId"             : 2,
+  "AttackersMustNotReachGoal": false,
+  "MaximumUnitTypeCount"     : {}
+}
+```
+
+### Settings changes
+
+* New: `MaxPropNamePadding` - limits expanded property alignment when property names differ greatly in length.  (Doesn't apply to table formatting.)
+* New: `ColonBeforePropNamePadding` - controls where property name padding goes relative to the colon.
+* Removed: `OmitTrailingWhitespace` - Trailing whitespace is always removed now.
+* Removed: `MaxInlineLength` - Stopped being useful once `MaxTotalLineLength` was introduced a few versions ago.
+* Default changed: `MaxCompactArrayComplexity` - now defaults to `2` instead of `1`.
+* Default changed: `NumberListAlignment` - now defaults to `Decimal` instead of `Normalize`.  There are many cases where changing numbers' representations can alter how software treats them.  `Decimal` always preserves exactly how numbers were written in their source documents, so it's a safer default.
+
 ## 4.1.1
 
 ### Bug Fix
