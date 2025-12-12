@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FracturedJson;
 using Mono.Options;
 
@@ -15,7 +18,9 @@ namespace FracturedJsonCli
     {
         public int Run(string[] args)
         {
-            DetermineSettings(args);
+            var keepGoing = DetermineSettings(args);
+            if (!keepGoing)
+                return 0;
 
             string inputText;
             if (_inputFile != null)
@@ -75,6 +80,14 @@ namespace FracturedJsonCli
             }
         }
 
+        private static readonly JsonSerializerOptions _configDeserializeOptions = new()
+        {
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
         private FracturedJsonOptions _fjOpts = new FracturedJsonOptions();
         private string? _inputFile;
         private string? _outputFile;
@@ -86,14 +99,21 @@ namespace FracturedJsonCli
             var showHelp = false;
             var noPadding = false;
             var allowComments = false;
+            string? configFile = null;
 
-            var cliOpts = new OptionSet()
+            var primeCliOpts = new OptionSet()
+            {
+                { "h|help", "show this help info and exit", _ => showHelp = true },
+                { "f|file=", "input from file instead of stdin", s => _inputFile = s },
+                { "o|outfile=", "write output to file", s => _outputFile = s },
+                { "config=", "use FracturedJsonOptions from this file", s => configFile = s },
+            };
+
+            var mainCliOpts = new OptionSet()
             {
                 { "a|allow", "allow comments and trailing commas", _ => allowComments = true },
                 { "c|complexity=", "maximum inline complexity", (int n) => _fjOpts.MaxInlineComplexity = n },
                 { "e|expand=", "always-expand depth", (int n) => _fjOpts.AlwaysExpandDepth = n },
-                { "f|file=", "input from file instead of stdin", s => _inputFile = s },
-                { "h|help", "show this help info and exit", _ => showHelp = true },
                 {
                     "j|justify=", "number list justification [l,r,d,n]", s =>
                         _fjOpts.NumberListAlignment = s.ToUpper() switch
@@ -126,7 +146,6 @@ namespace FracturedJsonCli
                     (int n) => _fjOpts.MaxCompactArrayComplexity = n
                 },
                 { "n|name-padding=", "max property name padding", (int n) => _fjOpts.MaxPropNamePadding = n},
-                { "o|outfile=", "write output to file", s => _outputFile = s },
                 { "p|no-padding", "don't include padding spaces", _ => noPadding = true },
                 {
                     "s|space=",
@@ -141,14 +160,29 @@ namespace FracturedJsonCli
                 { "z|speed-test", "write timer data instead of JSON output", _ => _speedTest = true },
             };
 
-            cliOpts.Parse(args);
+            var leftoverArgs = primeCliOpts.Parse(args) ?? new List<string>();
 
             if (showHelp)
             {
                 ShowHelpPrefix();
-                cliOpts.WriteOptionDescriptions(Console.Out);
+                primeCliOpts.WriteOptionDescriptions(Console.Out);
+                mainCliOpts.WriteOptionDescriptions(Console.Out);
                 return false;
             }
+
+            if (configFile != null)
+            {
+                var optsFromFile = ReadConfigFile(configFile);
+                if (optsFromFile == null)
+                {
+                    Console.Error.WriteLine("Could not find config file: " + configFile);
+                    return false;
+                }
+
+                _fjOpts = optsFromFile;
+            }
+
+            mainCliOpts.Parse(leftoverArgs);
 
             if (noPadding)
             {
@@ -168,6 +202,16 @@ namespace FracturedJsonCli
             return true;
         }
 
+        private FracturedJsonOptions? ReadConfigFile(string fileName)
+        {
+            var file = new FileInfo(fileName);
+            if (!file.Exists)
+                return null;
+            var fileContent = File.ReadAllText(file.FullName);
+            var fjOpts = JsonSerializer.Deserialize<FracturedJsonOptions>(fileContent, _configDeserializeOptions);
+            return fjOpts;
+        }
+
         private static void ShowHelpPrefix()
         {
             var lines = new[]
@@ -176,7 +220,9 @@ namespace FracturedJsonCli
                 "Usage:",
                 "  FracturedJsonCli [OPTIONS]",
                 "",
-                "Formats JSON to stdout from stdin, or from a file if --file is used.",
+                "Formats JSON producing highly readable, reasonably compact output.",
+                "Input comes from STDIN unless the --file switch is used.",
+                "Output goes to STDOUT unless the --outfile switch is used.",
                 "",
                 "Options:",
             };
