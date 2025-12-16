@@ -4,15 +4,23 @@
 
 ### Features
 
-Properties of expanded objects (ones that aren't inlined or table-formatted) are now aligned so that their values begin in the same column.  This makes for a more consistent look between table-formatted and expanded objects.  The new setting `MaxPropNamePadding` controls how much space FracturedJson is allowed to add, since it looks bad and wastes space if some property names are much longer than others.  (Set to `-1` to disable this feature.)
+Properties of expanded objects (ones that aren't inlined or table-formatted) are now aligned so that their values begin in the same column.  This makes for a more consistent look between table-formatted and expanded objects.  The new setting `MaxPropNamePadding` controls how much space FracturedJson is allowed to add, since it looks bad and wastes space if some property names are much longer than others.  (Set to `-1` to disable this feature.  Use `ColonBeforePropNamePadding` to put colons next to the property names instead of in a line of their own.)
 
 Example:
 ```json
 {
-  "Name"                     : "*",
-  "PlayerTeamId"             : 2,
-  "AttackersMustNotReachGoal": false,
-  "MaximumUnitTypeCount"     : {}
+  "ModuleId"         : "armor",
+  "Name"             : "",
+  "FreeformLocations": [
+    [11,  2], [11,  3], [11,  4], [11,  5], [11,  6], [11,  7], [11,  8], [11,  9],
+    [11, 10], [11, 11], [11, 12], [11, 13], [11, 14], [ 1, 14], [ 1, 13], [ 1, 12],
+    [ 1, 11], [ 1, 10], [ 1,  9], [ 1,  8], [ 1,  7], [ 1,  6], [ 1,  5], [ 1,  4],
+    [ 1,  3], [ 1,  2], [ 4,  2], [ 5,  2], [ 6,  2], [ 7,  2], [ 8,  2], [ 8,  3],
+    [ 7,  3], [ 6,  3], [ 5,  3], [ 4,  3], [ 0,  4], [ 0,  5], [ 0,  6], [ 0,  7],
+    [ 0,  8], [12,  8], [12,  7], [12,  6], [12,  5], [12,  4]
+  ],
+  "Orientation"      : "Fore",
+  "Seed"             : 272691529
 }
 ```
 
@@ -24,6 +32,7 @@ Example:
 * Removed: `MaxInlineLength` - Stopped being useful once `MaxTotalLineLength` was introduced a few versions ago.
 * Default changed: `MaxCompactArrayComplexity` - now defaults to `2` instead of `1`.
 * Default changed: `NumberListAlignment` - now defaults to `Decimal` instead of `Normalize`.  There are many cases where changing numbers' representations can alter how software treats them.  `Decimal` always preserves exactly how numbers were written in their source documents, so it's a safer default.
+* Default changed: `TableCommaPlacement` - now defaults to `BeforePaddingExceptNumbers` instead of `AfterPadding`.  It looks nicer when `NumberListAlignment=Decimal`.
 
 ## 4.1.1
 
