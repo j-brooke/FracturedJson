@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FracturedJson;
@@ -13,14 +14,16 @@ namespace FracturedJsonCli
     /// <summary>
     /// Commandline app to format JSON using FracturedJson.Formatter.  Output is to standard out, or a file specified
     /// by the --outfile switch.  Input is from either standard in, or from a file if using the --file switch.
+    /// Options may be set by command line switches, or by a config file.  The config file may be explicitly
+    /// given with the --config switch; if not, a default config file may be used.
     /// </summary>
     public class Cli
     {
         public int Run(string[] args)
         {
-            var keepGoing = DetermineSettings(args);
-            if (!keepGoing)
-                return 0;
+            var exitCode = DetermineSettings(args);
+            if (exitCode.HasValue)
+                return exitCode.Value;
 
             string inputText;
             if (_inputFile != null)
@@ -88,18 +91,30 @@ namespace FracturedJsonCli
             Converters = { new JsonStringEnumConverter() }
         };
 
+        private static readonly string[] _implicitConfigFileNames = new[]
+        {
+            ".fracturedjson",
+            ".fracturedjson.jsonc",
+            ".fracturedjson.json",
+        };
+
         private FracturedJsonOptions _fjOpts = new FracturedJsonOptions();
         private string? _inputFile;
         private string? _outputFile;
         private bool _minify;
         private bool _speedTest;
 
-        private bool DetermineSettings(string[] args)
+        /// <summary>
+        /// Parse command line arguments.  Formatting options are taken from a config file first, if one exists,
+        /// and then overridden by the commandline switches.
+        /// </summary>
+        private int? DetermineSettings(string[] args)
         {
             var showHelp = false;
             var noPadding = false;
             var allowComments = false;
             string? configFile = null;
+            var noConfig = false;
 
             var primeCliOpts = new OptionSet()
             {
@@ -107,6 +122,9 @@ namespace FracturedJsonCli
                 { "f|file=", "input from file instead of stdin", s => _inputFile = s },
                 { "o|outfile=", "write output to file", s => _outputFile = s },
                 { "config=", "use FracturedJsonOptions from this file", s => configFile = s },
+                { "no-config", "don't load settings from a config file", _ => noConfig = true },
+                { "minify", "remove unnecessary space but preserve comments", _ => _minify = true },
+                { "z|speed-test", "write timer data instead of JSON output", _ => _speedTest = true },
             };
 
             var mainCliOpts = new OptionSet()
@@ -156,32 +174,44 @@ namespace FracturedJsonCli
                 { "t|tab", "use tabs for indentation", _ => _fjOpts.UseTabToIndent = true },
                 { "u|unix", "use Unix line endings (LF)", _ => _fjOpts.JsonEolStyle = EolStyle.Lf },
                 { "w|windows", "use Windows line endings (CRLF)", _ => _fjOpts.JsonEolStyle = EolStyle.Crlf },
-                { "minify", "remove unnecessary space but preserve comments", _ => _minify = true },
-                { "z|speed-test", "write timer data instead of JSON output", _ => _speedTest = true },
             };
 
+            // We need to process the commandline arguments in two stages.  The first is about files and modes
+            // of operation.
             var leftoverArgs = primeCliOpts.Parse(args) ?? new List<string>();
 
+            // If they're asking for help, print it out and then exit.
             if (showHelp)
             {
                 ShowHelpPrefix();
                 primeCliOpts.WriteOptionDescriptions(Console.Out);
                 mainCliOpts.WriteOptionDescriptions(Console.Out);
-                return false;
+                return 0;
             }
 
+            // If the user requested we get settings from a specific config file, use that.  Otherwise, look for
+            // a default config file in the appropriate directory, or its ancestor directories.
             if (configFile != null)
             {
                 var optsFromFile = ReadConfigFile(configFile);
                 if (optsFromFile == null)
                 {
                     Console.Error.WriteLine("Could not find config file: " + configFile);
-                    return false;
+                    return 1;
                 }
 
                 _fjOpts = optsFromFile;
             }
+            else if (noConfig)
+            {
+                _fjOpts = new FracturedJsonOptions();
+            }
+            else
+            {
+                _fjOpts = ScanForImplicitConfigFile(_inputFile) ?? new FracturedJsonOptions();
+            }
 
+            // Now that we've got settings from config files loaded, override them with commandline switches.
             mainCliOpts.Parse(leftoverArgs);
 
             if (noPadding)
@@ -199,17 +229,71 @@ namespace FracturedJsonCli
                 _fjOpts.PreserveBlankLines = true;
             }
 
-            return true;
+            return null;
         }
 
+        /// <summary>
+        /// Reads FracturedJsonOptions from the specified file.
+        /// </summary>
         private FracturedJsonOptions? ReadConfigFile(string fileName)
         {
             var file = new FileInfo(fileName);
             if (!file.Exists)
                 return null;
-            var fileContent = File.ReadAllText(file.FullName);
-            var fjOpts = JsonSerializer.Deserialize<FracturedJsonOptions>(fileContent, _configDeserializeOptions);
-            return fjOpts;
+
+            try
+            {
+                var fileContent = File.ReadAllText(file.FullName);
+                var fjOpts = JsonSerializer.Deserialize<FracturedJsonOptions>(fileContent, _configDeserializeOptions);
+                return fjOpts;
+            }
+            catch (Exception)
+            {
+                Console.Error.WriteLine("Error reading config file for FracturedJsonCli");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Looks for a config file in the starting file's directory, if any, or the current working directory.
+        /// If not found there, that directory's parent is checked, etc., up to the file system root.
+        /// </summary>
+        private FracturedJsonOptions? ScanForImplicitConfigFile(string? startingFileLoc)
+        {
+            DirectoryInfo? directory;
+            if (startingFileLoc != null)
+            {
+                var startingFile = new FileInfo(startingFileLoc);
+                if (!startingFile.Exists)
+                    return null;
+                directory = startingFile.Directory;
+            }
+            else
+            {
+                directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+            }
+
+            while (directory != null && directory.Exists)
+            {
+                try
+                {
+                    foreach (var fileName in _implicitConfigFileNames)
+                    {
+                        var potentialConfigFile = new FileInfo(Path.Combine(directory.FullName, fileName));
+                        if (potentialConfigFile.Exists)
+                            return ReadConfigFile(potentialConfigFile.FullName)!;
+                    }
+                }
+                catch (Exception e) when(e is UnauthorizedAccessException or SecurityException)
+                {
+                    // Do nothing - silently skip this directory if the user doesn't have access.  They might
+                    // have access in the parent directory.
+                }
+
+                directory = directory.Parent;
+            }
+
+            return null;
         }
 
         private static void ShowHelpPrefix()

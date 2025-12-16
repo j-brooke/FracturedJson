@@ -1,0 +1,120 @@
+/*
+ * Sample config file for FracturedJsonCli.  Uncomment any properties you need.
+ * Properties not listed will have the defaults from the FracturedJsonOptions 
+ * constructor.
+ *
+ * + Use the --config switch to tell the app to use a specific config file.
+ * + Give it one of the following names to have it automatically used: 
+ *   .fracturedjson, .fracturedjson.jsonc, .fracturedjson.json
+ * + The app will search for such a file in the appropriate directory and its 
+ *   ancestors until one is found.  It starts in the input file's directory 
+ *   if -f|--file is used, or the current directory otherwise.
+ *
+ * See https://github.com/j-brooke/FracturedJson/wiki/Options for more info.
+ */
+{
+    /* ### Fundamental settings ### */
+
+    /* Max number of character per line (when possible). */
+    "MaxTotalLineLength": 120,
+
+    /* Number of spaces per indent level. */
+    //"IndentSpaces": 4,
+
+    /* Set to true to use the tab character instead of spaces to indent. */
+    //"UseTabToIndent": false,
+
+    /* Type of line-ending characters for output.  
+     * Must be one of: "Default", "Crlf", "Lf" */
+    //"JsonEolStyle": "Default",
+
+
+    /* ### Complexity settings ###
+     * Complexity refers to deepest nesting level allowed for each type of 
+     * formatting.  (Use -1 to disable the feature.)
+     *
+     * Simple items - strings, numbers, nulls, booleans, empty arrays/objects - 
+     * have a complexity of 0.
+     * Arrays/objects that contain only simple items have a complexity of 1.
+     * Arrays/objects that contain arrays/objects that contain simple items have
+     * a complexity of 2.  
+     * Etc. 
+     */
+
+    /* Max complexity for an object/array to be written all on one line. */
+    //"MaxInlineComplexity": 2,
+
+    /* Max complexity for an array to be written across multiple lines with
+     * multiple items per line.*/ 
+    //"MaxCompactArrayComplexity": 2,
+
+    /* Max complexity for several similar items in an array/object to be written
+     * as a table, with properties and sub-properties lined up. */
+    //"MaxTableRowComplexity": 2,
+
+
+    /* ### Alignment settings ### */
+
+    /* Max difference in property name length to align prop values. */
+    //"MaxPropNamePadding": 16,
+    
+    /* Set to true to keep colons right next to property names. */
+    //"ColonBeforePropNamePadding": false,
+    
+    /* Controls where commas a placed relative to padding spaces. Must be one 
+     * of: "BeforePadding", "AfterPadding", "BeforePaddingExceptNumbers". */
+    //"TableCommaPlacement": "BeforePadding",
+    
+    /* Controls how numbers are formatted.  Must be one of: "Left", "Right", 
+     * "Decimal", "Normalize". */
+    //"NumberListAlignment": "Decimal",
+
+    
+    /* ### Padding settings ### */
+
+    /* True puts a space between an array/object's brackets and its contents
+     * when it contains nested arrays/objects. */
+    //"NestedBracketPadding": true,
+
+    /* True puts a space between an array/object's brackets and its contents
+     * when it contains only simple values. */
+    //"SimpleBracketPadding": false,
+
+    /* True puts a space after colons. */
+    //"ColonPadding": true,
+
+    /* True puts a space after commas. */
+    //"CommaPadding": true,
+
+    /* True puts a space between comments and the JSON tokens that precede or
+     * follow them. */
+    //"CommentPadding": true,
+
+    
+    /* ### Other settings ### */
+
+    /* Compact multiline arrays will only be used if there's room for at least
+     * this many items per row. */
+    //"MinCompactArrayRowItems": 3,
+
+    /* Forces expanded formatting (not inlined, etc.) for near-root elements.
+     * 0 means always expand the root element. 1 means always expand the root
+     * and its children.  Etc. */
+    //"AlwaysExpandDepth": -1,
+
+    /* String to be inserted at the beginning of each line.  (This might 
+     * make the output invalid JSON or change the meaning, though.) */
+    //"PrefixString": "",
+
+    /* Determines how comments are handled.  Comments aren't an official 
+     * part of the JSON standard, but they're a common extension.
+     * Must be one of: "TreatAsError", "Remove", "Preserve". */
+    //"CommentPolicy": "TreatAsError",
+
+    /* If true, empty lines from the input will be included in the output. */
+    //"PreserveBlankLines": false,
+
+    /* If true, extra commas at the ends of arrays/objects won't generate
+     * errors.  (Not allowed in official JSON, but a common extension.) */
+    //"AllowTrailingCommas": false,
+}
