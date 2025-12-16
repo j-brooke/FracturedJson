@@ -63,7 +63,7 @@ public record FracturedJsonOptions
     /// Determines whether commas in table-formatted rows are lined up in their own column after padding or placed
     /// directly after each element, before padding spaces.
     /// </summary>
-    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePadding;
+    public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePaddingExceptNumbers;
 
     /// <summary>
     /// Minimum items per row to format an array with multiple items per line across multiple lines.  This is a
