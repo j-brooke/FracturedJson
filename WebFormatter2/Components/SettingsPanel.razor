@@ -32,6 +32,7 @@
             <div><input type="checkbox" @bind="State.Options.CommentPadding">Comment Padding</div>
             <div><input type="checkbox" @bind="State.Options.UseTabToIndent">Use Tab To Indent</div>
             <div><input type="number" class="number" @bind="State.Options.IndentSpaces" min="0">Indent Spaces</div>
+            <div><input type="number" class="number" @bind="State.Options.MaxPropNamePadding">Max Property Name Padding</div>
 
             <div class="section-label">Miscellaneous</div>
             <div>
@@ -53,6 +54,7 @@
                 </InputSelect>
                 <label for="table-comma">Table Commas</label>
             </div>
+            <div><input type="checkbox" @bind="State.Options.ColonBeforePropNamePadding">Colon Before Prop Padding</div>
 
             <div><input type="checkbox" @bind="AllowComments">Allow Comments</div>
             <div><input type="checkbox" @bind="State.Options.PreserveBlankLines">Preserve Blank Lines</div>
