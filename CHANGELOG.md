@@ -34,6 +34,17 @@ Example:
 * Default changed: `NumberListAlignment` - now defaults to `Decimal` instead of `Normalize`.  There are many cases where changing numbers' representations can alter how software treats them.  `Decimal` always preserves exactly how numbers were written in their source documents, so it's a safer default.
 * Default changed: `TableCommaPlacement` - now defaults to `BeforePaddingExceptNumbers` instead of `AfterPadding`.  It looks nicer when `NumberListAlignment=Decimal`.
 
+### Commandline App
+
+Added the ability to read options from a config file.  Use `--config` to name a specific file.  Otherwise,
+FracturedJsonCli looks for a default file named `.fracturedjson.jsonc`, `.fracturedjson.json`, or `.fracturedjson`,
+walking up the directory hierarchy until one is found.  It starts from the current directory if input is given
+by `STDIN`, or the input file's directory if `--file` is used.  Use `--no-conifg` if you don't want to use a default
+file.  Commandline switches override the file's values.
+
+You can use `Example-Config-File.jsonc` as a template, if you want, and just uncomment the settings you care about.
+Comments and trailing commas are allowed.
+
 ## 4.1.1
 
 ### Bug Fix
