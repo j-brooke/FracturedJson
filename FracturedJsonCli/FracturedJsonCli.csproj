@@ -4,9 +4,9 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
-        <AssemblyVersion>5.1.0</AssemblyVersion>
+        <AssemblyVersion>5.0.0</AssemblyVersion>
         <IsPackable>false</IsPackable>
-        <PackageVersion>5.1.0</PackageVersion>
+        <PackageVersion>5.0.0</PackageVersion>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
