@@ -79,6 +79,7 @@ public class LengthAndComplexityTests
     [DataRow(90, 3, 4)] // Two row compact multiline array, + two for []
     [DataRow(70, 3, 5)] // Three row compact multiline array, + two for []
     [DataRow(50, 3, 9)] // Not a compact multiline array.  1 per inner array, + two for [].
+    [DataRow(57, 3, 9)] // Not a compact multiline array.  1 per inner array, + two for [].
     [DataRow(50, 2, 6)] // Four row compact multiline array, + two for []
     public void CorrectLineCountForLineLength(int totalLength, int minItemsPerRow, int expectedNumberOfLines)
     {
