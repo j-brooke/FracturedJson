@@ -1,0 +1,51 @@
+﻿using System.Diagnostics;
+using FracturedJson;
+
+namespace CliNew;
+
+public static class CliWorker
+{
+    public static TimeSpan Process(CliSettings settings, TextReader stdIn, TextWriter stdOut)
+    {
+        StreamWriter? fileWriter = null;
+        try
+        {
+            string inputJson;
+            if (settings.InputFile != null)
+            {
+                using var inFileReader = new StreamReader(settings.InputFile.FullName, true);
+                inputJson = inFileReader.ReadToEnd();
+            }
+            else
+            {
+                inputJson = stdIn.ReadToEnd();
+            }
+
+            TextWriter outWriter;
+            if (settings.OutputFile != null)
+            {
+                fileWriter = new StreamWriter(settings.OutputFile.FullName);
+                outWriter = fileWriter;
+            }
+            else
+            {
+                outWriter = stdOut;
+            }
+
+            var timer = Stopwatch.StartNew();
+
+            // TODO: wide char support?
+            var formatter = new Formatter() { Options = settings.FjOptions };
+            if (settings.Minify)
+                formatter.Minify(inputJson, outWriter);
+            else
+                formatter.Reformat(inputJson, 0, outWriter);
+
+            return timer.Elapsed;
+        }
+        finally
+        {
+            fileWriter?.Dispose();
+        }
+    }
+}

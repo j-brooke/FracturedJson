@@ -3,4 +3,5 @@ bin
 obj
 **/*.user
 FracturedJsonCli/scratch
+CliNew/scratch
 **/appsettings.Development.json
