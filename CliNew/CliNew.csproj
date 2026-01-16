@@ -9,6 +9,21 @@
         <Authors>FracturedJson</Authors>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>fracjson</ToolCommandName>
+        <RollForward>Major</RollForward>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <PublishTrimmed>true</PublishTrimmed>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <AllowedReferenceRelatedFileExtensions>.none</AllowedReferenceRelatedFileExtensions>
+    </PropertyGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\FracturedJson\FracturedJson.csproj" />
     </ItemGroup>
@@ -16,5 +31,4 @@
     <ItemGroup>
       <PackageReference Include="System.CommandLine" Version="2.0.2" />
     </ItemGroup>
-
 </Project>
