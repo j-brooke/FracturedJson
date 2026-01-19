@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.CommandLine.Help;
 using System.Security;
 using System.Text.Json;
 using FracturedJson;
@@ -9,37 +10,9 @@ public static class CliParser
 {
     public static CliSettings Parse(string[] args)
     {
-        var inFileArg = new Argument<FileInfo>("inputFile") { Arity = ArgumentArity.ZeroOrOne };
-        inFileArg.AcceptExistingOnly();
+        var parseResult = _rootCommand.Parse(args);
 
-        var configFileOpt = new Option<FileInfo>("--config")
-        {
-            Description = "File containing FracturedJsonOptions",
-            Arity = ArgumentArity.ZeroOrOne,
-        };
-
-        var noConfigFlagOpt = new Option<bool>("--no-config")
-        {
-            Description = "Do not use configuration file for FracturedJsonOptions",
-            Arity = ArgumentArity.ZeroOrOne,
-            DefaultValueFactory = (_ => false),
-        };
-
-        var outputFileOpt = new Option<FileInfo>("--output-file")
-        {
-            Description = "File to write output to (overwrite)",
-            Arity = ArgumentArity.ZeroOrOne,
-        };
-
-        var root = new RootCommand("Reformats a JSON document to make it highly human-readable.")
-        {
-            inFileArg,
-            configFileOpt,
-            noConfigFlagOpt,
-            outputFileOpt,
-        };
-
-        var parseResult = root.Parse(args);
+        // Write errors to StdErr if there are any, and then exit.
         if (parseResult.Errors.Count > 0)
         {
             foreach(var errorMsg in parseResult.Errors)
@@ -47,17 +20,31 @@ public static class CliParser
             return new CliSettings() { ImmediateExitReturnCode = CliReturn.UsageError };
         }
 
-        var inputFile = parseResult.GetValue(inFileArg);
+        // If a help or version switch exists, let System.CommandLine's default behavior handle them.
+        var helpOpt = (HelpOption?)_rootCommand.Options.FirstOrDefault(opt => opt is HelpOption);
+        var versionOpt = (VersionOption?)_rootCommand.Options.FirstOrDefault(opt => opt is VersionOption);
 
+        var hasHelp = helpOpt != null && parseResult.GetResult(helpOpt) != null;
+        var hasVersion = versionOpt != null && parseResult.GetResult(versionOpt) != null;
+        if (hasHelp || hasVersion)
+        {
+            parseResult.Invoke();
+            return new CliSettings() { ImmediateExitReturnCode = CliReturn.Success };
+        }
+
+        // Figure out the starting FracturedJsonOptions from config files, if any.
+        var inputFile = parseResult.GetValue(_inFileArg);
         var fjOpts = GetFjOptionsDefaults(
-            parseResult.GetRequiredValue(noConfigFlagOpt),
-            parseResult.GetValue(configFileOpt),
+            parseResult.GetRequiredValue(_noConfigFlagOpt),
+            parseResult.GetValue(_configFileOpt),
             inputFile);
+
+        // TODO: Override fjOpts based on CLI switches.
 
         var settings = new CliSettings()
         {
             InputFile = inputFile,
-            OutputFile = parseResult.GetValue(outputFileOpt),
+            OutputFile = parseResult.GetValue(_outputFileOpt),
             FjOptions = fjOpts,
         };
 
@@ -70,6 +57,7 @@ public static class CliParser
         ".fracturedjson.jsonc",
         ".fracturedjson.json"
     ];
+
 
     private static FracturedJsonOptions GetFjOptionsDefaults(bool noConfigFlag, FileInfo? explicitConfigFile,
         FileInfo? inputFile)
@@ -128,4 +116,48 @@ public static class CliParser
 
         return null;
     }
+
+    // Option Declarations region: defines all commandline switches and their behavior.
+    #region OptionsDeclarations
+    private static readonly Argument<FileInfo> _inFileArg = MakeInFileArg();
+    private static Argument<FileInfo> MakeInFileArg()
+    {
+        return new Argument<FileInfo>("inputFile") { Arity = ArgumentArity.ZeroOrOne }
+            .AcceptExistingOnly();
+    }
+
+    private static readonly Option<FileInfo> _configFileOpt = MakeConfigFileOpt();
+    private static Option<FileInfo> MakeConfigFileOpt()
+    {
+        return new Option<FileInfo>("--config")
+            {
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "File containing FracturedJsonOptions",
+            }
+            .AcceptExistingOnly();
+    }
+
+    private static readonly Option<bool> _noConfigFlagOpt = new("--no-config")
+    {
+        Description = "Do not use configuration file for FracturedJsonOptions",
+        Arity = ArgumentArity.ZeroOrOne,
+        DefaultValueFactory = (_ => false),
+    };
+
+    private static readonly Option<FileInfo> _outputFileOpt = new("--output-file")
+    {
+        Description = "File to write output to (overwrite)",
+        Arity = ArgumentArity.ZeroOrOne,
+    };
+
+    private static readonly RootCommand _rootCommand =
+        new("Reformats a JSON document to make it highly human-readable.")
+        {
+            _inFileArg,
+            _configFileOpt,
+            _noConfigFlagOpt,
+            _outputFileOpt,
+        };
+    #endregion
+
 }
