@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Help;
+using System.Reflection;
 using System.Security;
 using System.Text.Json;
 using FracturedJson;
@@ -26,7 +27,16 @@ public static class CliParser
 
         var hasHelp = helpOpt != null && parseResult.GetResult(helpOpt) != null;
         var hasVersion = versionOpt != null && parseResult.GetResult(versionOpt) != null;
-        if (hasHelp || hasVersion)
+        if (hasHelp)
+        {
+            parseResult.Invoke();
+
+            var libVersion = Assembly.GetAssembly(typeof(Formatter))?.GetName().Version?.ToString() ?? "unknown";
+            Console.WriteLine($"FracturedJson library version: {libVersion}");
+
+            return new CliSettings() { ImmediateExitReturnCode = CliReturn.Success };
+        }
+        else if (hasVersion)
         {
             parseResult.Invoke();
             return new CliSettings() { ImmediateExitReturnCode = CliReturn.Success };
@@ -39,7 +49,7 @@ public static class CliParser
             parseResult.GetValue(_configFileOpt),
             inputFile);
 
-        // TODO: Override fjOpts based on CLI switches.
+        ApplyFjOptsFromCommandline(fjOpts, parseResult);
 
         var settings = new CliSettings()
         {
@@ -117,6 +127,37 @@ public static class CliParser
         return null;
     }
 
+    private static void ApplyFjOptsFromCommandline(FracturedJsonOptions fjOpts, ParseResult parseResult)
+    {
+        fjOpts.JsonEolStyle = parseResult.GetValue(_jsonEolStyleOpt) ?? fjOpts.JsonEolStyle;
+        fjOpts.MaxTotalLineLength = parseResult.GetValue(_maxTotalLineLengthOpt) ?? fjOpts.MaxTotalLineLength;
+        fjOpts.MaxInlineComplexity = parseResult.GetValue(_maxInlineComplexityOpt) ?? fjOpts.MaxInlineComplexity;
+        fjOpts.MaxCompactArrayComplexity =
+            parseResult.GetValue(_maxCompactArrayComplexityOpt) ?? fjOpts.MaxCompactArrayComplexity;
+        fjOpts.MaxTableRowComplexity = parseResult.GetValue(_maxTableRowComplexityOpt) ?? fjOpts.MaxTableRowComplexity;
+        fjOpts.MaxPropNamePadding = parseResult.GetValue(_maxPropNamePaddingOpt) ?? fjOpts.MaxPropNamePadding;
+        fjOpts.ColonBeforePropNamePadding =
+            parseResult.GetValue(_colonBeforePropNamePaddingOpt) ?? fjOpts.ColonBeforePropNamePadding;
+        fjOpts.TableCommaPlacement = (TableCommaPlacement?)parseResult.GetValue(_tableCommaPlacementOpt) ??
+                                     fjOpts.TableCommaPlacement;
+        fjOpts.MinCompactArrayRowItems =
+            parseResult.GetValue(_minCompactArrayRowItemsOpt) ?? fjOpts.MinCompactArrayRowItems;
+        fjOpts.AlwaysExpandDepth = parseResult.GetValue(_alwaysExpandDepthOpt) ?? fjOpts.AlwaysExpandDepth;
+        fjOpts.NestedBracketPadding = parseResult.GetValue(_nestedBracketPaddingOpt) ?? fjOpts.NestedBracketPadding;
+        fjOpts.SimpleBracketPadding = parseResult.GetValue(_simpleBracketPaddingOpt) ?? fjOpts.SimpleBracketPadding;
+        fjOpts.ColonPadding = parseResult.GetValue(_colonPaddingOpt) ?? fjOpts.ColonPadding;
+        fjOpts.CommaPadding = parseResult.GetValue(_commaPaddingOpt) ?? fjOpts.CommaPadding;
+        fjOpts.CommentPadding = parseResult.GetValue(_commentPaddingOpt) ?? fjOpts.CommentPadding;
+        fjOpts.NumberListAlignment = (NumberListAlignment?)parseResult.GetValue(_numberListAlignmentOpt) ??
+                                     fjOpts.NumberListAlignment;
+        fjOpts.IndentSpaces = parseResult.GetValue(_indentSpacesOpt) ?? fjOpts.IndentSpaces;
+        fjOpts.UseTabToIndent = parseResult.GetValue(_useTabToIndentOpt) ?? fjOpts.UseTabToIndent;
+        fjOpts.PrefixString = parseResult.GetValue(_prefixStringOpt) ?? fjOpts.PrefixString;
+        fjOpts.CommentPolicy = parseResult.GetValue(_commentPolicyOpt) ?? fjOpts.CommentPolicy;
+        fjOpts.PreserveBlankLines = parseResult.GetValue(_preserveBlankLinesOpt) ?? fjOpts.PreserveBlankLines;
+        fjOpts.AllowTrailingCommas = parseResult.GetValue(_allowTrailingCommasOpt) ?? fjOpts.AllowTrailingCommas;
+    }
+
     // Option Declarations region: defines all commandline switches and their behavior.
     #region OptionsDeclarations
     private static readonly Argument<FileInfo> _inFileArg = MakeInFileArg();
@@ -150,6 +191,73 @@ public static class CliParser
         Arity = ArgumentArity.ZeroOrOne,
     };
 
+    private static readonly Option<EolStyle?> _jsonEolStyleOpt = new("--eol", "--JsonEolStyle")
+        { Description = "Character sequence for newlines", };
+
+    private static readonly Option<int?> _maxTotalLineLengthOpt = new("--length", "--MaxTotalLineLength", "-l")
+        { Description = "Maximum characters per line including indentation", };
+
+    private static readonly Option<int?> _maxInlineComplexityOpt = new("--inline-complexity", "--MaxInlineComplexity")
+        { Description = "Max nesting level for inline objects/arrays", };
+
+    private static readonly Option<int?> _maxCompactArrayComplexityOpt = new("--array-complexity", "--MaxCompactArrayComplexity")
+        { Description = "Max nesting level for arrays with multiple items per row", };
+
+    private static readonly Option<int?> _maxTableRowComplexityOpt = new("--table-complexity", "--MaxTableRowComplexity")
+        { Description = "Max nesting level for table formatting", };
+
+    private static readonly Option<int?> _maxPropNamePaddingOpt = new("--prop-padding", "--MaxPropNamePadding")
+        { Description = "Max number of spaces to line up property values", };
+
+    private static readonly Option<bool?> _colonBeforePropNamePaddingOpt = new("--colon-before-padding", "--ColonBeforePropNamePadding")
+        { Description = "Put colons next to property names instead of after padding", };
+
+    private static readonly Option<TableCommaPlacementCli?> _tableCommaPlacementOpt = new(
+        "--table-comma", "--TableCommaPlacement")
+        { Description = "Where to put commas in tables relative to padding", };
+
+    private static readonly Option<int?> _minCompactArrayRowItemsOpt = new("--min-array-items", "--MinCompactArrayRowItems")
+        { Description = "Minimum items per row for compact arrays", };
+
+    private static readonly Option<int?> _alwaysExpandDepthOpt = new("--always-expand", "--AlwaysExpandDepth")
+        { Description = "Depth from root at which objects/arrays are always expanded", };
+
+    private static readonly Option<bool?> _nestedBracketPaddingOpt = new("--nested-padding", "--NestedBracketPadding")
+        { Description = "Spaces inside brackets for complex objects/arrays", };
+
+    private static readonly Option<bool?> _simpleBracketPaddingOpt = new("--simple-padding", "--SimpleBracketPadding")
+        { Description = "Spaces inside brackets for simple objects/arrays", };
+
+    private static readonly Option<bool?> _colonPaddingOpt = new("--colon-padding", "--ColonPadding")
+        { Description = "Space after colon", };
+
+    private static readonly Option<bool?> _commaPaddingOpt = new("--comma-padding", "--CommaPadding")
+        { Description = "Space after comma", };
+
+    private static readonly Option<bool?> _commentPaddingOpt = new("--comment-padding", "--CommentPadding")
+        { Description = "Space between comment and nearby values", };
+
+    private static readonly Option<NumberListAlignmentCli?> _numberListAlignmentOpt = new("--number-alignment", "--NumberListAlignment")
+        { Description = "How sequences of numbers are aligned", };
+
+    private static readonly Option<int?> _indentSpacesOpt = new("--spaces", "--IndentSpaces")
+        { Description = "Number of spaces per indent level", };
+
+    private static readonly Option<bool?> _useTabToIndentOpt = new("--use-tabs", "--UseTabToIndent")
+        { Description = "Use a tab character to indent instead of spaces", };
+
+    private static readonly Option<string?> _prefixStringOpt = new("--prefix", "--PrefixString")
+        { Description = "String to put at the start of each line", };
+
+    private static readonly Option<CommentPolicy?> _commentPolicyOpt = new("--comment-policy", "--CommentPolicy")
+        { Description = "How comments should be handled", };
+
+    private static readonly Option<bool?> _preserveBlankLinesOpt = new("--preserve-blanks", "--PreserveBlankLines")
+        { Description = "Blank lines in input should be included in output", };
+
+    private static readonly Option<bool?> _allowTrailingCommasOpt = new("--trailing-commas", "--AllowTrailingCommas")
+        { Description = "Allow a comma after the last item in an array/object", };
+
     private static readonly RootCommand _rootCommand =
         new("Reformats a JSON document to make it highly human-readable.")
         {
@@ -157,6 +265,29 @@ public static class CliParser
             _configFileOpt,
             _noConfigFlagOpt,
             _outputFileOpt,
+
+            _jsonEolStyleOpt,
+            _maxTotalLineLengthOpt,
+            _maxInlineComplexityOpt,
+            _maxCompactArrayComplexityOpt,
+            _maxTableRowComplexityOpt,
+            _maxPropNamePaddingOpt,
+            _colonBeforePropNamePaddingOpt,
+            _tableCommaPlacementOpt,
+            _minCompactArrayRowItemsOpt,
+            _alwaysExpandDepthOpt,
+            _nestedBracketPaddingOpt,
+            _simpleBracketPaddingOpt,
+            _colonPaddingOpt,
+            _commaPaddingOpt,
+            _commentPaddingOpt,
+            _numberListAlignmentOpt,
+            _indentSpacesOpt,
+            _useTabToIndentOpt,
+            _prefixStringOpt,
+            _commentPolicyOpt,
+            _preserveBlankLinesOpt,
+            _allowTrailingCommasOpt,
         };
     #endregion
 
