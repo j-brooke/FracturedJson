@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using FracturedJson;
+using Wcwidth;
 
 namespace CliNew;
 
@@ -34,8 +35,11 @@ public static class CliWorker
 
             var timer = Stopwatch.StartNew();
 
-            // TODO: wide char support?
             var formatter = new Formatter() { Options = settings.FjOptions };
+
+            if (settings.EastAsianWideChars)
+                formatter.StringLengthFunc = FullUnicodeWidth;
+
             if (settings.Minify)
                 formatter.Minify(inputJson, outWriter);
             else
@@ -47,5 +51,10 @@ public static class CliWorker
         {
             fileWriter?.Dispose();
         }
+    }
+
+    private static int FullUnicodeWidth(string str)
+    {
+        return UnicodeCalculator.GetWidth(str);
     }
 }

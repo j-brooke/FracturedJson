@@ -56,6 +56,7 @@ public static class CliParser
             InputFile = inputFile,
             OutputFile = parseResult.GetValue(_outputFileOpt),
             Minify = parseResult.GetValue(_minifyOpt),
+            EastAsianWideChars = parseResult.GetValue(_wideCharOpt),
             WritePerformanceInfo = parseResult.GetValue(_timeOpt),
             FjOptions = fjOpts,
         };
@@ -203,6 +204,9 @@ public static class CliParser
     private static readonly Option<bool> _timeOpt = new("--time")
         { Description = "Write elapsed formatting time to stdout", };
 
+    private static readonly Option<bool> _wideCharOpt = new("--wide")
+        { Description = "Adjust display width for East Asian (CJK) wide characters" };
+
 
     private static readonly Option<EolStyle?> _jsonEolStyleOpt = new("--eol", "--JsonEolStyle")
         { Description = "Line ending style", };
@@ -280,6 +284,7 @@ public static class CliParser
             _outputFileOpt,
             _minifyOpt,
             _timeOpt,
+            _wideCharOpt,
 
             _jsonEolStyleOpt,
             _maxTotalLineLengthOpt,

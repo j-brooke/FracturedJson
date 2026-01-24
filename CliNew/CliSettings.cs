@@ -9,5 +9,6 @@ public class CliSettings
     public CliReturn? ImmediateExitReturnCode { get; set; }
     public bool Minify { get; set; }
     public bool WritePerformanceInfo { get; set; }
+    public bool EastAsianWideChars { get; set; }
     public FracturedJsonOptions FjOptions { get; set; } = new();
 }
