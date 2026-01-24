@@ -55,6 +55,8 @@ public static class CliParser
         {
             InputFile = inputFile,
             OutputFile = parseResult.GetValue(_outputFileOpt),
+            Minify = parseResult.GetValue(_minifyOpt),
+            WritePerformanceInfo = parseResult.GetValue(_timeOpt),
             FjOptions = fjOpts,
         };
 
@@ -153,7 +155,7 @@ public static class CliParser
         fjOpts.IndentSpaces = parseResult.GetValue(_indentSpacesOpt) ?? fjOpts.IndentSpaces;
         fjOpts.UseTabToIndent = parseResult.GetValue(_useTabToIndentOpt) ?? fjOpts.UseTabToIndent;
         fjOpts.PrefixString = parseResult.GetValue(_prefixStringOpt) ?? fjOpts.PrefixString;
-        fjOpts.CommentPolicy = parseResult.GetValue(_commentPolicyOpt) ?? fjOpts.CommentPolicy;
+        fjOpts.CommentPolicy = (CommentPolicy?)parseResult.GetValue(_commentPolicyOpt) ?? fjOpts.CommentPolicy;
         fjOpts.PreserveBlankLines = parseResult.GetValue(_preserveBlankLinesOpt) ?? fjOpts.PreserveBlankLines;
         fjOpts.AllowTrailingCommas = parseResult.GetValue(_allowTrailingCommasOpt) ?? fjOpts.AllowTrailingCommas;
     }
@@ -163,7 +165,11 @@ public static class CliParser
     private static readonly Argument<FileInfo> _inFileArg = MakeInFileArg();
     private static Argument<FileInfo> MakeInFileArg()
     {
-        return new Argument<FileInfo>("inputFile") { Arity = ArgumentArity.ZeroOrOne }
+        return new Argument<FileInfo>("inputFile")
+            {
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "Input JSON file (reads from stdin if omitted)",
+            }
             .AcceptExistingOnly();
     }
 
@@ -180,83 +186,90 @@ public static class CliParser
 
     private static readonly Option<bool> _noConfigFlagOpt = new("--no-config")
     {
-        Description = "Do not use configuration file for FracturedJsonOptions",
+        Description = "Ignore any config file; use only CLI / defaults",
         Arity = ArgumentArity.ZeroOrOne,
         DefaultValueFactory = (_ => false),
     };
 
-    private static readonly Option<FileInfo> _outputFileOpt = new("--output-file")
+    private static readonly Option<FileInfo> _outputFileOpt = new("--output-file", "-o")
     {
-        Description = "File to write output to (overwrite)",
+        Description = "Write output to this file (overwrites if exists)",
         Arity = ArgumentArity.ZeroOrOne,
     };
 
+    private static readonly Option<bool> _minifyOpt = new("--minify")
+        { Description = "Output compact/minified JSON (overrides most formatting)", };
+
+    private static readonly Option<bool> _timeOpt = new("--time")
+        { Description = "Write elapsed formatting time to stdout", };
+
+
     private static readonly Option<EolStyle?> _jsonEolStyleOpt = new("--eol", "--JsonEolStyle")
-        { Description = "Character sequence for newlines", };
+        { Description = "Line ending style", };
 
     private static readonly Option<int?> _maxTotalLineLengthOpt = new("--length", "--MaxTotalLineLength", "-l")
-        { Description = "Maximum characters per line including indentation", };
+        { Description = "Max characters per line (incl. indent)", };
 
-    private static readonly Option<int?> _maxInlineComplexityOpt = new("--inline-complexity", "--MaxInlineComplexity")
-        { Description = "Max nesting level for inline objects/arrays", };
+    private static readonly Option<int?> _maxInlineComplexityOpt = new("--inline", "--MaxInlineComplexity", "-i")
+        { Description = "Max nesting depth allowed inline on one line", };
 
-    private static readonly Option<int?> _maxCompactArrayComplexityOpt = new("--array-complexity", "--MaxCompactArrayComplexity")
-        { Description = "Max nesting level for arrays with multiple items per row", };
+    private static readonly Option<int?> _maxCompactArrayComplexityOpt = new("--array", "--MaxCompactArrayComplexity", "-a")
+        { Description = "Max nesting for compact arrays (multiple items/row)", };
 
-    private static readonly Option<int?> _maxTableRowComplexityOpt = new("--table-complexity", "--MaxTableRowComplexity")
-        { Description = "Max nesting level for table formatting", };
+    private static readonly Option<int?> _maxTableRowComplexityOpt = new("--table", "--MaxTableRowComplexity", "-t")
+        { Description = "Max nesting for table-style formatting", };
 
     private static readonly Option<int?> _maxPropNamePaddingOpt = new("--prop-padding", "--MaxPropNamePadding")
         { Description = "Max number of spaces to line up property values", };
 
-    private static readonly Option<bool?> _colonBeforePropNamePaddingOpt = new("--colon-before-padding", "--ColonBeforePropNamePadding")
-        { Description = "Put colons next to property names instead of after padding", };
+    private static readonly Option<bool?> _colonBeforePropNamePaddingOpt = new("--colon-before", "--ColonBeforePropNamePadding")
+        { Description = "Place colon before (instead of after) property-name padding", };
 
     private static readonly Option<TableCommaPlacementCli?> _tableCommaPlacementOpt = new(
         "--table-comma", "--TableCommaPlacement")
-        { Description = "Where to put commas in tables relative to padding", };
+        { Description = "Comma position in table rows", };
 
     private static readonly Option<int?> _minCompactArrayRowItemsOpt = new("--min-array-items", "--MinCompactArrayRowItems")
         { Description = "Minimum items per row for compact arrays", };
 
     private static readonly Option<int?> _alwaysExpandDepthOpt = new("--always-expand", "--AlwaysExpandDepth")
-        { Description = "Depth from root at which objects/arrays are always expanded", };
+        { Description = "Force expansion from root down to this depth (-1=no force)", };
 
-    private static readonly Option<bool?> _nestedBracketPaddingOpt = new("--nested-padding", "--NestedBracketPadding")
-        { Description = "Spaces inside brackets for complex objects/arrays", };
+    private static readonly Option<bool?> _nestedBracketPaddingOpt = new("--nested-pad", "--NestedBracketPadding")
+        { Description = "Space inside []/{} for complex (nested) containers", };
 
-    private static readonly Option<bool?> _simpleBracketPaddingOpt = new("--simple-padding", "--SimpleBracketPadding")
-        { Description = "Spaces inside brackets for simple objects/arrays", };
+    private static readonly Option<bool?> _simpleBracketPaddingOpt = new("--simple-pad", "--SimpleBracketPadding")
+        { Description = "Space inside []/{} for simple (primitive-only) containers", };
 
-    private static readonly Option<bool?> _colonPaddingOpt = new("--colon-padding", "--ColonPadding")
+    private static readonly Option<bool?> _colonPaddingOpt = new("--colon-pad", "--ColonPadding")
         { Description = "Space after colon", };
 
-    private static readonly Option<bool?> _commaPaddingOpt = new("--comma-padding", "--CommaPadding")
+    private static readonly Option<bool?> _commaPaddingOpt = new("--comma-pad", "--CommaPadding")
         { Description = "Space after comma", };
 
-    private static readonly Option<bool?> _commentPaddingOpt = new("--comment-padding", "--CommentPadding")
-        { Description = "Space between comment and nearby values", };
+    private static readonly Option<bool?> _commentPaddingOpt = new("--comment-pad", "--CommentPadding")
+        { Description = "Space between comment and value", };
 
-    private static readonly Option<NumberListAlignmentCli?> _numberListAlignmentOpt = new("--number-alignment", "--NumberListAlignment")
-        { Description = "How sequences of numbers are aligned", };
+    private static readonly Option<NumberListAlignmentCli?> _numberListAlignmentOpt = new("--number-align", "--NumberListAlignment")
+        { Description = "Number column alignment", };
 
-    private static readonly Option<int?> _indentSpacesOpt = new("--spaces", "--IndentSpaces")
-        { Description = "Number of spaces per indent level", };
+    private static readonly Option<int?> _indentSpacesOpt = new("--indent", "--IndentSpaces")
+        { Description = "Spaces per indent level", };
 
-    private static readonly Option<bool?> _useTabToIndentOpt = new("--use-tabs", "--UseTabToIndent")
-        { Description = "Use a tab character to indent instead of spaces", };
+    private static readonly Option<bool?> _useTabToIndentOpt = new("--tabs", "--UseTabToIndent")
+        { Description = "Use tabs instead of spaces for indent", };
 
     private static readonly Option<string?> _prefixStringOpt = new("--prefix", "--PrefixString")
-        { Description = "String to put at the start of each line", };
+        { Description = "Prefix every output line with this string", };
 
-    private static readonly Option<CommentPolicy?> _commentPolicyOpt = new("--comment-policy", "--CommentPolicy")
-        { Description = "How comments should be handled", };
+    private static readonly Option<CommentPolicyCli?> _commentPolicyOpt = new("--comments", "--CommentPolicy", "-c")
+        { Description = "How to handle // or /* */ comments", };
 
-    private static readonly Option<bool?> _preserveBlankLinesOpt = new("--preserve-blanks", "--PreserveBlankLines")
-        { Description = "Blank lines in input should be included in output", };
+    private static readonly Option<bool?> _preserveBlankLinesOpt = new("--blanks", "--PreserveBlankLines")
+        { Description = "Keep blank lines from input", };
 
-    private static readonly Option<bool?> _allowTrailingCommasOpt = new("--trailing-commas", "--AllowTrailingCommas")
-        { Description = "Allow a comma after the last item in an array/object", };
+    private static readonly Option<bool?> _allowTrailingCommasOpt = new("--trailing", "--AllowTrailingCommas")
+        { Description = "Permit trailing commas in arrays/objects from input", };
 
     private static readonly RootCommand _rootCommand =
         new("Reformats a JSON document to make it highly human-readable.")
@@ -265,6 +278,8 @@ public static class CliParser
             _configFileOpt,
             _noConfigFlagOpt,
             _outputFileOpt,
+            _minifyOpt,
+            _timeOpt,
 
             _jsonEolStyleOpt,
             _maxTotalLineLengthOpt,
