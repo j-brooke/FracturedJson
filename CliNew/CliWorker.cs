@@ -4,6 +4,9 @@ using Wcwidth;
 
 namespace CliNew;
 
+/// <summary>
+/// Class responsible for actually reading input, reformatting JSON, and writing it to a file or stdout.
+/// </summary>
 public static class CliWorker
 {
     public static TimeSpan Process(CliSettings settings, TextReader stdIn, TextWriter stdOut)

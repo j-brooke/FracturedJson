@@ -2,6 +2,9 @@
 
 namespace CliNew;
 
+/// <summary>
+/// Same as <see cref="NumberListAlignment"/> but with some extra shorter aliases for the values.
+/// </summary>
 public enum NumberListAlignmentCli
 {
     Left = NumberListAlignment.Left,

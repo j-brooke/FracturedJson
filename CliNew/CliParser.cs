@@ -7,6 +7,9 @@ using FracturedJson;
 
 namespace CliNew;
 
+/// <summary>
+/// Class responsible for parsing commandline options and loading config files.  Also handles help and version switches.
+/// </summary>
 public static class CliParser
 {
     public static CliSettings Parse(string[] args)
@@ -16,17 +19,14 @@ public static class CliParser
         // Write errors to StdErr if there are any, and then exit.
         if (parseResult.Errors.Count > 0)
         {
-            foreach(var errorMsg in parseResult.Errors)
+            foreach (var errorMsg in parseResult.Errors)
                 Console.Error.WriteLine(errorMsg);
             return new CliSettings() { ImmediateExitReturnCode = CliReturn.UsageError };
         }
 
         // If a help or version switch exists, let System.CommandLine's default behavior handle them.
         var helpOpt = (HelpOption?)_rootCommand.Options.FirstOrDefault(opt => opt is HelpOption);
-        var versionOpt = (VersionOption?)_rootCommand.Options.FirstOrDefault(opt => opt is VersionOption);
-
         var hasHelp = helpOpt != null && parseResult.GetResult(helpOpt) != null;
-        var hasVersion = versionOpt != null && parseResult.GetResult(versionOpt) != null;
         if (hasHelp)
         {
             parseResult.Invoke();
@@ -36,19 +36,24 @@ public static class CliParser
 
             return new CliSettings() { ImmediateExitReturnCode = CliReturn.Success };
         }
-        else if (hasVersion)
+
+        var versionOpt = (VersionOption?)_rootCommand.Options.FirstOrDefault(opt => opt is VersionOption);
+        var hasVersion = versionOpt != null && parseResult.GetResult(versionOpt) != null;
+        if (hasVersion)
         {
             parseResult.Invoke();
             return new CliSettings() { ImmediateExitReturnCode = CliReturn.Success };
         }
 
-        // Figure out the starting FracturedJsonOptions from config files, if any.
+        // Figure out the starting FracturedJsonOptions from config files, if any.  If a config file wasn't
+        // explicitly given, we start searching from either the input file's location or the current working dir.
         var inputFile = parseResult.GetValue(_inFileArg);
         var fjOpts = GetFjOptionsDefaults(
             parseResult.GetRequiredValue(_noConfigFlagOpt),
             parseResult.GetValue(_configFileOpt),
             inputFile);
 
+        // Override whatever settings were in the config file (or defaults) with the commandline switch values.
         ApplyFjOptsFromCommandline(fjOpts, parseResult);
 
         var settings = new CliSettings()
@@ -64,6 +69,9 @@ public static class CliParser
         return settings;
     }
 
+    /// <summary>
+    /// Expected names for a default config file.
+    /// </summary>
     private static readonly string[] _implicitConfigFileNames =
     [
         ".fracturedjson",
@@ -72,6 +80,9 @@ public static class CliParser
     ];
 
 
+    /// <summary>
+    /// Load settings from a config file or return defaults.
+    /// </summary>
     private static FracturedJsonOptions GetFjOptionsDefaults(bool noConfigFlag, FileInfo? explicitConfigFile,
         FileInfo? inputFile)
     {
@@ -79,7 +90,7 @@ public static class CliParser
             return new FracturedJsonOptions();
 
         if (explicitConfigFile != null)
-            return ReadConfigFile(explicitConfigFile) ??  new FracturedJsonOptions();
+            return ReadConfigFile(explicitConfigFile) ?? new FracturedJsonOptions();
 
         return ScanForImplicitConfigFile(inputFile) ?? new FracturedJsonOptions();
     }
@@ -118,7 +129,7 @@ public static class CliParser
                         return ReadConfigFile(potentialConfigFile)!;
                 }
             }
-            catch (Exception e) when(e is UnauthorizedAccessException or SecurityException)
+            catch (Exception e) when (e is UnauthorizedAccessException or SecurityException)
             {
                 // Do nothing - silently skip this directory if the user doesn't have access.  They might
                 // still have access in the parent directory, though.
@@ -130,6 +141,9 @@ public static class CliParser
         return null;
     }
 
+    /// <summary>
+    /// Overwrite the given FracturedJsonOptions with values from the commandline.
+    /// </summary>
     private static void ApplyFjOptsFromCommandline(FracturedJsonOptions fjOpts, ParseResult parseResult)
     {
         fjOpts.JsonEolStyle = parseResult.GetValue(_jsonEolStyleOpt) ?? fjOpts.JsonEolStyle;
@@ -162,8 +176,11 @@ public static class CliParser
     }
 
     // Option Declarations region: defines all commandline switches and their behavior.
+
     #region OptionsDeclarations
+
     private static readonly Argument<FileInfo> _inFileArg = MakeInFileArg();
+
     private static Argument<FileInfo> MakeInFileArg()
     {
         return new Argument<FileInfo>("inputFile")
@@ -175,6 +192,7 @@ public static class CliParser
     }
 
     private static readonly Option<FileInfo> _configFileOpt = MakeConfigFileOpt();
+
     private static Option<FileInfo> MakeConfigFileOpt()
     {
         return new Option<FileInfo>("--config")
@@ -217,8 +235,9 @@ public static class CliParser
     private static readonly Option<int?> _maxInlineComplexityOpt = new("--inline", "--MaxInlineComplexity", "-i")
         { Description = "Max nesting depth allowed inline on one line", };
 
-    private static readonly Option<int?> _maxCompactArrayComplexityOpt = new("--array", "--MaxCompactArrayComplexity", "-a")
-        { Description = "Max nesting for compact arrays (multiple items/row)", };
+    private static readonly Option<int?> _maxCompactArrayComplexityOpt =
+        new("--array", "--MaxCompactArrayComplexity", "-a")
+            { Description = "Max nesting for compact arrays (multiple items/row)", };
 
     private static readonly Option<int?> _maxTableRowComplexityOpt = new("--table", "--MaxTableRowComplexity", "-t")
         { Description = "Max nesting for table-style formatting", };
@@ -226,15 +245,17 @@ public static class CliParser
     private static readonly Option<int?> _maxPropNamePaddingOpt = new("--prop-padding", "--MaxPropNamePadding")
         { Description = "Max number of spaces to line up property values", };
 
-    private static readonly Option<bool?> _colonBeforePropNamePaddingOpt = new("--colon-before", "--ColonBeforePropNamePadding")
-        { Description = "Place colon before (instead of after) property-name padding", };
+    private static readonly Option<bool?> _colonBeforePropNamePaddingOpt =
+        new("--colon-before", "--ColonBeforePropNamePadding")
+            { Description = "Place colon before (instead of after) property-name padding", };
 
     private static readonly Option<TableCommaPlacementCli?> _tableCommaPlacementOpt = new(
-        "--table-comma", "--TableCommaPlacement")
+            "--table-comma", "--TableCommaPlacement")
         { Description = "Comma position in table rows", };
 
-    private static readonly Option<int?> _minCompactArrayRowItemsOpt = new("--min-array-items", "--MinCompactArrayRowItems")
-        { Description = "Minimum items per row for compact arrays", };
+    private static readonly Option<int?> _minCompactArrayRowItemsOpt =
+        new("--min-array-items", "--MinCompactArrayRowItems")
+            { Description = "Minimum items per row for compact arrays", };
 
     private static readonly Option<int?> _alwaysExpandDepthOpt = new("--always-expand", "--AlwaysExpandDepth")
         { Description = "Force expansion from root down to this depth (-1=no force)", };
@@ -254,8 +275,9 @@ public static class CliParser
     private static readonly Option<bool?> _commentPaddingOpt = new("--comment-pad", "--CommentPadding")
         { Description = "Space between comment and value", };
 
-    private static readonly Option<NumberListAlignmentCli?> _numberListAlignmentOpt = new("--number-align", "--NumberListAlignment")
-        { Description = "Number column alignment", };
+    private static readonly Option<NumberListAlignmentCli?> _numberListAlignmentOpt =
+        new("--number-align", "--NumberListAlignment")
+            { Description = "Number column alignment", };
 
     private static readonly Option<int?> _indentSpacesOpt = new("--indent", "--IndentSpaces")
         { Description = "Spaces per indent level", };
@@ -310,5 +332,4 @@ public static class CliParser
             _allowTrailingCommasOpt,
         };
     #endregion
-
 }

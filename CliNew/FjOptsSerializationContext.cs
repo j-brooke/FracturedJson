@@ -6,7 +6,7 @@ namespace CliNew;
 
 /// <summary>
 /// Subclass of FracturedJsonOptions with compile-time JSON deserialization data.  This lets us read
-/// config files without using reflection, since reflection doesn't go well with the trim compile option.
+/// config files without using reflection, allowing the compiler to trim unneeded code more aggressively.
 /// </summary>
 [JsonSerializable(typeof(FracturedJsonOptions))]
 [JsonSourceGenerationOptions(

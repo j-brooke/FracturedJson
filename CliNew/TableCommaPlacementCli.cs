@@ -3,6 +3,9 @@ using FracturedJson;
 
 namespace CliNew;
 
+/// <summary>
+/// Same as <see cref="TableCommaPlacement"/> but with some extra shorter aliases for the values.
+/// </summary>
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public enum TableCommaPlacementCli
 {
