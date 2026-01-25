@@ -5,7 +5,7 @@ using System.Security;
 using System.Text.Json;
 using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// Class responsible for parsing commandline options and loading config files.  Also handles help and version switches.

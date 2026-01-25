@@ -2,7 +2,7 @@
 using FracturedJson;
 using Wcwidth;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// Class responsible for actually reading input, reformatting JSON, and writing it to a file or stdout.

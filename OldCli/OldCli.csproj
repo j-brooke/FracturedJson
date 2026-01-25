@@ -8,6 +8,7 @@
         <IsPackable>false</IsPackable>
         <PackageVersion>5.0.0</PackageVersion>
         <LangVersion>10</LangVersion>
+        <RootNamespace>FracturedJsonCli</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

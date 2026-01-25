@@ -2,6 +2,6 @@
 bin
 obj
 **/*.user
-FracturedJsonCli/scratch
-CliNew/scratch
+OldCli/scratch
+Cli/scratch
 **/appsettings.Development.json

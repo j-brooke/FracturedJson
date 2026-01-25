@@ -1,6 +1,6 @@
 ﻿using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// Set of all commandline settings, config file settings, and defaults

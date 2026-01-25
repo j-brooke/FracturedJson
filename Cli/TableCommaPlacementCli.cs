@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// Same as <see cref="TableCommaPlacement"/> but with some extra shorter aliases for the values.

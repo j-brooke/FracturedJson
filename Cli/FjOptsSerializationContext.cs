@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// Subclass of FracturedJsonOptions with compile-time JSON deserialization data.  This lets us read

@@ -1,6 +1,6 @@
 using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 /// <summary>
 /// The same as <see cref="CommentPolicy"/>, except with some short aliases as well.

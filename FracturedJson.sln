@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FracturedJsonCli", "FracturedJsonCli\FracturedJsonCli.csproj", "{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldCli", "OldCli\OldCli.csproj", "{7E51BFD1-1E10-4A78-B047-0F04F1D06A9E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FracturedJson", "FracturedJson\FracturedJson.csproj", "{A9110706-09EB-4DB8-8842-88152A530C5D}"
 EndProject
@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFormatter2", "WebFormatter2\WebFormatter2.csproj", "{48DB5B7B-063F-4284-954F-B6181356CF33}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CliNew", "CliNew\CliNew.csproj", "{D741FCF8-A6BE-4B16-BDFC-6B6DBE288EF2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cli", "Cli\Cli.csproj", "{D741FCF8-A6BE-4B16-BDFC-6B6DBE288EF2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Info", "Info", "{CBC79957-6D53-45EC-9A75-1CE5050030F0}"
 	ProjectSection(SolutionItems) = preProject

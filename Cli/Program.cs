@@ -1,6 +1,6 @@
 ﻿using FracturedJson;
 
-namespace CliNew;
+namespace Cli;
 
 internal static class Program
 {

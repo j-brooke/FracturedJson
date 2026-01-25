@@ -1,4 +1,4 @@
-﻿namespace CliNew;
+﻿namespace Cli;
 
 /// <summary>
 /// Exit codes from the CLI process.
