@@ -9,16 +9,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FracturedJson", "FracturedJ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{52119000-0295-4CF1-B6C3-3158A42B31E9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "info", "info", "{DF697FDB-0A7B-4047-A41A-D1C7B4F7E603}"
-	ProjectSection(SolutionItems) = preProject
-		CHANGELOG.md = CHANGELOG.md
-		LICENSE = LICENSE
-		README.md = README.md
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFormatter2", "WebFormatter2\WebFormatter2.csproj", "{48DB5B7B-063F-4284-954F-B6181356CF33}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CliNew", "CliNew\CliNew.csproj", "{D741FCF8-A6BE-4B16-BDFC-6B6DBE288EF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Info", "Info", "{CBC79957-6D53-45EC-9A75-1CE5050030F0}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		packageIcon.png = packageIcon.png
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
