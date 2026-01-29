@@ -5,22 +5,41 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Version>0.0.1</Version>
+        <Version>1.0.0</Version>
         <Authors>FracturedJson</Authors>
+        <AssemblyName>fracjson</AssemblyName>
+        <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
+        <PackageId>fracjson</PackageId>
+        <Description>JSON formatter that produces compact, highly readable output</Description>
+        <Copyright>2026 Jesse Brooke</Copyright>
+        <PackageIcon>packageIcon.png</PackageIcon>
+        <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/j-brooke/FracturedJson/wiki/fracjson-CLI</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <PropertyGroup>
+        <!-- Used for publishing as a .NET global tool -->
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>fracjson</ToolCommandName>
         <RollForward>Major</RollForward>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <!-- Used for publishing as a self-contained executable. -->
+        <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+        <PublishTrimmed Condition="'$(RuntimeIdentifier)' != ''">true</PublishTrimmed>
+        <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+        <IncludeNativeLibrariesForSelfExtract Condition="'$(RuntimeIdentifier)' != ''">true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugType>none</DebugType>
         <DebugSymbols>false</DebugSymbols>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <PublishTrimmed>true</PublishTrimmed>
-        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         <AllowedReferenceRelatedFileExtensions>.none</AllowedReferenceRelatedFileExtensions>
     </PropertyGroup>
 
@@ -31,5 +50,14 @@
     <ItemGroup>
       <PackageReference Include="System.CommandLine" Version="2.0.2" />
       <PackageReference Include="Wcwidth" Version="4.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="..\packageIcon.png">
+        <Pack>True</Pack>
+        <PackagePath></PackagePath>
+        <Link>packageIcon.png</Link>
+      </None>
+      <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 </Project>
