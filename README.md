@@ -1,11 +1,9 @@
-# FracturedJson .NET Library
+# FracturedJson
 
 FracturedJson is a family of utilities that format [JSON data](https://www.json.org) in a way that's easy for
 humans to read, but fairly compact.  Arrays and objects are written on single lines, as long as they're
 neither too long nor too complex.  When several such lines are similar in structure, they're written with
 fields aligned like a table.  Long arrays are written with multiple items per line across multiple lines.
-
-The .NET library version for .NET Standard 2.0, so it's compatible with all forms of .NET except very old ones.
 
 Here's a sample of output using nearly default settings. (`MaxTotalLineLength=100`)
 ```json
@@ -69,12 +67,12 @@ If enabled in the settings, it can also handle JSON-with-comments.
 }
 ```
 
-## Getting Started
+## Repo Contents
 
-To get started using the .NET library, see the 
-[.NET library wiki page](https://github.com/j-brooke/FracturedJson/wiki/.NET-Library).
+This repo is home to the .NET versions of FracturedJson:
 
-## More Information
+* [FracturedJson .NET Library](https://github.com/j-brooke/FracturedJson/wiki/.NET-Library) - available from [NuGet](https://www.nuget.org/packages/FracturedJson).
+* [fracjson CLI app](https://github.com/j-brooke/FracturedJson/wiki/fracjson-CLI) - installable from [NuGet](https://www.nuget.org/packages/fracjson) as a .NET global tool, or downloadable from the [Releases](https://github.com/j-brooke/FracturedJson/releases) page as self-contained executables.
+* The [browser-based formatter](https://j-brooke.github.io/FracturedJson/) - hosted by GitHub Pages.
 
-Please see the [project wiki](https://github.com/j-brooke/FracturedJson/wiki) for more information on what you can do and how to use the tools.  Or, visit 
-the [browser-based formatter](https://j-brooke.github.io/FracturedJson/) to experiment.
+For more information or to see other implementations, see the [project wiki](https://github.com/j-brooke/FracturedJson/wiki).
