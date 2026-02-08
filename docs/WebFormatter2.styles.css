@@ -1,42 +1,42 @@
 /* /Components/ButtonPanel.razor.rz.scp.css */
-.button-panel[b-xem6j4ug6w] {
+.button-panel[b-dn6wg45smt] {
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
 }
 
-.format-group[b-xem6j4ug6w] {
+.format-group[b-dn6wg45smt] {
     display: flex;
     flex-direction: row;
 }
 
-.sample-group[b-xem6j4ug6w] {
+.sample-group[b-dn6wg45smt] {
     display: flex;
     flex-direction: row;
     margin-left: 0.5em;
     margin-right: 0.5em;
 }
 
-.view-group[b-xem6j4ug6w] {
+.view-group[b-dn6wg45smt] {
     display: flex;
     flex-direction: row;
 }
 
-.fmt-btn[b-xem6j4ug6w] {
+.fmt-btn[b-dn6wg45smt] {
     display: flex;
     align-items: center;
     font-size: 12px;
     background-color: var(--button-background);
 }
 
-.fmt-btn > img[b-xem6j4ug6w] {
+.fmt-btn > img[b-dn6wg45smt] {
     width: 16px;
     height: 16px;
     object-fit: contain;
     vertical-align: middle;
 }
 
-.sample-btn[b-xem6j4ug6w] {
+.sample-btn[b-dn6wg45smt] {
     display: flex;
     align-items: center;
     font-size: 12px;
@@ -44,72 +44,72 @@
     background-color: var(--button-background);
 }
 
-.sample-btn > img[b-xem6j4ug6w] {
+.sample-btn > img[b-dn6wg45smt] {
     width: 16px;
     height: 16px;
     object-fit: contain;
     vertical-align: middle;
 }
 
-.mode-btn[b-xem6j4ug6w] {
+.mode-btn[b-dn6wg45smt] {
     display: flex;
     align-items: center;
     background-color: var(--button-background);
 }
 /* /Components/MainBanner.razor.rz.scp.css */
-img.logo[b-25kjsiz6tl] {
+img.logo[b-s595xlexcr] {
     width: 90px;
 }
 
-.main-banner[b-25kjsiz6tl] {
+.main-banner[b-s595xlexcr] {
     display: flex;
     flex-direction: row;
     align-items: center;
 }
 
-.title-text[b-25kjsiz6tl] {
+.title-text[b-s595xlexcr] {
     margin-left: 0.5em;
 }
 
-h1[b-25kjsiz6tl] {
+h1[b-s595xlexcr] {
     margin: 0.2em;
 }
 
-a[b-25kjsiz6tl] {
+a[b-s595xlexcr] {
     font-size: 14px;
 }
 /* /Components/SettingsPanel.razor.rz.scp.css */
-input.number[b-pppuo749sr] {
+input.number[b-o5s4du36yn] {
     width: 5em;
 }
 
-.section-label[b-pppuo749sr] {
+.section-label[b-o5s4du36yn] {
     font-weight: bold;
     padding-top: 1ch;
 }
 
-.open-btn[b-pppuo749sr] {
+.open-btn[b-o5s4du36yn] {
     padding: 0.3em;
 }
 
-.settings-title[b-pppuo749sr] {
+.settings-title[b-o5s4du36yn] {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.settings-title > h2[b-pppuo749sr] {
+.settings-title > h2[b-o5s4du36yn] {
     margin: 6px 0 6px 0;
 }
 
-input[b-pppuo749sr] {
+input[b-o5s4du36yn] {
     background-color: var(--control-background);
 }
-button[b-pppuo749sr] {
+button[b-o5s4du36yn] {
     background-color: var(--button-background);
 }
 /* /Pages/Home.razor.rz.scp.css */
-.page[b-qufalg45p5] {
+.page[b-dlnbzpxcif] {
     height: 100%;
     display: grid;
     grid-template-areas:
@@ -120,54 +120,54 @@ button[b-pppuo749sr] {
     grid-template-rows: minmax(min-content, auto) auto 1fr;
 }
 
-.header[b-qufalg45p5] {
+.header[b-dlnbzpxcif] {
     grid-area: h;
     margin: 0.3em;
 }
 
-.side[b-qufalg45p5] {
+.side[b-dlnbzpxcif] {
     grid-area: s;
     overflow-x: clip;
     overflow-y: auto;
     margin: 0.3em;
 }
 
-.buttons[b-qufalg45p5] {
+.buttons[b-dlnbzpxcif] {
     grid-area: b;
     margin: 0.2em;
 }
 
-.main[b-qufalg45p5] {
+.main[b-dlnbzpxcif] {
     grid-area: m;
     margin: 0.2em;
 }
 
-.json-area-stack[b-qufalg45p5] {
+.json-area-stack[b-dlnbzpxcif] {
     height: 100%;
     display: grid;
     grid-template-rows: 1fr 1fr;
     gap: 10px;
 }
 
-.json-area-side[b-qufalg45p5] {
+.json-area-side[b-dlnbzpxcif] {
     height: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
 
-.json-area-unified[b-qufalg45p5] {
+.json-area-unified[b-dlnbzpxcif] {
     height: 100%;
     display: grid;
     grid-template-rows: min-content 1fr;
 }
 
-.json-panel[b-qufalg45p5] {
+.json-panel[b-dlnbzpxcif] {
     display: grid;
     grid-template-rows: min-content 1fr;
 }
 
-.json-panel > textarea[b-qufalg45p5] {
+.json-panel > textarea[b-dlnbzpxcif] {
     width: 100%;
     height: 100%;
     resize: none;
@@ -179,9 +179,9 @@ button[b-pppuo749sr] {
     color: var(--json-text);
 }
 
-.json-error[b-qufalg45p5] {
+.json-error[b-dlnbzpxcif] {
     color: var(--text-color);
     background-color: var(--error-background);
 }
 
-.app[b-qufalg45p5] { height: 100vh; }
+.app[b-dlnbzpxcif] { height: 100vh; }
