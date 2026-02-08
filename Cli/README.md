@@ -25,4 +25,7 @@ fracjson rawFile.json -o formattedFile.json
 echo '{"a":3,"b":false}' | fracjson > out.json
 ```
 
-The default settings work pretty well with most JSON data, but there are lots of options available to fine-tune the output for your data.  You can specify those options on the command line or through a config file.  See [the wiki page](https://github.com/j-brooke/FracturedJson/wiki/fracjson-CLI) for more information.
+The default settings work pretty well with most JSON data, but there are lots of options available to fine-tune the output for your data.  You can specify those options on the command line or through a config file.  See [the fracjson wiki page](https://github.com/j-brooke/FracturedJson/wiki/fracjson-CLI) for more information.
+
+---
+[Project Wiki](https://github.com/j-brooke/FracturedJson/wiki) — [Formatting Options](https://github.com/j-brooke/FracturedJson/wiki/Options) — [Web Formatter](https://j-brooke.github.io/FracturedJson/) — [Implementations & Ports](https://github.com/j-brooke/FracturedJson/wiki/Available-Versions-and-Ports)

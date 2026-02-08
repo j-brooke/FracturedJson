@@ -74,7 +74,5 @@ If enabled in the settings, it can also handle JSON-with-comments.
 To get started using the .NET library, see the 
 [.NET library wiki page](https://github.com/j-brooke/FracturedJson/wiki/.NET-Library).
 
-## More Information
-
-Please see the [project wiki](https://github.com/j-brooke/FracturedJson/wiki) for more information on what you can do and how to use the tools.  Or, visit 
-the [browser-based formatter](https://j-brooke.github.io/FracturedJson/) to experiment.
+---
+[Project Wiki](https://github.com/j-brooke/FracturedJson/wiki) — [Formatting Options](https://github.com/j-brooke/FracturedJson/wiki/Options) — [Web Formatter](https://j-brooke.github.io/FracturedJson/) — [Implementations & Ports](https://github.com/j-brooke/FracturedJson/wiki/Available-Versions-and-Ports)
