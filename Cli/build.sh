@@ -15,12 +15,12 @@ cd ./bin/publish/win-arm64
 zip -r ../fracjson-win-arm64.zip .
 cd ../../../
 
-dotnet publish -c Release -r linux-x64 -o ./bin/publish/linux-x64/
+dotnet publish -c Release -r linux-x64 -o ./bin/publish/linux-x64/ -p InvariantGlobalization=true
 cd ./bin/publish/linux-x64
 tar -czf ../fracjson-linux-x64.tar.gz .
 cd ../../../
 
-dotnet publish -c Release -r linux-arm64 -o ./bin/publish/linux-arm64/
+dotnet publish -c Release -r linux-arm64 -o ./bin/publish/linux-arm64/ -p InvariantGlobalization=true
 cd ./bin/publish/linux-arm64
 tar -czf ../fracjson-linux-arm64.tar.gz .
 cd ../../../
