@@ -34,6 +34,7 @@
         <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
         <IncludeNativeLibrariesForSelfExtract Condition="'$(RuntimeIdentifier)' != ''">true</IncludeNativeLibrariesForSelfExtract>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
