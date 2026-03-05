@@ -76,18 +76,22 @@ public class Parser
     /// </summary>
     private JsonItem ParseSimple(JsonToken token)
     {
-        var itemType = token.Type switch
+        JsonItemType itemType;
+        switch (token.Type)
         {
-            TokenType.False => JsonItemType.False,
-            TokenType.True => JsonItemType.True,
-            TokenType.Null => JsonItemType.Null,
-            TokenType.Number => JsonItemType.Number,
-            TokenType.String => JsonItemType.String,
-            TokenType.BlankLine => JsonItemType.BlankLine,
-            TokenType.BlockComment => JsonItemType.BlockComment,
-            TokenType.LineComment => JsonItemType.LineComment,
-            _ => throw FracturedJsonException.Create("Unexpected token", token.InputPosition),
-        };
+            case TokenType.False: itemType =  JsonItemType.False; break;
+            case TokenType.True: itemType =  JsonItemType.True; break;
+            case TokenType.Null: itemType =  JsonItemType.Null; break;
+            case TokenType.Number: itemType =  JsonItemType.Number; break;
+            case TokenType.String: itemType =  JsonItemType.String; break;
+            case TokenType.BlankLine: itemType =  JsonItemType.BlankLine; break;
+            case TokenType.BlockComment: itemType =  JsonItemType.BlockComment; break;
+            case TokenType.LineComment: itemType =  JsonItemType.LineComment; break;
+            default:
+                itemType = JsonItemType.Null;
+                FracturedJsonException.Throw("Unexpected token", token.InputPosition);
+                break;
+        }
 
         var item = new JsonItem
         {
