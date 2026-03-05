@@ -54,17 +54,17 @@ public class Parser
             }
             else if (isComment)
             {
-                if (Options.CommentPolicy == CommentPolicy.TreatAsError)
-                    throw FracturedJsonException.Create("Comments not allowed with current options",
-                        item.InputPosition);
+                FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
+                    "Comments not allowed with current options",
+                    item.InputPosition);
                 if (Options.CommentPolicy == CommentPolicy.Preserve)
                     yield return item;
             }
             else
             {
-                if (topLevelElemSeen && stopAfterFirstElem)
-                    throw FracturedJsonException.Create("Unexpected start of second top level element",
-                        item.InputPosition);
+                FracturedJsonException.ThrowIf(topLevelElemSeen && stopAfterFirstElem,
+                    "Unexpected start of second top level element",
+                    item.InputPosition);
                 topLevelElemSeen = true;
                 yield return item;
             }
@@ -107,8 +107,8 @@ public class Parser
     /// </summary>
     private JsonItem ParseArray(IEnumerator<JsonToken> enumerator)
     {
-        if (enumerator.Current.Type != TokenType.BeginArray)
-            throw FracturedJsonException.Create("Parser logic error", enumerator.Current.InputPosition);
+        FracturedJsonException.ThrowIf(enumerator.Current.Type != TokenType.BeginArray,
+            "Parser logic error", enumerator.Current.InputPosition);
 
         var startingInputPosition = enumerator.Current.InputPosition;
 
@@ -161,15 +161,14 @@ public class Parser
             switch (token.Type)
             {
                 case TokenType.EndArray:
-                    if (commaStatus == CommaStatus.CommaSeen && !Options.AllowTrailingCommas)
-                        throw FracturedJsonException.Create("Array may not end with a comma with current options",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(commaStatus == CommaStatus.CommaSeen && !Options.AllowTrailingCommas,
+                        "Array may not end with a comma with current options", token.InputPosition);
                     endOfArrayFound = true;
                     break;
 
                 case TokenType.Comma:
-                    if (commaStatus != CommaStatus.ElementSeen)
-                        throw FracturedJsonException.Create("Unexpected comma in array", token.InputPosition);
+                    FracturedJsonException.ThrowIf(commaStatus != CommaStatus.ElementSeen,
+                        "Unexpected comma in array", token.InputPosition);
                     commaStatus = CommaStatus.CommaSeen;
                     break;
 
@@ -182,10 +181,8 @@ public class Parser
                 case TokenType.BlockComment:
                     if (Options.CommentPolicy == CommentPolicy.Remove)
                         break;
-                    if (Options.CommentPolicy == CommentPolicy.TreatAsError)
-                        throw FracturedJsonException.Create("Comments not allowed with current options",
-                            token.InputPosition);
-
+                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
+                        "Comments not allowed with current options", token.InputPosition);
                     if (unplacedComment != null)
                     {
                         // There was a block comment before this one.  Add it as a standalone comment to make room.
@@ -219,9 +216,8 @@ public class Parser
                 case TokenType.LineComment:
                     if (Options.CommentPolicy == CommentPolicy.Remove)
                         break;
-                    if (Options.CommentPolicy == CommentPolicy.TreatAsError)
-                        throw FracturedJsonException.Create("Comments not allowed with current options",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
+                        "Comments not allowed with current options", token.InputPosition);
 
                     if (unplacedComment != null)
                     {
@@ -252,10 +248,8 @@ public class Parser
                 case TokenType.Number:
                 case TokenType.BeginArray:
                 case TokenType.BeginObject:
-                    if (commaStatus == CommaStatus.ElementSeen)
-                        throw FracturedJsonException.Create("Comma missing while processing array",
-                            token.InputPosition);
-                    
+                    FracturedJsonException.ThrowIf(commaStatus == CommaStatus.ElementSeen,
+                        "Comma missing while processing array", token.InputPosition);
                     var element = ParseItem(enumerator);
                     commaStatus = CommaStatus.ElementSeen;
                     thisArrayComplexity = Math.Max(thisArrayComplexity, element.Complexity + 1);
@@ -274,7 +268,8 @@ public class Parser
                     break;
 
                 default:
-                    throw FracturedJsonException.Create("Unexpected token in array", token.InputPosition);
+                    FracturedJsonException.Throw("Unexpected token in array", token.InputPosition);
+                    break;
             }
         }
 
@@ -296,8 +291,8 @@ public class Parser
     /// </summary>
     private JsonItem ParseObject(IEnumerator<JsonToken> enumerator)
     {
-        if (enumerator.Current.Type != TokenType.BeginObject)
-            throw FracturedJsonException.Create("Parser logic error", enumerator.Current.InputPosition);
+        FracturedJsonException.ThrowIf(enumerator.Current.Type != TokenType.BeginObject,
+            "Parser logic error", enumerator.Current.InputPosition);
 
         var startingInputPosition = enumerator.Current.InputPosition;
 
@@ -373,9 +368,8 @@ public class Parser
                 case TokenType.LineComment:
                     if (Options.CommentPolicy==CommentPolicy.Remove)
                         break;
-                    if (Options.CommentPolicy == CommentPolicy.TreatAsError)
-                        throw FracturedJsonException.Create("Comments not allowed with current options",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
+                        "Comments not allowed with current options", token.InputPosition);
                     if (phase == ObjectPhase.BeforePropName || propertyName==null)
                     {
                         beforePropComments.Add(ParseSimple(token));
@@ -391,10 +385,9 @@ public class Parser
                     }
                     break;
                 case TokenType.EndObject:
-                    if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
-                        throw FracturedJsonException.Create("Unexpected end of object",
-                            token.InputPosition);
-
+                    FracturedJsonException.ThrowIf(
+                        phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon,
+                        "Unexpected end of object", token.InputPosition);
                     endOfObject = true;
                     break;
                 case TokenType.String:
@@ -411,7 +404,7 @@ public class Parser
                     }
                     else
                     {
-                        throw FracturedJsonException.Create("Unexpected string found while processing object",
+                        FracturedJsonException.Throw("Unexpected string found while processing object",
                             token.InputPosition);
                     }
                     break;
@@ -421,34 +414,31 @@ public class Parser
                 case TokenType.Number:
                 case TokenType.BeginArray:
                 case TokenType.BeginObject:
-                    if (phase != ObjectPhase.AfterColon)
-                        throw FracturedJsonException.Create("Unexpected element while processing object",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterColon,
+                        "Unexpected element while processing object", token.InputPosition);
                     propertyValue = ParseItem(enumerator);
                     linePropValueEnds = enumerator.Current.InputPosition.Row;
                     phase = ObjectPhase.AfterPropValue;
                     break;
                 case TokenType.Colon:
-                    if (phase != ObjectPhase.AfterPropName)
-                        throw FracturedJsonException.Create("Unexpected colon while processing object",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterPropName,
+                        "Unexpected colon while processing object", token.InputPosition);
                     phase = ObjectPhase.AfterColon;
                     break;
                 case TokenType.Comma:
-                    if (phase != ObjectPhase.AfterPropValue)
-                        throw FracturedJsonException.Create("Unexpected comma while processing object",
-                            token.InputPosition);
+                    FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterPropValue,
+                        "Unexpected comma while processing object", token.InputPosition);
                     phase = ObjectPhase.AfterComma;
                     break;
                 default:
-                    throw FracturedJsonException.Create("Unexpected token while processing object",
+                    FracturedJsonException.Throw("Unexpected token while processing object",
                         token.InputPosition);
+                    break;
             }
         }
 
-        if (!Options.AllowTrailingCommas && phase == ObjectPhase.AfterComma)
-            throw FracturedJsonException.Create("Object may not end with comma with current options",
-                enumerator.Current.InputPosition);
+        FracturedJsonException.ThrowIf(!Options.AllowTrailingCommas && phase == ObjectPhase.AfterComma,
+            "Object may not end with comma with current options", enumerator.Current.InputPosition);
 
         var objItem = new JsonItem()
         {
@@ -480,9 +470,8 @@ public class Parser
 
     private static JsonToken GetNextTokenOrThrown(IEnumerator<JsonToken> enumerator, InputPosition startPosition)
     {
-        if (!enumerator.MoveNext())
-            throw FracturedJsonException.Create("Unexpected end of input while processing array or object starting",
-                startPosition);
+        FracturedJsonException.ThrowIf(!enumerator.MoveNext(),
+            "Unexpected end of input while processing array or object starting", startPosition);
         return enumerator.Current;
     }
 

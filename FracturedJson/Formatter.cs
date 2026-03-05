@@ -589,8 +589,7 @@ public class Formatter
     /// </summary>
     private void InlineElement(JsonItem item, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
-        if (item.RequiresMultipleLines)
-            throw new FracturedJsonException("Logic error - trying to inline invalid element");
+        FracturedJsonException.ThrowIf(item.RequiresMultipleLines, "Logic error - trying to inline invalid element");
 
         // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.  (This
         // typically means that the parent container can't be table formatted, but we are aligning property values.)
