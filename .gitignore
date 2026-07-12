@@ -5,3 +5,4 @@ obj
 OldCli/scratch
 Cli/scratch
 **/appsettings.Development.json
+**/BenchmarkDotNet.Artifacts/
