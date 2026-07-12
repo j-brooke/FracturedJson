@@ -9,7 +9,7 @@ namespace FracturedJson.Tokenizing;
 /// Class that breaks up text of a JSON document into complete tokens.  Tokens are specific keywords - null, true,
 /// false - or a complete quoted string, or a complete number, or a comment, etc.
 /// </summary>
-public static class TokenScanner
+public static class TokenScannerOld
 {
     /// <summary>
     /// Reads in a file and returns an enumeration of tokens.
