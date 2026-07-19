@@ -5,23 +5,17 @@ using System.Text;
 
 namespace FracturedJson.Tokenizing;
 
-public class TokenScanner
+/// <summary>
+/// Class that breaks up text of a JSON document into complete tokens.  Tokens are specific keywords - null, true,
+/// false - or a complete quoted string, or a complete number, or a comment, etc.  This version doesn't rely on
+/// an enumeration for consuming input so it more efficiently handles <see cref="TextReader"/> input.
+/// <seealso cref="TokenScanner"/>
+/// </summary>
+public class NonEnumTokenScanner
 {
-    public IEnumerable<JsonToken> Scan(string input)
-    {
-        var tokenBuffer = new JsonToken[2];
-        foreach (var c in input)
-        {
-            var tokenCount = ProcessChar(c, tokenBuffer);
-            for(var i=0; i<tokenCount; ++i)
-                yield return tokenBuffer[i];
-        }
-
-        var endTokenCount = ProcessEndOfInput(tokenBuffer);
-        if (endTokenCount > 0)
-            yield return tokenBuffer[0];
-    }
-
+    /// <summary>
+    /// Reads in a file and returns an enumeration of tokens.
+    /// </summary>
     public IEnumerable<JsonToken> Scan(TextReader reader)
     {
         var charBuffer = new char[4096];
@@ -33,7 +27,7 @@ public class TokenScanner
             for (var i = 0; i < charCount; ++i)
             {
                 var tokenCount = ProcessChar(charBuffer[i], tokenBuffer);
-                for(var j=0; j<tokenCount; ++j)
+                for (var j = 0; j < tokenCount; ++j)
                     yield return tokenBuffer[j];
             }
         }
@@ -41,55 +35,6 @@ public class TokenScanner
         var endTokenCount = ProcessEndOfInput(tokenBuffer);
         if (endTokenCount > 0)
             yield return tokenBuffer[0];
-    }
-
-    /// <summary>
-    /// Converts a sequence of characters into a sequence of JSON tokens.  There's no guarantee that the tokens make
-    /// sense - just that they're lexically correct.
-    /// </summary>
-    /// <param name="input">JSON text, with comments</param>
-    /// <returns>Enumeration of JsonTokens detailing the token type, textual value, and position in the input.</returns>
-    /// <exception cref="FracturedJsonException">Thrown if there's an error parsing tokens.  For instance, if a number
-    /// is malformed, or a string isn't terminated, or an unrecognized keyword is encountered.  This method doesn't
-    /// concern itself with whether the tokens make sense in the sequence given, such as if braces don't match.
-    /// </exception>
-    [Obsolete("Use Scan(string) instead.")]
-    public static IEnumerable<JsonToken> Scan(IEnumerable<char> input)
-    {
-        var scanner = new TokenScanner();
-        var tokenBuffer = new JsonToken[2];
-        foreach (var c in input)
-        {
-            var tokenCount = scanner.ProcessChar(c, tokenBuffer);
-            for(var i=0; i<tokenCount; ++i)
-                yield return tokenBuffer[i];
-        }
-
-        var endTokenCount = scanner.ProcessEndOfInput(tokenBuffer);
-        if (endTokenCount > 0)
-            yield return tokenBuffer[0];
-    }
-
-    /// <summary>
-    /// Reads in a file and returns an enumeration of tokens.
-    /// </summary>
-    public static IEnumerable<JsonToken> Scan(FileInfo fileInfo)
-    {
-        var scanner = new TokenScanner();
-        using var reader = new StreamReader(fileInfo.FullName);
-        return scanner.Scan(reader);
-    }
-
-    /// <summary>
-    /// Reads in a file and returns an enumeration of characters.
-    /// </summary>
-    [Obsolete("Use Scan(TextReader) instead.")]
-    public static IEnumerable<char> EnumerateFile(FileInfo fileInfo)
-    {
-        using var reader = new StreamReader(fileInfo.FullName);
-        int charRead;
-        while ((charRead = reader.Read()) >= 0)
-            yield return (char)charRead;
     }
 
     private enum State

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FracturedJson.Tokenizing;
 
@@ -19,7 +20,7 @@ public class Parser
 
     /// <summary>
     /// Returns a sequence of <see cref="JsonItem"/>s representing the top-level items in the input.  In a typical
-    /// JSON you're only allowed to have one top-level value, but since there might be comments or blank lines,
+    /// JSON doc you're only allowed to have one top-level value, but since there might be comments or blank lines,
     /// we have to be able to return multiple things before or after the actual data.
     /// </summary>
     /// <param name="charEnumeration">The JSON (with comments, maybe) text</param>
@@ -29,6 +30,22 @@ public class Parser
     public IEnumerable<JsonItem> ParseTopLevel(IEnumerable<char> charEnumeration, bool stopAfterFirstElem)
     {
         var tokenStream = TokenScanner.Scan(charEnumeration);
+        return ParseTopLevel(tokenStream, stopAfterFirstElem);
+    }
+
+    /// <summary>
+    /// Returns a sequence of <see cref="JsonItem"/>s representing the top-level items in the input.  In a typical
+    /// JSON doc you're only allowed to have one top-level value, but since there might be comments or blank lines,
+    /// we have to be able to return multiple things before or after the actual data.
+    /// </summary>
+    /// <param name="reader">TextReader from which the source JSON can be read</param>
+    /// <param name="stopAfterFirstElem">If true, the enumeration ends when a single top-level element (real JSON value)
+    /// is read.  </param>
+    /// <returns>JsonItems representing the top-level data, comments, and blank lines from the input.</returns>
+    public IEnumerable<JsonItem> ParseTopLevel(TextReader reader, bool stopAfterFirstElem)
+    {
+        var scanner = new NonEnumTokenScanner();
+        var tokenStream = scanner.Scan(reader);
         return ParseTopLevel(tokenStream, stopAfterFirstElem);
     }
 

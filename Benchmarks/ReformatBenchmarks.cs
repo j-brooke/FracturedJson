@@ -18,14 +18,13 @@ public class ReformatBenchmarks
 
     public static IEnumerable<string> InputFiles { get; } =
     [
-        "battleplan-scenario-adv-4.json",
+        "battleplan.json",
         "fjjs-tsconfig.jsonc",
-        "pokeapi-pikachu.json",
-        "gz_2010_us_outline_500k.json",
-        "gz_2010_us_040_00_500k.json",
-        "pokeapi-batch-1.json",
-        "gz_2010_us_050_00_500k.json",
-        "pokeapi-batch-2.json",
+        "geojson-lg.json",
+        "geojson-sm.json",
+        "pokeapi-lg.json",
+        "pokeapi-md.json",
+        "pokeapi-sm.json",
     ];
 
     private string _jsonText = null!;

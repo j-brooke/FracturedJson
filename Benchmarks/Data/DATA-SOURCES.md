@@ -4,7 +4,7 @@ Sample files used for FracturedJson performance benchmarks (and potentially unit
 
 See individual entries below for source, processing notes, and licensing information. Attribution is included where required or appropriate.
 
-### `gz_2010_us_040_00_500k.json` / `gz_2010_us_050_00_500k.json` / `gz_2010_us_outline_500k.json`
+### `geojson-sm.json` / `geojson-lg.json`
 
 - **Source**: Converted U.S. Census Bureau Cartographic Boundary Files by Eric Celeste.
 - **Original data**: U.S. Census Bureau (public domain).
@@ -13,7 +13,7 @@ See individual entries below for source, processing notes, and licensing informa
 - **Notes**: Simplified cartographic boundaries suitable for testing large-scale GeoJSON formatting and fracturing.
 - **Date acquired**: 2026-07-12
 
-### `battleplan-scenario-adv-4.json`
+### `battleplan.json`
 
 - **Source**: Sample scenario file from my open-source tower defense game *BattlePlan*.
 - **Repository**: https://github.com/j-brooke/BattlePlan
@@ -21,7 +21,7 @@ See individual entries below for source, processing notes, and licensing informa
 - **Notes**: Chosen for its nested game state structure and realistic JSON texture. Used as-is for benchmark variety.
 - **Date acquired**: 2026-07-12
 
-### `pokeapi-pikachu.json` / `pokeapi-batch-1.json` / `pokeapi-batch-2.json`
+### `pokeapi-sm.json` / `pokeapi-md.json` / `pokeapi-lg.json`
 
 - **Source**: PokeAPI ( https://pokeapi.co/ )
 - **License**: Data is provided under a CC0 / public domain equivalent license. Free to use with no attribution required, though the project appreciates credit.
