@@ -55,4 +55,15 @@ public class ObjectSerializationTests
         var expected = JsonSerializer.Serialize(val);
         Assert.AreEqual(expected, output.TrimEnd());
     }
+
+    [TestMethod]
+    public void TestBlankPropNameSerialization()
+    {
+        var input = new Dictionary<string, string>() { { "", "foo" } };
+        var opts = new FracturedJsonOptions();
+        var formatter = new Formatter() { Options = opts };
+
+        var output = formatter.Serialize(input);
+        Assert.AreEqual("{\"\": \"foo\"}", output.TrimEnd());
+    }
 }
