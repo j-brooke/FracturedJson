@@ -54,19 +54,6 @@ public class Formatter
     }
 
     /// <summary>
-    ///
-    /// </summary>
-    public void Reformat(TextReader reader, int startingDepth, TextWriter writer)
-    {
-        var buffer = new LineWriterBuffer(writer);
-        var parser = new Parser() { Options = Options };
-        var docModel = parser.ParseTopLevel(reader, true);
-        FormatTopLevel(docModel, startingDepth, buffer);
-
-        buffer.Flush();
-    }
-
-    /// <summary>
     /// Writes the serialized object as a nicely-formatted string.
     /// </summary>
     public string Serialize<T>(T obj, int startingDepth = 0, JsonSerializerOptions? serOpts = null)

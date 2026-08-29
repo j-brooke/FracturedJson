@@ -56,15 +56,7 @@ public class FileToFileBenchmarks
     }
 
     [Benchmark]
-    public void FileToFileNew()
-    {
-        using var reader = new StreamReader(_inputFilePath);
-        using var writer = new StreamWriter(_outputFilePath);
-        _formatter.Reformat(reader, 0, writer);
-    }
-
-    [Benchmark]
-    public void FileToFileOld()
+    public void FileToFileWithWriter()
     {
         var fileData = File.ReadAllText(_inputFilePath);
         using var writer = new StreamWriter(_outputFilePath);
@@ -72,7 +64,7 @@ public class FileToFileBenchmarks
     }
 
     [Benchmark]
-    public void FileToFileTrivial()
+    public void FileToFileAsString()
     {
         var fileData = File.ReadAllText(_inputFilePath);
         var formattedJson = _formatter.Reformat(fileData, 0);
