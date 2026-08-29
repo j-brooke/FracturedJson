@@ -189,7 +189,13 @@ public static class TokenScanner
             {
                 state.NewLine();
                 if (!isBlockComment)
-                    return state.MakeTokenFromBuffer(TokenType.LineComment, true);
+                {
+                    var newToken = state.MakeTokenFromBuffer(TokenType.LineComment, true);
+
+                    // Just in case the next line is a blank line, set the token start to the start of the line.
+                    state.SetTokenStart();
+                    return newToken;
+                }
                 
                 state.Buffer.Append(ch);
                 continue;

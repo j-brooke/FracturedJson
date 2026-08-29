@@ -278,4 +278,34 @@ public class CommentFormattingTests
 
         Assert.IsFalse(output.Contains("//"));
     }
+
+    /// <summary>
+    /// In version 5.0, a blank line after a line comment would be moved above the line with the comment.
+    /// We want it to stay where it is.
+    /// https://github.com/j-brooke/FracturedJson/issues/64
+    /// </summary>
+    [TestMethod]
+    public void BlankLinesAfterLineCommentsStayPut()
+    {
+        var input =
+            """
+            {
+                "foo": "bar"   // baz
+
+            }
+            """;
+
+        var opts = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+        };
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(4, outputLines.Length);
+        StringAssert.Contains(outputLines[1], "baz");
+        Assert.AreEqual(0, outputLines[2].Length);
+    }
 }
