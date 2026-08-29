@@ -4,11 +4,10 @@ using FracturedJson;
 namespace Benchmarks;
 
 /// <summary>
-/// Benchmarks <see cref="Formatter.Reformat(IEnumerable{char}, int)"/> across a variety of real-world
-/// input sizes and shapes. Sample files live under <c>Data/</c>; see <c>Data/DATA-SOURCES.md</c>.
+/// Benchmarks testing Formatter.Reformat using files for both input and output.
 /// </summary>
 [MemoryDiagnoser]
-public class ReformatBenchmarks
+public class FileToFileBenchmarks
 {
     /// <summary>
     /// Relative path under the copied <c>Data/</c> directory.
@@ -27,14 +26,15 @@ public class ReformatBenchmarks
         "pokeapi-sm.json",
     ];
 
-    private string _jsonText = null!;
+    private string _inputFilePath = string.Empty;
+    private string _outputFilePath = string.Empty;
     private Formatter _formatter = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Data", InputFile);
-        _jsonText = File.ReadAllText(path);
+        _inputFilePath = Path.Combine(AppContext.BaseDirectory, "Data", InputFile);
+        _outputFilePath = Path.GetFileNameWithoutExtension(_inputFilePath) + ".out";
 
         // JSONC (e.g. tsconfig) commonly allows comments and trailing commas.
         var options = Path.GetExtension(InputFile).Equals(".jsonc", StringComparison.OrdinalIgnoreCase)
@@ -48,6 +48,26 @@ public class ReformatBenchmarks
         _formatter = new Formatter { Options = options };
     }
 
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        if (File.Exists(_outputFilePath))
+            File.Delete(_outputFilePath);
+    }
+
     [Benchmark]
-    public string Reformat() => _formatter.Reformat(_jsonText, 0);
+    public void FileToFileWithWriter()
+    {
+        var fileData = File.ReadAllText(_inputFilePath);
+        using var writer = new StreamWriter(_outputFilePath);
+        _formatter.Reformat(fileData, 0, writer);
+    }
+
+    [Benchmark]
+    public void FileToFileAsString()
+    {
+        var fileData = File.ReadAllText(_inputFilePath);
+        var formattedJson = _formatter.Reformat(fileData, 0);
+        File.WriteAllText(_outputFilePath, formattedJson);
+    }
 }

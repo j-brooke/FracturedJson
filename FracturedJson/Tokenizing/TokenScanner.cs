@@ -79,23 +79,27 @@ public static class TokenScanner
             {
                 // Any other character is either the start of a new token, or an error.
                 state.SetTokenStart();
-                yield return ch switch
+                switch (ch)
                 {
-                    '{' => ProcessSingleChar(state, "{", TokenType.BeginObject),
-                    '}' => ProcessSingleChar(state, "}", TokenType.EndObject),
-                    '[' => ProcessSingleChar(state, "[", TokenType.BeginArray),
-                    ']' => ProcessSingleChar(state, "]", TokenType.EndArray),
-                    ':' => ProcessSingleChar(state, ":", TokenType.Colon),
-                    ',' => ProcessSingleChar(state, ",", TokenType.Comma),
-                    't' => ProcessKeyword(state, enumerator, "true", TokenType.True),
-                    'f' => ProcessKeyword(state, enumerator, "false", TokenType.False),
-                    'n' => ProcessKeyword(state, enumerator, "null", TokenType.Null),
-                    '/' => ProcessComment(state, enumerator),
-                    '"' => ProcessString(state, enumerator),
-                    '-' => ProcessNumber(state, enumerator, out lookedAhead),
-                    _ when char.IsDigit(ch) => ProcessNumber(state, enumerator, out lookedAhead),
-                    _ => throw FracturedJsonException.Create("Unexpected character", state.CurrentPosition)
-                };                
+                    case '{': yield return ProcessSingleChar(state, "{", TokenType.BeginObject); break;
+                    case '}': yield return ProcessSingleChar(state, "}", TokenType.EndObject); break;
+                    case '[': yield return ProcessSingleChar(state, "[", TokenType.BeginArray); break;
+                    case ']': yield return ProcessSingleChar(state, "]", TokenType.EndArray); break;
+                    case ':': yield return ProcessSingleChar(state, ":", TokenType.Colon); break;
+                    case ',': yield return ProcessSingleChar(state, ",", TokenType.Comma); break;
+                    case 't': yield return ProcessKeyword(state, enumerator, "true", TokenType.True); break;
+                    case 'f': yield return ProcessKeyword(state, enumerator, "false", TokenType.False); break;
+                    case 'n': yield return ProcessKeyword(state, enumerator, "null", TokenType.Null); break;
+                    case '/': yield return ProcessComment(state, enumerator); break;
+                    case '"': yield return ProcessString(state, enumerator); break;
+                    case '-': yield return ProcessNumber(state, enumerator, out lookedAhead); break;
+                    default:
+                        if (char.IsDigit(ch))
+                            yield return ProcessNumber(state, enumerator, out lookedAhead);
+                        else
+                            FracturedJsonException.Throw("Unexpected character", state.CurrentPosition);
+                        break;
+                }
             }
             
             // The enumerator might be pointed at the current character, that we consumed as part of an already-returned

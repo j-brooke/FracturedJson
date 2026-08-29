@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 
 namespace FracturedJson.Tokenizing;
@@ -19,18 +18,9 @@ internal class ScannerState
     /// <param name="isWhitespace">True if the character just read was whitespace outside of a token.</param>
     public void Advance(bool isWhitespace)
     {
-        try
-        {
-            checked
-            {
-                CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row, CurrentPosition.Column + 1);
-                NonWhitespaceSinceLastNewline |= !isWhitespace;
-            }
-        }
-        catch (OverflowException e)
-        {
-            throw new FracturedJsonException("Maximum document length exceeded", e, CurrentPosition);
-        }
+        FracturedJsonException.ThrowIf(CurrentPosition.Index==int.MaxValue, "Maximum document length exceeded");
+        CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row, CurrentPosition.Column + 1);
+        NonWhitespaceSinceLastNewline |= !isWhitespace;
     }
 
     /// <summary>
@@ -38,18 +28,9 @@ internal class ScannerState
     /// </summary>
     public void NewLine()
     {
-        try
-        {
-            checked
-            {
-                CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row + 1, 0);
-                NonWhitespaceSinceLastNewline = false;
-            }
-        }
-        catch (OverflowException e)
-        {
-            throw new FracturedJsonException("Maximum document length exceeded", e, CurrentPosition);
-        }
+        FracturedJsonException.ThrowIf(CurrentPosition.Index==int.MaxValue, "Maximum document length exceeded");
+        CurrentPosition = new(CurrentPosition.Index + 1, CurrentPosition.Row + 1, 0);
+        NonWhitespaceSinceLastNewline = false;
     }
 
     /// <summary>
@@ -82,6 +63,6 @@ internal class ScannerState
     /// </summary>
     public void Throw(string message)
     {
-        throw FracturedJsonException.Create(message, CurrentPosition);
+        FracturedJsonException.Throw(message, CurrentPosition);
     }
 }
