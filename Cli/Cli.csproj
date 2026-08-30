@@ -5,7 +5,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Version>1.0.1</Version>
+        <Version>1.0.2</Version>
         <Authors>FracturedJson</Authors>
         <AssemblyName>fracjson</AssemblyName>
         <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
@@ -18,8 +18,8 @@
         <PackageProjectUrl>https://github.com/j-brooke/FracturedJson/wiki/fracjson-CLI</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <AssemblyVersion>1.0.1</AssemblyVersion>
-        <FileVersion>1.0.1</FileVersion>
+        <AssemblyVersion>1.0.2</AssemblyVersion>
+        <FileVersion>1.0.2</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup>
