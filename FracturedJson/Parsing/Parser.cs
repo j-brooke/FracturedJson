@@ -327,9 +327,8 @@ public class Parser
             var startingNextPropName = (token.Type == TokenType.String && phase == ObjectPhase.AfterComma);
             var isExcessPostComment = (afterPropComment != null &&
                                        (token.Type == TokenType.BlockComment || token.Type == TokenType.LineComment));
-            var needToFlush = propertyName != null && propertyValue != null &&
-                              (isNewLine || isEndOfObject || startingNextPropName || isExcessPostComment);
-            if (needToFlush)
+            var needToFlush = (isNewLine || isEndOfObject || startingNextPropName || isExcessPostComment);
+            if (needToFlush && propertyName != null && propertyValue != null )
             {
                 JsonItem? commentToHoldForNextElement = null;
                 if (startingNextPropName && afterPropCommentWasAfterComma && !isNewLine)
@@ -341,9 +340,9 @@ public class Parser
                     afterPropComment = null;
                 }
 
-                AttachObjectValuePieces(childList, propertyName!.Value, propertyValue!, linePropValueEnds,
+                AttachObjectValuePieces(childList, propertyName.Value, propertyValue, linePropValueEnds,
                     beforePropComments, midPropComments, afterPropComment);
-                thisObjComplexity = Math.Max(thisObjComplexity, propertyValue!.Complexity + 1);
+                thisObjComplexity = Math.Max(thisObjComplexity, propertyValue.Complexity + 1);
                 propertyName = null;
                 propertyValue = null;
                 beforePropComments.Clear();
@@ -352,6 +351,13 @@ public class Parser
 
                 if (commentToHoldForNextElement != null)
                     beforePropComments.Add(commentToHoldForNextElement);
+            }
+            else if (isEndOfObject)
+            {
+                // If we were hanging on to comments to maybe be prefix comments, add them as standalone before
+                // adding a blank line item.
+                childList.AddRange(beforePropComments);
+                beforePropComments.Clear();
             }
 
             switch (token.Type)

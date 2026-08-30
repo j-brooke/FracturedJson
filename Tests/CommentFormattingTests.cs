@@ -308,4 +308,27 @@ public class CommentFormattingTests
         StringAssert.Contains(outputLines[1], "baz");
         Assert.AreEqual(0, outputLines[2].Length);
     }
+
+    [TestMethod]
+    public void AllCommentsPreserved()
+    {
+        var input =
+            """
+            {
+                // 1
+                /* 2 */ "foo": /* 3 */ "bar" // 4
+                // 5
+                ,
+                // 6
+            }
+            """;
+        var opts = new FracturedJsonOptions() { CommentPolicy = CommentPolicy.Preserve, AllowTrailingCommas = true };
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        Assert.AreEqual(6, outputLines.Length);
+        for (var i=1; i<=6; ++i)
+            StringAssert.Contains(output, i.ToString());
+    }
 }
