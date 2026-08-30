@@ -302,7 +302,7 @@ public class Formatter
         if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
             return false;
 
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        StartLine(depth);
         InlineElement(item, includeTrailingComma, parentTemplate);
         _buffer.EndLine(_pads.EOL);
 
@@ -354,7 +354,8 @@ public class Formatter
 
             if (remainingLineSpace < spaceNeededForNext)
             {
-                _buffer.EndLine(_pads.EOL).Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
+                _buffer.EndLine(_pads.EOL);
+                StartLine(depthAfterColon+1);
                 remainingLineSpace = availableLineSpace;
             }
 
@@ -367,8 +368,9 @@ public class Formatter
         }
 
         // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
-        _buffer.EndLine(_pads.EOL).Add(Options.PrefixString, _pads.Indent(depthAfterColon),
-            _pads.End(item.Type, BracketPaddingType.Empty));
+        _buffer.EndLine(_pads.EOL);
+        StartLine(depthAfterColon);
+        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
 
         StandardFormatEnd(item, includeTrailingComma);
         return true;
@@ -438,12 +440,13 @@ public class Formatter
                 continue;
             }
 
-            _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon+1));
+            StartLine(depthAfterColon+1);
             InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
             _buffer.EndLine(_pads.EOL);
         }
 
-        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StartLine(depthAfterColon);
+        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);
 
         return true;
@@ -479,7 +482,8 @@ public class Formatter
         for (var i=0; i<item.Children.Count; ++i)
             FormatItem(item.Children[i], depthAfterColon+1, (i<lastElementIndex), templateToPass);
 
-        _buffer.Add(Options.PrefixString, _pads.Indent(depthAfterColon), _pads.End(item.Type, BracketPaddingType.Empty));
+        StartLine(depthAfterColon);
+        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
         StandardFormatEnd(item, includeTrailingComma);
     }
 
@@ -491,7 +495,10 @@ public class Formatter
         var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
 
         foreach (var line in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth), line).EndLine(_pads.EOL);
+        {
+            StartLine(depth);
+            _buffer.Add(line).EndLine(_pads.EOL);
+        }
     }
 
     private void FormatBlankLine()
@@ -504,7 +511,7 @@ public class Formatter
     /// </summary>
     private void FormatInlineElement(JsonItem item, int depth, bool includeTrailingComma, TableTemplate? parentTemplate)
     {
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        StartLine(depth);
         InlineElement(item, includeTrailingComma, parentTemplate);
         _buffer.EndLine(_pads.EOL);
     }
@@ -527,7 +534,7 @@ public class Formatter
     /// on one line, and then the value on another, at a greater indentation level.</returns>
     private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
     {
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
+        StartLine(depth);
 
         if (parentTemplate != null)
         {
@@ -560,9 +567,12 @@ public class Formatter
         _buffer.EndLine(_pads.EOL);
 
         foreach (var row in commentRows)
-            _buffer.Add(Options.PrefixString, _pads.Indent(depth+1), row).EndLine(_pads.EOL);
+        {
+            StartLine(depth + 1);
+            _buffer.Add(row).EndLine(_pads.EOL);
+        }
 
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth+1));
+        StartLine(depth+1);
         return depth + 1;
     }
 
@@ -935,6 +945,14 @@ public class Formatter
             _buffer.Add(value, separator).Spaces(padWidth);
         else
             _buffer.Add(value).Spaces(padWidth).Add(separator);
+    }
+
+    /// <summary>
+    /// Add the prefix string and indent
+    /// </summary>
+    private void StartLine(int depth)
+    {
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
     }
 
     /// <summary>
