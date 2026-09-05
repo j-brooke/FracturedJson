@@ -637,22 +637,7 @@ public class Formatter
     {
         WritePrefixNameMiddle(item, template);
 
-        // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
-        var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
-                             || (Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
-                                 && template.Type is not TableColumnType.Number);
-        CommaPosition commaPos;
-        if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
-        {
-            if (item.PostfixCommentLength > 0)
-                commaPos = (commaBeforePad) ? CommaPosition.BeforeCommentPadding : CommaPosition.AfterCommentPadding;
-            else
-                commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterCommentPadding;
-        }
-        else
-        {
-            commaPos = (commaBeforePad) ? CommaPosition.BeforeValuePadding : CommaPosition.AfterValuePadding;
-        }
+        var commaPos = GetTableCommaPosition(template, item);
 
         // If we're asked to include a comma, do it.  For internal segments, if we don't supply a comma, the padding
         // will work out elsewhere.  But if this segment is the whole row of a table, we need to supply a dummy
@@ -663,6 +648,53 @@ public class Formatter
                 ? _pads.DummyComma
                 : string.Empty;
 
+        InlineTableValue(template, item, commaPos, commaType);
+
+        if (commaPos == CommaPosition.AfterValuePadding)
+            _buffer.Add(commaType);
+
+        if (template.PostfixCommentLength > 0)
+            _buffer.Add(_pads.Comment, item.PostfixComment);
+
+        if (commaPos == CommaPosition.BeforeCommentPadding)
+            _buffer.Add(commaType);
+
+        _buffer.Spaces(template.PostfixCommentLength - item.PostfixCommentLength);
+
+        if (commaPos == CommaPosition.AfterCommentPadding)
+            _buffer.Add(commaType);
+    }
+
+    /// <summary>
+    /// Where this row segment's comma goes relative to value padding and postfix-comment padding.
+    /// Line-style postfix comments consume the rest of the line, so they use the value-padding slots.
+    /// Block postfix comments occupy their own padded field, which adds the comment-padding slots.
+    /// </summary>
+    private CommaPosition GetTableCommaPosition(TableTemplate template, JsonItem item)
+    {
+        var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
+                             || (Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
+                                 && template.Type is not TableColumnType.Number);
+
+        var columnHasBlockPostfix = template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle;
+        if (!columnHasBlockPostfix)
+            return commaBeforePad ? CommaPosition.BeforeValuePadding : CommaPosition.AfterValuePadding;
+
+        if (item.PostfixCommentLength > 0)
+            return commaBeforePad ? CommaPosition.BeforeCommentPadding : CommaPosition.AfterCommentPadding;
+
+        // This segment has no postfix comment, but siblings do.  AfterPadding still wants the comma in the
+        // comment field so it lines up; BeforePadding clings to the value.
+        return commaBeforePad ? CommaPosition.BeforeValuePadding : CommaPosition.AfterCommentPadding;
+    }
+
+    /// <summary>
+    /// Writes this row segment's value, plus a comma if it belongs immediately after the value (before value
+    /// padding).  Number lists can embed that comma in their alignment padding, so it has to be supplied here
+    /// rather than after we return.
+    /// </summary>
+    private void InlineTableValue(TableTemplate template, JsonItem item, CommaPosition commaPos, string commaType)
+    {
         if (template.Children.Count > 0 && item.Type != JsonItemType.Null)
         {
             if (template.Type is TableColumnType.Array)
@@ -688,20 +720,6 @@ public class Formatter
                 _buffer.Add(commaType);
             _buffer.Spaces(template.CompositeValueLength - item.ValueLength);
         }
-
-        if (commaPos == CommaPosition.AfterValuePadding)
-            _buffer.Add(commaType);
-
-        if (template.PostfixCommentLength > 0)
-            _buffer.Add(_pads.Comment, item.PostfixComment);
-
-        if (commaPos == CommaPosition.BeforeCommentPadding)
-            _buffer.Add(commaType);
-
-        _buffer.Spaces(template.PostfixCommentLength - item.PostfixCommentLength);
-
-        if (commaPos == CommaPosition.AfterCommentPadding)
-            _buffer.Add(commaType);
     }
 
     /// <summary>
@@ -714,22 +732,8 @@ public class Formatter
         {
             var isLastInTemplate = (i == template.Children.Count - 1);
             var isLastInArray = (i == item.Children.Count - 1);
-            var isPastEndOfArray = (i >= item.Children.Count);
-            var subTemplate = template.Children[i];
-
-            if (isPastEndOfArray)
-            {
-                // We're done writing this array's children out.  Now we just need to add space to line up with others.
-                _buffer.Spaces(subTemplate.TotalLength);
-                if (!isLastInTemplate)
-                    _buffer.Add(_pads.DummyComma);
-            }
-            else
-            {
-                InlineTableRowSegment(subTemplate, item.Children[i], !isLastInArray, false);
-                if (isLastInArray && !isLastInTemplate)
-                    _buffer.Add(_pads.DummyComma);
-            }
+            var subItem = (i < item.Children.Count) ? item.Children[i] : null;
+            InlineOrPadTableRowSegment(template.Children[i], subItem, isLastInArray, isLastInTemplate);
         }
         _buffer.Add(_pads.ArrEnd(template.PadType));
     }
@@ -758,20 +762,31 @@ public class Formatter
             var subItem = matches[i].Item2;
             var isLastInObject = (i == lastNonNullIdx);
             var isLastInTemplate = (i == matches.Length - 1);
-            if (subItem != null)
-            {
-                InlineTableRowSegment(subTemplate, subItem, !isLastInObject, false);
-                if (isLastInObject && !isLastInTemplate)
-                    _buffer.Add(_pads.DummyComma);
-            }
-            else
-            {
-                _buffer.Spaces(subTemplate.TotalLength);
-                if (!isLastInTemplate)
-                    _buffer.Add(_pads.DummyComma);
-            }
+            InlineOrPadTableRowSegment(subTemplate, subItem, isLastInObject, isLastInTemplate);
         }
         _buffer.Add(_pads.ObjEnd(template.PadType));
+    }
+
+    /// <summary>
+    /// Writes a nested row segment, or enough spaces to stand in for a child the template expected but this
+    /// container does not have.  Dummy commas keep later segments aligned when the container is shorter than
+    /// the template (ragged arrays, omitted object keys).
+    /// </summary>
+    private void InlineOrPadTableRowSegment(TableTemplate subTemplate, JsonItem? subItem, bool isLastInContainer,
+        bool isLastInTemplate)
+    {
+        if (subItem != null)
+        {
+            InlineTableRowSegment(subTemplate, subItem, !isLastInContainer, false);
+            if (isLastInContainer && !isLastInTemplate)
+                _buffer.Add(_pads.DummyComma);
+        }
+        else
+        {
+            _buffer.Spaces(subTemplate.TotalLength);
+            if (!isLastInTemplate)
+                _buffer.Add(_pads.DummyComma);
+        }
     }
 
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
