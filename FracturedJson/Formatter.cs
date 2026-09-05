@@ -514,6 +514,31 @@ public class Formatter
     }
 
     /// <summary>
+    /// Writes the prefix comment, property name, and optionally the middle comment.  If a template is provided,
+    /// each piece is padded to the corresponding column width.  This does not include indentation or the value.
+    /// </summary>
+    private void WritePrefixNameMiddle(JsonItem item, TableTemplate? template, bool includeMiddleComment = true)
+    {
+        if (template != null)
+        {
+            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, template.PrefixCommentLength,
+                _pads.Comment, false);
+            AddToBufferFixed(item.Name, item.NameLength, template.NameLength, _pads.Colon,
+                Options.ColonBeforePropNamePadding);
+            if (includeMiddleComment)
+                AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, template.MiddleCommentLength,
+                    _pads.Comment, false);
+        }
+        else
+        {
+            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
+            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
+            if (includeMiddleComment)
+                AddToBuffer(item.MiddleComment, item.MiddleCommentLength, _pads.Comment);
+        }
+    }
+
+    /// <summary>
     /// Do the stuff that's the same for the start of every formatted item, like prefix comments, property
     /// labels, colons, etc.  This does not include the initial indentation.
     /// </summary>
@@ -521,31 +546,13 @@ public class Formatter
     /// on one line, and then the value on another, at a greater indentation level.</returns>
     private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
     {
-        if (parentTemplate != null)
-        {
-            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, parentTemplate.PrefixCommentLength,
-                _pads.Comment, false);
-            AddToBufferFixed(item.Name, item.NameLength, parentTemplate.NameLength, _pads.Colon,
-                Options.ColonBeforePropNamePadding);
-        }
-        else
-        {
-            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
-            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
-        }
+        // Write the middle comment here only if it fits on this line.  A multiline middle comment is handled
+        // below, because it changes indentation for everything that follows.
+        WritePrefixNameMiddle(item, parentTemplate,
+            includeMiddleComment: item.MiddleCommentLength > 0 && !item.MiddleCommentHasNewline);
 
-        if (item.MiddleCommentLength == 0)
+        if (item.MiddleCommentLength == 0 || !item.MiddleCommentHasNewline)
             return depth;
-
-        // If there's an inlineable middle comment, we write it on the same line and move along.  Easy.
-        if (!item.MiddleCommentHasNewline)
-        {
-            var middlePad = (parentTemplate != null)
-                ? parentTemplate.MiddleCommentLength - item.MiddleCommentLength
-                : 0;
-            _buffer.Add(item.MiddleComment).Spaces(middlePad).Add(_pads.Comment);
-            return depth;
-        }
 
         // If the middle comment requires multiple lines, start a new line and indent everything after this.
         var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
@@ -585,24 +592,7 @@ public class Formatter
     {
         FracturedJsonException.ThrowIf(item.RequiresMultipleLines, "Logic error - trying to inline invalid element");
 
-        // If parentTemplate is provided, we need to align this item's value with its siblings on other rows.  (This
-        // typically means that the parent container can't be table formatted, but we are aligning property values.)
-        if (parentTemplate != null)
-        {
-            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, parentTemplate.PrefixCommentLength,
-                _pads.Comment, false);
-            AddToBufferFixed(item.Name, item.NameLength, parentTemplate.NameLength, _pads.Colon,
-                Options.ColonBeforePropNamePadding);
-            AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, parentTemplate.MiddleCommentLength,
-                _pads.Comment, false);
-        }
-        else
-        {
-            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
-            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
-            AddToBuffer(item.MiddleComment, item.MiddleCommentLength, _pads.Comment);
-        }
-
+        WritePrefixNameMiddle(item, parentTemplate);
         InlineElementRaw(item);
         StandardFormatEnd(item, includeTrailingComma);
     }
@@ -645,12 +635,7 @@ public class Formatter
     private void InlineTableRowSegment(TableTemplate template, JsonItem item, bool includeTrailingComma,
         bool isWholeRow)
     {
-        AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, template.PrefixCommentLength,
-            _pads.Comment, false);
-        AddToBufferFixed(item.Name, item.NameLength, template.NameLength, _pads.Colon,
-            Options.ColonBeforePropNamePadding);
-        AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, template.MiddleCommentLength,
-            _pads.Comment, false);
+        WritePrefixNameMiddle(item, template);
 
         // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
         var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
