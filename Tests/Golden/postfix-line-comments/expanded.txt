@@ -1,0 +1,8 @@
+{
+    "a": 1,  // first
+    "b": [
+        true,
+        false
+    ],  // second
+    "c": 3 // last
+}

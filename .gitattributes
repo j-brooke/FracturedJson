@@ -3,6 +3,9 @@
 # tons of havok.
 docs/** binary
 
+# Golden expected output is compared as exact text, including newlines.
+Tests/Golden/** text eol=lf
+
 # Large benchmark data files → Git LFS
 benchmarks/**/Data/*.json   filter=lfs diff=lfs merge=lfs -text
 benchmarks/**/Data/*.jsonc  filter=lfs diff=lfs merge=lfs -text
