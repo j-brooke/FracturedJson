@@ -171,7 +171,7 @@ public class Formatter
         item.MiddleCommentLength = StringLengthFunc(item.MiddleComment);
         item.PostfixCommentLength = StringLengthFunc(item.PostfixComment);
         item.RequiresMultipleLines =
-            (item.Type is JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment)
+            !IsElement(item)
             || item.Children.Any(ch => ch.RequiresMultipleLines || ch.IsPostCommentLineStyle)
             || item.PrefixComment.Contains(newline)
             || item.MiddleComment.Contains(newline)
@@ -299,11 +299,10 @@ public class Formatter
 
         var lengthToConsider = prefixLength
                                + nameLength
-                               + +((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
+                               + ((item.MiddleCommentLength > 0) ? item.MiddleCommentLength + _pads.CommentLen : 0)
                                + item.ValueLength
                                + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0)
                                + ((includeTrailingComma) ? _pads.CommaLen : 0);
-
 
         if (item.Complexity > Options.MaxInlineComplexity  || lengthToConsider > AvailableLineSpace(depth))
             return false;
@@ -401,7 +400,7 @@ public class Formatter
 
         // If any child element is too long even without formatting, don't bother.
         var isChildTooLong = item.Children
-            .Where(ch => ch.Type is not (JsonItemType.BlankLine or JsonItemType.LineComment or JsonItemType.BlockComment))
+            .Where(IsElement)
             .Any(ch => ch.MinimumTotalLength > availableSpace);
         if (isChildTooLong)
             return false;
@@ -564,7 +563,7 @@ public class Formatter
 
     /// <summary>
     /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
-    /// comments.  This does not include an EOL.  This is only called when it's the last thing on the line.
+    /// comments.  This does not include an EOL.
     /// </summary>
     private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
     {
@@ -605,13 +604,7 @@ public class Formatter
         }
 
         InlineElementRaw(item);
-
-        if (includeTrailingComma && item.IsPostCommentLineStyle)
-            _buffer.Add(_pads.Comma);
-        if (item.PostfixCommentLength > 0)
-            _buffer.Add(_pads.Comment, item.PostfixComment);
-        if (includeTrailingComma && !item.IsPostCommentLineStyle)
-            _buffer.Add(_pads.Comma);
+        StandardFormatEnd(item, includeTrailingComma);
     }
 
     /// <summary>
@@ -661,8 +654,8 @@ public class Formatter
 
         // Where to place the comma (if any) relative to the postfix comment (if any) and various padding.
         var commaBeforePad = Options.TableCommaPlacement == TableCommaPlacement.BeforePadding
-                             || Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
-                             && (template.Type is not TableColumnType.Number);
+                             || (Options.TableCommaPlacement == TableCommaPlacement.BeforePaddingExceptNumbers
+                                 && template.Type is not TableColumnType.Number);
         CommaPosition commaPos;
         if (template.PostfixCommentLength > 0 && !template.IsAnyPostCommentLineStyle)
         {
@@ -845,7 +838,7 @@ public class Formatter
             atStartOfNewLine = false;
             foreach (var child in item.Children)
             {
-                if (child.Type is not (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment))
+                if (IsElement(child))
                 {
                     if (needsComma)
                         _buffer.Add(",");
@@ -981,13 +974,20 @@ public class Formatter
     {
         for (var i = itemList.Count - 1; i >= 0; --i)
         {
-            var isElement = itemList[i].Type is not
-                (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment);
-            if (isElement)
+            if (IsElement(itemList[i]))
                 return i;
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// True if the item is a real JSON value (as opposed to a standalone comment or blank line).
+    /// </summary>
+    private static bool IsElement(JsonItem item)
+    {
+        return item.Type is not
+            (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment);
     }
 
     private enum CommaPosition
