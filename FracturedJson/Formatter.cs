@@ -119,6 +119,9 @@ public class Formatter
     private IBuffer _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
 
+    // ---- Entry
+    // Pretty-print starts here: measure every item, then send each top-level item through FormatItem.
+
     private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, IBuffer buffer)
     {
         _buffer = buffer;
@@ -131,18 +134,6 @@ public class Formatter
             FormatItem(item, startingDepth, false, null);
             _buffer.EndLine(_pads.EOL);
         }
-
-        _buffer = new NullBuffer();
-    }
-
-    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, IBuffer buffer)
-    {
-        _buffer = buffer;
-        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
-
-        var atStartOfNewLine = true;
-        foreach (var item in docModel)
-            atStartOfNewLine = MinifyItem(item, atStartOfNewLine);
 
         _buffer = new NullBuffer();
     }
@@ -197,6 +188,11 @@ public class Formatter
             + item.ValueLength
             + ((item.PostfixCommentLength > 0) ? item.PostfixCommentLength + _pads.CommentLen : 0);
     }
+
+    // ---- Dispatcher
+    // FormatItem writes one item.  FormatContainer picks a layout for an array/object.
+    // The recursive thoroughfare is FormatItem -> FormatContainer -> FormatContainerExpanded -> FormatItem.
+    // Inline, compact, and table do not send descendants back through FormatItem.
 
     /// <summary>
     /// Adds a formatted version of any item to the buffer, including internal newlines and indentation, but the
@@ -270,6 +266,73 @@ public class Formatter
 
         FormatContainerExpanded(item, depth, includeTrailingComma, template, parentTemplate);
     }
+
+    /// <summary>
+    /// Writes a standalone comment.  Internal line breaks and indentation are taken care of here,
+    /// but the indentation before the first line and line end after the last are the caller's
+    /// responsibility.
+    /// </summary>
+    private void FormatStandaloneComment(JsonItem item, int depth)
+    {
+        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
+        if (commentRows.Length == 0)
+            return;
+
+        _buffer.Add(commentRows[0]);
+        for (var i = 1; i < commentRows.Length; ++i)
+        {
+            _buffer.EndLine(_pads.EOL);
+            StartLine(depth);
+            _buffer.Add(commentRows[i]);
+        }
+    }
+
+    // ---- Expanded
+    // The recursive default: one child per line, each child goes back through FormatItem.
+
+    /// <summary>
+    /// Adds the representation for an array or object to the buffer, broken out on separate lines.  This is the most
+    /// general case that always works.
+    /// </summary>
+    /// <param name="item">The container we need to write</param>
+    /// <param name="depth">Indentation level</param>
+    /// <param name="includeTrailingComma">True if this container should have a comma after it.</param>
+    /// <param name="template">Measurements for *this* item and its children.  Used to line up the children's property
+    /// values.</param>
+    /// <param name="parentTemplate">Measurements for lining up this item's prop name/value with its siblings.</param>
+    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate template, TableTemplate? parentTemplate)
+    {
+        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
+
+        // Decide whether to align this container's property values.  If so, pass this container's template along
+        // to its children so they know how to align their property values.
+        var alignProps = item.Type == JsonItemType.Object
+                         && template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
+                         && !template.AnyMiddleCommentHasNewline
+                         && AvailableLineSpace(depth + 1) >= template.AtomicItemSize();
+        var templateToPass = (alignProps) ? template : null;
+
+        // Take note of the position of the last actual element, for comma decisions.  The last element
+        // might not be the last item.
+        var lastElementIndex = IndexOfLastElement(item.Children);
+        for (var i=0; i<item.Children.Count; ++i)
+        {
+            StartLine(depthAfterColon+1);
+            FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
+            _buffer.EndLine(_pads.EOL);
+        }
+
+        StartLine(depthAfterColon);
+        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+        StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    // ---- Other container strategies
+    // FormatContainer tries these (inline, compact, table) before falling back to expanded.
+    // If we use any of these strategies, descendants don't go back to the main FormatItem recursion path - they
+    // stay in the line writer or table-segment writer.
 
     /// <summary>
     /// Tries to add the representation for an array or object to the buffer.
@@ -454,134 +517,9 @@ public class Formatter
         return true;
     }
 
-    /// <summary>
-    /// Adds the representation for an array or object to the buffer, broken out on separate lines.  This is the most
-    /// general case that always works.
-    /// </summary>
-    /// <param name="item">The container we need to write</param>
-    /// <param name="depth">Indentation level</param>
-    /// <param name="includeTrailingComma">True if this container should have a comma after it.</param>
-    /// <param name="template">Measurements for *this* item and its children.  Used to line up the children's property
-    /// values.</param>
-    /// <param name="parentTemplate">Measurements for lining up this item's prop name/value with its siblings.</param>
-    private void FormatContainerExpanded(JsonItem item, int depth, bool includeTrailingComma,
-        TableTemplate template, TableTemplate? parentTemplate)
-    {
-        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
-
-        // Decide whether to align this container's property values.  If so, pass this container's template along
-        // to its children so they know how to align their property values.
-        var alignProps = item.Type == JsonItemType.Object
-                         && template.NameLength - template.NameMinimum <= Options.MaxPropNamePadding
-                         && !template.AnyMiddleCommentHasNewline
-                         && AvailableLineSpace(depth + 1) >= template.AtomicItemSize();
-        var templateToPass = (alignProps) ? template : null;
-
-        // Take note of the position of the last actual element, for comma decisions.  The last element
-        // might not be the last item.
-        var lastElementIndex = IndexOfLastElement(item.Children);
-        for (var i=0; i<item.Children.Count; ++i)
-        {
-            StartLine(depthAfterColon+1);
-            FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
-            _buffer.EndLine(_pads.EOL);
-        }
-
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
-        StandardFormatEnd(item, includeTrailingComma);
-    }
-
-    /// <summary>
-    /// Writes a standalone comment.  Internal line breaks and indentation are taken care of here,
-    /// but the indentation before the first line and line end after the last are the caller's
-    /// responsibility.
-    /// </summary>
-    private void FormatStandaloneComment(JsonItem item, int depth)
-    {
-        var commentRows = NormalizeMultilineComment(item.Value, item.InputPosition.Column);
-        if (commentRows.Length == 0)
-            return;
-
-        _buffer.Add(commentRows[0]);
-        for (var i = 1; i < commentRows.Length; ++i)
-        {
-            _buffer.EndLine(_pads.EOL);
-            StartLine(depth);
-            _buffer.Add(commentRows[i]);
-        }
-    }
-
-    /// <summary>
-    /// Writes the prefix comment, property name, and optionally the middle comment.  If a template is provided,
-    /// each piece is padded to the corresponding column width.  This does not include indentation or the value.
-    /// </summary>
-    private void WritePrefixNameMiddle(JsonItem item, TableTemplate? template, bool includeMiddleComment = true)
-    {
-        if (template != null)
-        {
-            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, template.PrefixCommentLength,
-                _pads.Comment, false);
-            AddToBufferFixed(item.Name, item.NameLength, template.NameLength, _pads.Colon,
-                Options.ColonBeforePropNamePadding);
-            if (includeMiddleComment)
-                AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, template.MiddleCommentLength,
-                    _pads.Comment, false);
-        }
-        else
-        {
-            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
-            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
-            if (includeMiddleComment)
-                AddToBuffer(item.MiddleComment, item.MiddleCommentLength, _pads.Comment);
-        }
-    }
-
-    /// <summary>
-    /// Do the stuff that's the same for the start of every formatted item, like prefix comments, property
-    /// labels, colons, etc.  This does not include the initial indentation.
-    /// </summary>
-    /// <returns>Depth number to be used for everything after this.  In some cases, we print a prop label
-    /// on one line, and then the value on another, at a greater indentation level.</returns>
-    private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
-    {
-        // Write the middle comment here only if it fits on this line.  A multiline middle comment is handled
-        // below, because it changes indentation for everything that follows.
-        WritePrefixNameMiddle(item, parentTemplate,
-            includeMiddleComment: item.MiddleCommentLength > 0 && !item.MiddleCommentHasNewline);
-
-        if (item.MiddleCommentLength == 0 || !item.MiddleCommentHasNewline)
-            return depth;
-
-        // If the middle comment requires multiple lines, start a new line and indent everything after this.
-        var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
-        _buffer.EndLine(_pads.EOL);
-
-        foreach (var row in commentRows)
-        {
-            StartLine(depth + 1);
-            _buffer.Add(row).EndLine(_pads.EOL);
-        }
-
-        StartLine(depth+1);
-        return depth + 1;
-    }
-
-    /// <summary>
-    /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
-    /// comments.  This does not include an EOL.
-    /// </summary>
-    private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
-    {
-        if (includeTrailingComma && item.IsPostCommentLineStyle)
-            _buffer.Add(_pads.Comma);
-        if (item.PostfixCommentLength > 0)
-            _buffer.Add(_pads.Comment, item.PostfixComment);
-        if (includeTrailingComma && !item.IsPostCommentLineStyle)
-            _buffer.Add(_pads.Comma);
-    }
-
+    // ---- Line writer
+    // Write an item on the current line.  Used by FormatItem, inline containers, compact, and nested inlines.
+    // Precondition: !RequiresMultipleLines (no standalone comments).
 
     /// <summary>
     /// Adds the inline representation of this item to the buffer.  This includes all of this element's
@@ -628,6 +566,10 @@ public class Formatter
             _buffer.Add(item.Value);
         }
     }
+
+    // ---- Table segments
+    // Column-aligned inline writing.  Used by whole tables and by compact arrays.
+    // Nested arrays/objects stay in this neighborhood; they never call FormatContainer.
 
     /// <summary>
     /// Adds this item's representation to the buffer inlined, formatted according to the given TableTemplate.
@@ -789,12 +731,122 @@ public class Formatter
         }
     }
 
-    private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
+    private enum CommaPosition
     {
-        if (arrOrObj.Children.Count == 0)
-            return BracketPaddingType.Empty;
+        BeforeValuePadding,
+        AfterValuePadding,
+        BeforeCommentPadding,
+        AfterCommentPadding,
+    }
 
-        return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
+    // ---- Item chrome
+    // Prefix comment, name, middle comment, trailing comma, postfix comment.
+    // Used by expanded, compact, table, inline, and split key/value items.
+
+    /// <summary>
+    /// Writes the prefix comment, property name, and optionally the middle comment.  If a template is provided,
+    /// each piece is padded to the corresponding column width.  This does not include indentation or the value.
+    /// </summary>
+    private void WritePrefixNameMiddle(JsonItem item, TableTemplate? template, bool includeMiddleComment = true)
+    {
+        if (template != null)
+        {
+            AddToBufferFixed(item.PrefixComment, item.PrefixCommentLength, template.PrefixCommentLength,
+                _pads.Comment, false);
+            AddToBufferFixed(item.Name, item.NameLength, template.NameLength, _pads.Colon,
+                Options.ColonBeforePropNamePadding);
+            if (includeMiddleComment)
+                AddToBufferFixed(item.MiddleComment, item.MiddleCommentLength, template.MiddleCommentLength,
+                    _pads.Comment, false);
+        }
+        else
+        {
+            AddToBuffer(item.PrefixComment, item.PrefixCommentLength, _pads.Comment);
+            AddToBuffer(item.Name, item.NameLength, _pads.Colon);
+            if (includeMiddleComment)
+                AddToBuffer(item.MiddleComment, item.MiddleCommentLength, _pads.Comment);
+        }
+    }
+
+    /// <summary>
+    /// Do the stuff that's the same for the start of every formatted item, like prefix comments, property
+    /// labels, colons, etc.  This does not include the initial indentation.
+    /// </summary>
+    /// <returns>Depth number to be used for everything after this.  In some cases, we print a prop label
+    /// on one line, and then the value on another, at a greater indentation level.</returns>
+    private int StandardFormatStart(JsonItem item, int depth, TableTemplate? parentTemplate)
+    {
+        // Write the middle comment here only if it fits on this line.  A multiline middle comment is handled
+        // below, because it changes indentation for everything that follows.
+        WritePrefixNameMiddle(item, parentTemplate,
+            includeMiddleComment: item.MiddleCommentLength > 0 && !item.MiddleCommentHasNewline);
+
+        if (item.MiddleCommentLength == 0 || !item.MiddleCommentHasNewline)
+            return depth;
+
+        // If the middle comment requires multiple lines, start a new line and indent everything after this.
+        var commentRows = NormalizeMultilineComment(item.MiddleComment, int.MaxValue);
+        _buffer.EndLine(_pads.EOL);
+
+        foreach (var row in commentRows)
+        {
+            StartLine(depth + 1);
+            _buffer.Add(row).EndLine(_pads.EOL);
+        }
+
+        StartLine(depth+1);
+        return depth + 1;
+    }
+
+    /// <summary>
+    /// Do the stuff that's usually the same for the end of all formatted items, like trailing commas and postfix
+    /// comments.  This does not include an EOL.
+    /// </summary>
+    private void StandardFormatEnd(JsonItem item, bool includeTrailingComma)
+    {
+        if (includeTrailingComma && item.IsPostCommentLineStyle)
+            _buffer.Add(_pads.Comma);
+        if (item.PostfixCommentLength > 0)
+            _buffer.Add(_pads.Comment, item.PostfixComment);
+        if (includeTrailingComma && !item.IsPostCommentLineStyle)
+            _buffer.Add(_pads.Comma);
+    }
+
+    /// <summary>
+    /// Adds a string and a separator to the buffer.  For example, a prefix comment and the prefix separator.
+    /// Neither is added if valueWidth is zero.
+    /// </summary>
+    private void AddToBuffer(string value, int valueWidth, string separator)
+    {
+        if (valueWidth <= 0)
+            return;
+        _buffer.Add(value, separator);
+    }
+
+    /// <summary>
+    /// Adds a string and separator to the buffer, as well as enough padding spaces to make it fit the requested width.
+    /// Nothing is added if fieldWidth is zero.
+    /// </summary>
+    private void AddToBufferFixed(string value, int valueWidth, int fieldWidth, string separator,
+        bool separatorBeforePadding)
+    {
+        if (fieldWidth <= 0)
+            return;
+        var padWidth = fieldWidth - valueWidth;
+        if (separatorBeforePadding)
+            _buffer.Add(value, separator).Spaces(padWidth);
+        else
+            _buffer.Add(value).Spaces(padWidth).Add(separator);
+    }
+
+    // ---- Plumbing
+
+    /// <summary>
+    /// Add the prefix string and indent
+    /// </summary>
+    private void StartLine(int depth)
+    {
+        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
     }
 
     /// <summary>
@@ -804,6 +856,86 @@ public class Formatter
     private int AvailableLineSpace(int depth)
     {
         return Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth;
+    }
+
+    private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
+    {
+        if (arrOrObj.Children.Count == 0)
+            return BracketPaddingType.Empty;
+
+        return (arrOrObj.Complexity >= 2) ? BracketPaddingType.Complex : BracketPaddingType.Simple;
+    }
+
+    /// <summary>
+    /// Returns a multiline comment string as an array of strings where newlines have been removed and leading space
+    /// on each line has been trimmed as smartly as possible.
+    /// </summary>
+    private static string[] NormalizeMultilineComment(string comment, int firstLineColumn)
+    {
+        // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
+        // line endings that the user wants ourselves.
+        var normalized = comment.Replace("\r", string.Empty);
+        var commentRows = normalized.Split('\n')
+            .Where(line => line.Length>0)
+            .ToArray();
+
+        /*
+         * The first line doesn't include any leading whitespace, but subsequent lines probably do.
+         * We want to remove leading whitespace from those rows, but only up to where the first line began.
+         * The idea is to preserve spaces used to line up comments, like the ones before the asterisks
+         * in THIS VERY COMMENT that you're reading RIGHT NOW.
+         */
+        for (var i = 1; i < commentRows.Length; ++i)
+        {
+            var line = commentRows[i];
+
+            var nonWsIdx = 0;
+            while (nonWsIdx < line.Length && nonWsIdx < firstLineColumn && char.IsWhiteSpace(line[nonWsIdx]))
+                nonWsIdx += 1;
+
+            commentRows[i] = line.Substring(nonWsIdx);
+        }
+
+        return commentRows;
+    }
+
+    /// <summary>
+    /// True if the item is a real JSON value (as opposed to a standalone comment or blank line).
+    /// </summary>
+    private static bool IsElement(JsonItem item)
+    {
+        return item.Type is not
+            (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment);
+    }
+
+    /// <summary>
+    /// Returns the index in the given list of the last element - that is, item that's not a standalone comment
+    /// or blank line.  Used to decide where commas should go.
+    /// </summary>
+    private static int IndexOfLastElement(IList<JsonItem> itemList)
+    {
+        for (var i = itemList.Count - 1; i >= 0; --i)
+        {
+            if (IsElement(itemList[i]))
+                return i;
+        }
+
+        return -1;
+    }
+
+    // ---- Minify
+    // Separate from pretty-print.  Shares NormalizeMultilineComment with the rest; otherwise its own recursion.
+
+    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, IBuffer buffer)
+    {
+        _buffer = buffer;
+        _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+
+        var atStartOfNewLine = true;
+        foreach (var item in docModel)
+            atStartOfNewLine = MinifyItem(item, atStartOfNewLine);
+
+        _buffer = new NullBuffer();
     }
 
     /// <summary>
@@ -896,105 +1028,5 @@ public class Formatter
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Adds a string and a separator to the buffer.  For example, a prefix comment and the prefix separator.
-    /// Neither is added if valueWidth is zero.
-    /// </summary>
-    private void AddToBuffer(string value, int valueWidth, string separator)
-    {
-        if (valueWidth <= 0)
-            return;
-        _buffer.Add(value, separator);
-    }
-
-    /// <summary>
-    /// Adds a string and separator to the buffer, as well as enough padding spaces to make it fit the requested width.
-    /// Nothing is added if fieldWidth is zero.
-    /// </summary>
-    private void AddToBufferFixed(string value, int valueWidth, int fieldWidth, string separator,
-        bool separatorBeforePadding)
-    {
-        if (fieldWidth <= 0)
-            return;
-        var padWidth = fieldWidth - valueWidth;
-        if (separatorBeforePadding)
-            _buffer.Add(value, separator).Spaces(padWidth);
-        else
-            _buffer.Add(value).Spaces(padWidth).Add(separator);
-    }
-
-    /// <summary>
-    /// Add the prefix string and indent
-    /// </summary>
-    private void StartLine(int depth)
-    {
-        _buffer.Add(Options.PrefixString, _pads.Indent(depth));
-    }
-
-    /// <summary>
-    /// Returns a multiline comment string as an array of strings where newlines have been removed and leading space
-    /// on each line has been trimmed as smartly as possible.
-    /// </summary>
-    private static string[] NormalizeMultilineComment(string comment, int firstLineColumn)
-    {
-        // Split the comment into separate lines, and get rid of that nasty \r\n stuff.  We'll write the
-        // line endings that the user wants ourselves.
-        var normalized = comment.Replace("\r", string.Empty);
-        var commentRows = normalized.Split('\n')
-            .Where(line => line.Length>0)
-            .ToArray();
-
-        /*
-         * The first line doesn't include any leading whitespace, but subsequent lines probably do.
-         * We want to remove leading whitespace from those rows, but only up to where the first line began.
-         * The idea is to preserve spaces used to line up comments, like the ones before the asterisks
-         * in THIS VERY COMMENT that you're reading RIGHT NOW.
-         */
-        for (var i = 1; i < commentRows.Length; ++i)
-        {
-            var line = commentRows[i];
-
-            var nonWsIdx = 0;
-            while (nonWsIdx < line.Length && nonWsIdx < firstLineColumn && char.IsWhiteSpace(line[nonWsIdx]))
-                nonWsIdx += 1;
-
-            commentRows[i] = line.Substring(nonWsIdx);
-        }
-
-        return commentRows;
-    }
-
-    /// <summary>
-    /// Returns the index in the given list of the last element - that is, item that's not a standalone comment
-    /// or blank line.  Used to decide where commas should go.
-    /// </summary>
-    private static int IndexOfLastElement(IList<JsonItem> itemList)
-    {
-        for (var i = itemList.Count - 1; i >= 0; --i)
-        {
-            if (IsElement(itemList[i]))
-                return i;
-        }
-
-        return -1;
-    }
-
-    /// <summary>
-    /// True if the item is a real JSON value (as opposed to a standalone comment or blank line).
-    /// </summary>
-    private static bool IsElement(JsonItem item)
-    {
-        return item.Type is not
-            (JsonItemType.BlankLine or JsonItemType.BlockComment or JsonItemType.LineComment);
-    }
-
-    private enum CommaPosition
-    {
-        BeforeValuePadding,
-        AfterValuePadding,
-        BeforeCommentPadding,
-        AfterCommentPadding,
     }
 }
