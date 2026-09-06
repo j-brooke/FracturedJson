@@ -116,13 +116,13 @@ public class Formatter
         return s.Length;
     }
 
-    private IBuffer _buffer = new NullBuffer();
+    private ILinePeeker _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
 
     // ---- Entry
     // Pretty-print starts here: measure every item, then send each top-level item through FormatItem.
 
-    private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, IBuffer buffer)
+    private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, ILinePeeker buffer)
     {
         _buffer = buffer;
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
@@ -321,11 +321,12 @@ public class Formatter
         {
             StartLine(depthAfterColon+1);
             FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
-            _buffer.EndLine(_pads.EOL);
+
+            if (i < item.Children.Count - 1)
+                _buffer.EndLine(_pads.EOL);
         }
 
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
     }
 
@@ -380,7 +381,8 @@ public class Formatter
     /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate template, TableTemplate? parentTemplate)
     {
         if (item.Type != JsonItemType.Array)
             return false;
@@ -431,11 +433,7 @@ public class Formatter
             remainingLineSpace -= spaceNeededForNext;
         }
 
-        // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
-        _buffer.EndLine(_pads.EOL);
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
-
+        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
         return true;
     }
@@ -446,7 +444,8 @@ public class Formatter
     /// are consistent for all rows.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
+    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template,
+        TableTemplate? parentTemplate)
     {
         // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
@@ -507,11 +506,11 @@ public class Formatter
                 InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
             }
 
-            _buffer.EndLine(_pads.EOL);
+            if (i < item.Children.Count - 1)
+                _buffer.EndLine(_pads.EOL);
         }
 
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
 
         return true;
@@ -839,6 +838,39 @@ public class Formatter
             _buffer.Add(value).Spaces(padWidth).Add(separator);
     }
 
+    private bool CanCollapseContainerClose(JsonItem container, BracketPaddingType padType, bool includeTrailingComma)
+    {
+        if (!Options.CollapseClosingBrackets)
+            return false;
+
+        if (container.Children.Count == 0)
+            return false;
+
+        var lastItemInContainer = container.Children[container.Children.Count - 1];
+        var lastItemDisqualifies = lastItemInContainer.PostfixCommentLength > 0 || !IsElement(lastItemInContainer);
+        if (lastItemDisqualifies)
+            return false;
+
+        var lineLengthIfCollapsed = StringLengthFunc(_buffer.PeekCurrentLine())
+                                    + _pads.EndLen(container.Type, padType)
+                                    + ((includeTrailingComma) ? _pads.CommaLen : 0);
+        return lineLengthIfCollapsed <= Options.MaxTotalLineLength;
+    }
+
+    private void WriteNonInlineCloseBracket(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        var padTypeIfInline = GetPaddingType(item);
+        if (!CanCollapseContainerClose(item, padTypeIfInline, includeTrailingComma))
+        {
+            _buffer.EndLine(_pads.EOL);
+            StartLine(depth);
+            _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+            return;
+        }
+
+        _buffer.Add(_pads.End(item.Type, padTypeIfInline));
+    }
+
     // ---- Plumbing
 
     /// <summary>
@@ -926,7 +958,7 @@ public class Formatter
     // ---- Minify
     // Separate from pretty-print.  Shares NormalizeMultilineComment with the rest; otherwise its own recursion.
 
-    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, IBuffer buffer)
+    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, ILinePeeker buffer)
     {
         _buffer = buffer;
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);

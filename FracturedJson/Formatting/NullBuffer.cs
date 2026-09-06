@@ -3,7 +3,7 @@ namespace FracturedJson.Formatting;
 /// <summary>
 /// A do-nothing IBuffer, just to avoid null reference exceptions and such.
 /// </summary>
-public class NullBuffer : IBuffer
+public class NullBuffer : IBuffer, ILinePeeker
 {
     /// <summary>
     /// Add a single string to the buffer.
@@ -44,5 +44,10 @@ public class NullBuffer : IBuffer
     public IBuffer Flush()
     {
         return this;
+    }
+
+    public string PeekCurrentLine()
+    {
+        return string.Empty;
     }
 }

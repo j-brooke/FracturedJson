@@ -101,6 +101,8 @@ public record FracturedJsonOptions
     /// </remarks>
     public bool SimpleBracketPadding { get; set; } = false;
 
+    public bool CollapseClosingBrackets { get; set; } = false;
+
     /// <summary>
     /// If true, includes a space after property colons.
     /// </summary>

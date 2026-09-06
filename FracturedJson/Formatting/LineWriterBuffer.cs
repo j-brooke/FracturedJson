@@ -7,7 +7,7 @@ namespace FracturedJson.Formatting;
 /// An IBuffer for writing to a TextWriter (which will often be backed by a file or network stream).
 /// Internally it composes each individual line before pushing those into writer.
 /// </summary>
-public class LineWriterBuffer : IBuffer
+public class LineWriterBuffer : IBuffer, ILinePeeker
 {
     /// <summary>
     /// Creates a new LineWriterBuffer.
@@ -64,6 +64,11 @@ public class LineWriterBuffer : IBuffer
         AddLineToWriter(string.Empty);
         _writer.Flush();
         return this;
+    }
+
+    public string PeekCurrentLine()
+    {
+        return _lineBuff.ToString();
     }
 
     private readonly TextWriter _writer;
