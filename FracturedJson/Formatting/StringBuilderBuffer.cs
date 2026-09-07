@@ -6,7 +6,7 @@ namespace FracturedJson.Formatting;
 /// A place where strings are piled up sequentially to eventually make one big string, implemented with a
 /// good old .NET StringBuilder.
 /// </summary>
-public class StringBuilderBuffer : IBuffer, ILinePeeker
+public class StringBuilderBuffer : IBuffer
 {
     /// <summary>
     /// Add a single string to the buffer.
@@ -44,7 +44,6 @@ public class StringBuilderBuffer : IBuffer, ILinePeeker
     {
         TrimIfNeeded();
         _buff.Append(eolString);
-        _startOfLineIndex = _buff.Length;
         return this;
     }
 
@@ -57,11 +56,6 @@ public class StringBuilderBuffer : IBuffer, ILinePeeker
         return this;
     }
 
-    public string PeekCurrentLine()
-    {
-        return _buff.ToString(_startOfLineIndex, _buff.Length - _startOfLineIndex);
-    }
-
     /// <summary>
     /// Convert the contents of the buffer into a single string.
     /// </summary>
@@ -71,7 +65,6 @@ public class StringBuilderBuffer : IBuffer, ILinePeeker
     }
 
     private readonly StringBuilder _buff = new();
-    private int _startOfLineIndex = 0;
 
     /// <summary>
     /// Gets rid of spaces and tabs at the end of the buffer.  This should be called at the end of a line

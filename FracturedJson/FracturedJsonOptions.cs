@@ -101,6 +101,11 @@ public record FracturedJsonOptions
     /// </remarks>
     public bool SimpleBracketPadding { get; set; } = false;
 
+    /// <summary>
+    /// If true, a container's closing bracket is written on the same line as its last child when that child
+    /// is a real JSON value with no postfix comment, and the combined line still fits in.
+    /// <see cref="MaxTotalLineLength"/>.
+    /// </summary>
     public bool CollapseClosingBrackets { get; set; } = false;
 
     /// <summary>

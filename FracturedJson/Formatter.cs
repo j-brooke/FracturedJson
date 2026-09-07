@@ -116,16 +116,24 @@ public class Formatter
         return s.Length;
     }
 
-    private ILinePeeker _buffer = new NullBuffer();
+    private IBuffer _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
+
+    /// <summary>
+    /// Display width of the line currently being written, in StringLengthFunc units.  Assigned at a few
+    /// checkpoints (inline FormatItem, compact/table close, collapsed/un-collapsed close bracket) rather than
+    /// on every buffer write.  Used to decide whether a closing bracket can share the last child's line.
+    /// </summary>
+    private int _currentLineLen;
 
     // ---- Entry
     // Pretty-print starts here: measure every item, then send each top-level item through FormatItem.
 
-    private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, ILinePeeker buffer)
+    private void FormatTopLevel(IEnumerable<JsonItem> docModel, int startingDepth, IBuffer buffer)
     {
         _buffer = buffer;
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        _currentLineLen = 0;
 
         foreach(var item in docModel)
         {
@@ -216,12 +224,17 @@ public class Formatter
             default:
                 if (item.RequiresMultipleLines)
                 {
-                    StandardFormatStart(item, depth, parentTemplate);
+                    var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
                     _buffer.Add(item.Value);
                     StandardFormatEnd(item, includeTrailingComma);
+                    SetLineWidthAfterPossiblySplitItem(item, depth, depthAfterColon, includeTrailingComma,
+                        parentTemplate);
                 }
                 else
+                {
                     InlineElement(item, includeTrailingComma, parentTemplate);
+                    SetLineLengthAfterInlineItem(item, depth, includeTrailingComma, parentTemplate);
+                }
                 break;
         }
     }
@@ -372,6 +385,7 @@ public class Formatter
             return false;
 
         InlineElement(item, includeTrailingComma, parentTemplate);
+        SetLineLengthAfterInlineItem(item, depth, includeTrailingComma, parentTemplate);
 
         return true;
     }
@@ -433,6 +447,7 @@ public class Formatter
             remainingLineSpace -= spaceNeededForNext;
         }
 
+        _currentLineLen = Options.MaxTotalLineLength - remainingLineSpace;
         WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
         return true;
@@ -510,6 +525,7 @@ public class Formatter
                 _buffer.EndLine(_pads.EOL);
         }
 
+        _currentLineLen = LinePrefixWidth(depthAfterColon + 1) + template.TotalLength + _pads.CommaLen;
         WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
 
@@ -838,6 +854,9 @@ public class Formatter
             _buffer.Add(value).Spaces(padWidth).Add(separator);
     }
 
+    /// <summary>
+    /// Checks whether it's okay to write a closing bracket on the same line.
+    /// </summary>
     private bool CanCollapseContainerClose(JsonItem container, BracketPaddingType padType, bool includeTrailingComma)
     {
         if (!Options.CollapseClosingBrackets)
@@ -851,12 +870,15 @@ public class Formatter
         if (lastItemDisqualifies)
             return false;
 
-        var lineLengthIfCollapsed = StringLengthFunc(_buffer.PeekCurrentLine())
+        var lineLengthIfCollapsed = _currentLineLen
                                     + _pads.EndLen(container.Type, padType)
                                     + ((includeTrailingComma) ? _pads.CommaLen : 0);
         return lineLengthIfCollapsed <= Options.MaxTotalLineLength;
     }
 
+    /// <summary>
+    /// Write a closing bracket - either on the same line or a new one.
+    /// </summary>
     private void WriteNonInlineCloseBracket(JsonItem item, int depth, bool includeTrailingComma)
     {
         var padTypeIfInline = GetPaddingType(item);
@@ -865,10 +887,12 @@ public class Formatter
             _buffer.EndLine(_pads.EOL);
             StartLine(depth);
             _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+            _currentLineLen = LinePrefixWidth(depth) + _pads.EndLen(item.Type, BracketPaddingType.Empty);
             return;
         }
 
         _buffer.Add(_pads.End(item.Type, padTypeIfInline));
+        _currentLineLen += _pads.EndLen(item.Type, padTypeIfInline);
     }
 
     // ---- Plumbing
@@ -887,9 +911,96 @@ public class Formatter
     /// </summary>
     private int AvailableLineSpace(int depth)
     {
-        return Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth;
+        return Options.MaxTotalLineLength - LinePrefixWidth(depth);
     }
 
+    /// <summary>
+    /// Prefix string plus indentation, in the same units as <see cref="AvailableLineSpace"/>.  Matches the
+    /// planner (IndentSpaces per level) rather than the actual indent characters, so tab indents still
+    /// reserve IndentSpaces of budget.
+    /// </summary>
+    private int LinePrefixWidth(int depth)
+    {
+        return _pads.PrefixStringLen + Options.IndentSpaces * depth;
+    }
+
+    /// <summary>
+    /// Display width of an inlined item as actually written by <see cref="InlineElement"/>, not including
+    /// the line's prefix/indent.
+    /// </summary>
+    private int InlineElementLength(JsonItem item, bool includeTrailingComma, TableTemplate? parentTemplate)
+    {
+        return PrefixNameMiddleLength(item, parentTemplate)
+               + item.ValueLength
+               + TrailingCommaAndPostfixLength(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Length of the item's prefix and middle comments and prop name.
+    /// </summary>
+    private int PrefixNameMiddleLength(JsonItem item, TableTemplate? template)
+    {
+        if (template != null)
+        {
+            var width = 0;
+            if (template.PrefixCommentLength > 0)
+                width += template.PrefixCommentLength + _pads.CommentLen;
+            if (template.NameLength > 0)
+                width += template.NameLength + _pads.ColonLen;
+            if (template.MiddleCommentLength > 0)
+                width += template.MiddleCommentLength + _pads.CommentLen;
+            return width;
+        }
+
+        var itemWidth = 0;
+        if (item.PrefixCommentLength > 0)
+            itemWidth += item.PrefixCommentLength + _pads.CommentLen;
+        if (item.NameLength > 0)
+            itemWidth += item.NameLength + _pads.ColonLen;
+        if (item.MiddleCommentLength > 0)
+            itemWidth += item.MiddleCommentLength + _pads.CommentLen;
+        return itemWidth;
+    }
+
+    private int TrailingCommaAndPostfixLength(JsonItem item, bool includeTrailingComma)
+    {
+        var width = 0;
+        if (item.PostfixCommentLength > 0)
+            width += _pads.CommentLen + item.PostfixCommentLength;
+        if (includeTrailingComma)
+            width += _pads.CommaLen;
+        return width;
+    }
+
+    /// <summary>
+    /// Takes note of the current line position for the inline case.
+    /// </summary>
+    private void SetLineLengthAfterInlineItem(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate? parentTemplate)
+    {
+        _currentLineLen = LinePrefixWidth(depth) + InlineElementLength(item, includeTrailingComma, parentTemplate);
+    }
+
+    /// <summary>
+    /// After a primitive that may have pushed its value onto a new line (multiline middle comment),
+    /// record the width of whatever line the value ended on.
+    /// </summary>
+    private void SetLineWidthAfterPossiblySplitItem(JsonItem item, int originalDepth, int depthAfterColon,
+        bool includeTrailingComma, TableTemplate? parentTemplate)
+    {
+        if (depthAfterColon == originalDepth)
+        {
+            SetLineLengthAfterInlineItem(item, originalDepth, includeTrailingComma, parentTemplate);
+            return;
+        }
+
+        _currentLineLen = LinePrefixWidth(depthAfterColon) + item.ValueLength
+                     + TrailingCommaAndPostfixLength(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Determines whether the given array/object is simple or complex for padding purposes.
+    /// </summary>
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
     {
         if (arrOrObj.Children.Count == 0)
@@ -958,7 +1069,7 @@ public class Formatter
     // ---- Minify
     // Separate from pretty-print.  Shares NormalizeMultilineComment with the rest; otherwise its own recursion.
 
-    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, ILinePeeker buffer)
+    private void MinifyTopLevel(IEnumerable<JsonItem> docModel, IBuffer buffer)
     {
         _buffer = buffer;
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);

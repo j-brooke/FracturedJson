@@ -7,7 +7,7 @@ namespace FracturedJson.Formatting;
 /// An IBuffer for writing to a TextWriter (which will often be backed by a file or network stream).
 /// Internally it composes each individual line before pushing those into writer.
 /// </summary>
-public class LineWriterBuffer : IBuffer, ILinePeeker
+public class LineWriterBuffer : IBuffer
 {
     /// <summary>
     /// Creates a new LineWriterBuffer.
@@ -66,11 +66,6 @@ public class LineWriterBuffer : IBuffer, ILinePeeker
         return this;
     }
 
-    public string PeekCurrentLine()
-    {
-        return _lineBuff.ToString();
-    }
-
     private readonly TextWriter _writer;
     private readonly StringBuilder _lineBuff = new();
 
@@ -96,7 +91,7 @@ public class LineWriterBuffer : IBuffer, ILinePeeker
 
         if (_lineBuff.Length > _lineCopyArray.Length)
         {
-            // If the line is really long, go ahead an allocate a new string temporarily.  It spikes memory a little,
+            // If the line is really long, go ahead and allocate a new string temporarily.  It spikes memory a little,
             // briefly, but it's faster than chunking the line data.  This should be a pretty uncommon case.
             _writer.Write(_lineBuff.ToString());
         }
