@@ -102,6 +102,12 @@ public record FracturedJsonOptions
     public bool SimpleBracketPadding { get; set; } = false;
 
     /// <summary>
+    /// If true, the first element of a non-inline array or object is written on the same line as its opening brace,
+    /// as long as it can be placed at the expected indentation.  Ignored if <see cref="UseTabToIndent"/> is true.
+    /// </summary>
+    public bool CollapseOpeningBrackets { get; set; } = false;
+
+    /// <summary>
     /// If true, a container's closing bracket is written on the same line as its last child when that child
     /// is a real JSON value with no postfix comment, and the combined line still fits in.
     /// <see cref="MaxTotalLineLength"/>.

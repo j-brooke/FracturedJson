@@ -317,7 +317,7 @@ public class Formatter
         TableTemplate template, TableTemplate? parentTemplate)
     {
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
+        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
 
         // Decide whether to align this container's property values.  If so, pass this container's template along
         // to its children so they know how to align their property values.
@@ -332,7 +332,8 @@ public class Formatter
         var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
         {
-            StartLine(depthAfterColon+1);
+            if (i > 0)
+                StartLine(depthAfterColon + 1);
             FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
 
             if (i < item.Children.Count - 1)
@@ -420,7 +421,7 @@ public class Formatter
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
 
         var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
         var remainingLineSpace = -1;
@@ -434,8 +435,12 @@ public class Formatter
 
             if (remainingLineSpace < spaceNeededForNext)
             {
-                _buffer.EndLine(_pads.EOL);
-                StartLine(depthAfterColon+1);
+                if (i > 0)
+                {
+                    _buffer.EndLine(_pads.EOL);
+                    StartLine(depthAfterColon + 1);
+                }
+
                 remainingLineSpace = availableLineSpace;
             }
 
@@ -499,14 +504,15 @@ public class Formatter
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
+        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
         var lastElementIndex = IndexOfLastElement(item.Children);
         for (var i=0; i<item.Children.Count; ++i)
         {
-            StartLine(depthAfterColon+1);
+            if (i > 0)
+                StartLine(depthAfterColon + 1);
             var rowItem = item.Children[i];
             if (rowItem.Type is JsonItemType.BlankLine)
             {
@@ -893,6 +899,39 @@ public class Formatter
 
         _buffer.Add(_pads.End(item.Type, padTypeIfInline));
         _currentLineLen += _pads.EndLen(item.Type, padTypeIfInline);
+    }
+
+    /// <summary>
+    /// Write an opening bracket and either a newline, PrefixString, and indentation, or spaces to pad to the next
+    /// indentation level.
+    /// </summary>
+    private void WriteNonInlineOpeningBracket(JsonItem item, int depth, TableTemplate? template)
+    {
+        // We need to decide whether this container's first child can be written on the same line as the container's
+        // open bracket.  The general rule is: yes, if it can be written at the same character position as it would
+        // have been on the next line.  To figure that out we need to measure the container's prefix comment, prop
+        // name, etc. (which have already been written).
+        //
+        // Tabs also prevent collapsing, since the first item would need spaces for alignment with items below
+        // that use a tab.  We also don't try if the first item is a standalone comment or blank line.
+        var padType = GetPaddingType(item);
+        var padLen = Options.IndentSpaces
+                     - PrefixNameMiddleLength(item, template) - _pads.StartLen(item.Type, padType);
+        var canCollapse = Options.CollapseOpeningBrackets
+                          && !Options.UseTabToIndent
+                          && IsElement(item.Children[0])
+                          && padLen >= 0;
+
+        if (canCollapse)
+        {
+            _buffer.Add(_pads.Start(item.Type, padType));
+            _buffer.Spaces(padLen);
+            return;
+        }
+
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+        _buffer.EndLine(_pads.EOL);
+        StartLine(depth);
     }
 
     // ---- Plumbing
