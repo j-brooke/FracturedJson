@@ -11,6 +11,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddScoped<SiteInfo>();
 builder.Services.AddScoped<WebFormatterState>();
 
 await builder.Build().RunAsync();
