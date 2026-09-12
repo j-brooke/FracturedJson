@@ -1,7 +1,21 @@
+@inject SiteInfo Site
+
+@if (Site.IsPreview)
+{
+    <HeadContent>
+        <meta name="robots" content="noindex, nofollow" />
+    </HeadContent>
+    <div class="fj-preview-banner" role="status">
+        <strong>Preview</strong>
+        — This is a pre-release build of the formatter. It may be incomplete or incorrect.
+        <a href="@SiteInfo.OfficialFormatterUrl">Official formatter</a>
+    </div>
+}
+
 <div class = "main-banner">
     <img src="img/logo_256.png" class="logo" alt="logo"/>
     <div class="title-text">
-        <h1>FracturedJson v5.0</h1>
+        <h1>FracturedJson v5.0@(Site.IsPreview ? " Preview" : "")</h1>
         <div>A JSON formatter that produces human-readable but fairly compact output.</div>
 
         <div>

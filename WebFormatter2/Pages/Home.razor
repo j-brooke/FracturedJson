@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using WebFormatter2.Components
 @inject WebFormatterState State
+@inject SiteInfo Site
 
 <!--
 Fractured Json Web Formatter
@@ -9,7 +10,7 @@ Bootstrap Icons (https://icons.getbootstrap.com) are licensed under the MIT Lice
 Copyright (c) 2019-2025 The Bootstrap Authors.
 -->
 
-<PageTitle>FracturedJson Web Formatter</PageTitle>
+<PageTitle>@(Site.IsPreview ? "FracturedJson Web Formatter (Preview)" : "FracturedJson Web Formatter")</PageTitle>
 
 <div class="page">
     <div class="header">
