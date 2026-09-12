@@ -1,0 +1,6 @@
+# Preview builds live at /preview/ on this project site. They are not the
+# official formatter; please do not index them. (The preview pages also
+# send a noindex robots meta tag.)
+User-agent: *
+Disallow: /FracturedJson/preview/
+Disallow: /preview/

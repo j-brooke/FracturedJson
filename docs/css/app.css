@@ -38,6 +38,23 @@ a, .btn-link {
     color: var(--link-color);
 }
 
+/* Preview warning — same look before Blazor loads and after. Kept loud in both themes. */
+.fj-preview-banner {
+    background: #f5c518;
+    color: #1a1a1a;
+    padding: 0.65em 0.9em;
+    margin: 0 0 0.4em 0;
+    font-size: 15px;
+    line-height: 1.4;
+    border: 2px solid #8a6a00;
+}
+
+.fj-preview-banner a {
+    color: #003d7a;
+    font-weight: 700;
+    font-size: 15px;
+}
+
 /* Note - scoped CSS doesn't work for Blazor InputSelect, so we use global instead. */
 select {
     background-color: var(--button-background);
