@@ -260,7 +260,7 @@ public class Formatter
         var recursiveTemplate = item.Complexity <= Options.MaxCompactArrayComplexity ||
                                 item.Complexity <= Options.MaxTableRowComplexity + 1;
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
-        template.MeasureTableRoot(item, recursiveTemplate);
+        template.MeasureTableRoot(item, recursiveTemplate, 0, item.Children.Count);
 
         if (depth > Options.AlwaysExpandDepth)
         {
@@ -271,11 +271,11 @@ public class Formatter
         // Allow table formatting at the specified depth, too.  So if this is a root level array and
         // AlwaysExpandDepth=0, we can table format it.  But if AlwaysExpandDepth=1, we can't format the root
         // as a table, since a table's children are always inlined (and thus not expanded).
-        if (depth >= Options.AlwaysExpandDepth)
-        {
-            if (FormatContainerTable(item, depth, includeTrailingComma, template, parentTemplate))
-                return;
-        }
+        // if (depth >= Options.AlwaysExpandDepth)
+        // {
+        //     if (FormatContainerTable(item, depth, includeTrailingComma, template, parentTemplate))
+        //         return;
+        // }
 
         FormatContainerExpanded(item, depth, includeTrailingComma, template, parentTemplate);
     }
@@ -326,22 +326,39 @@ public class Formatter
                          && !template.AnyMiddleCommentHasNewline
                          && AvailableLineSpace(depth + 1) >= template.AtomicItemSize();
         var templateToPass = (alignProps) ? template : null;
+        templateToPass?.Children.Clear();
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
         var lastElementIndex = IndexOfLastElement(item.Children);
-        for (var i=0; i<item.Children.Count; ++i)
-        {
-            if (i > 0)
-                StartLine(depthAfterColon + 1);
-            FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
 
-            if (i < item.Children.Count - 1)
-                _buffer.EndLine(_pads.EOL);
+
+        foreach (var run in Partition(item, depth + 1))
+        {
+            var wroteAsTable = run.CantBeTable && WriteTableContainerSection(item, depthAfterColon, run.StartIndex,
+                run.Length, lastElementIndex);
+            if (!wroteAsTable)
+                WriteExpandedContainerSection(item, depthAfterColon, templateToPass, run.StartIndex, run.Length,
+                    lastElementIndex);
         }
 
         WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    private void WriteExpandedContainerSection(JsonItem item, int depth, TableTemplate? propTemplate,
+        int startChildIndex, int numChildren, int lastElementIndex)
+    {
+        var afterEndIndex = Math.Min(item.Children.Count, startChildIndex + numChildren);
+        for (var i = startChildIndex; i < afterEndIndex; ++i)
+        {
+            if (i > 0)
+                StartLine(depth + 1);
+            FormatItem(item.Children[i], depth + 1, (i < lastElementIndex), propTemplate);
+
+            if (i < item.Children.Count - 1)
+                _buffer.EndLine(_pads.EOL);
+        }
     }
 
     // ---- Other container strategies
@@ -458,18 +475,14 @@ public class Formatter
         return true;
     }
 
-    /// <summary>
-    /// Tries to format this array/object as a table.  That is, each of this JsonItem's children are each written
-    /// as a single line, with their pieces formatted to line up.  This only works if the structures and types
-    /// are consistent for all rows.
-    /// </summary>
-    /// <returns>True if the content was added</returns>
-    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template,
-        TableTemplate? parentTemplate)
+    private bool WriteTableContainerSection(JsonItem item, int depth, int startChildIndex, int numChildren,
+        int lastElementIndex)
     {
-        // If this element's children are too complex to be written inline, don't bother.
         if (item.Complexity > Options.MaxTableRowComplexity + 1)
             return false;
+
+        var template = new TableTemplate(_pads, Options.NumberListAlignment);
+        template.MeasureTableRoot(item, true, startChildIndex, numChildren);
 
         // If any particular row would require multiple lines, we can't table format this as a table.
         if (template.RequiresMultipleLines)
@@ -480,39 +493,15 @@ public class Formatter
         var availableSpaceDepth = (item.MiddleCommentHasNewline) ? depth + 2 : depth + 1;
         var availableSpace = AvailableLineSpace(availableSpaceDepth) - _pads.CommaLen;
 
-        // If any child element is too long even without formatting, don't bother.
-        var isChildTooLong = item.Children
-            .Where(IsElement)
-            .Any(ch => ch.MinimumTotalLength > availableSpace);
-        if (isChildTooLong)
-            return false;
-
-        // If the rows don't fit with everything (including descendants) tabular, try dropping the columns for
-        // the deepest nested items, repeatedly, until it either fits or we give up.
-        //
-        // For instance, here's an example of what fully tabular would look like:
-        // [
-        //     { "a":   3, "b": { "x": 19, "y":  -4           } },
-        //     { "a": 147, "b": {          "y": 111, "z": -99 } }
-        // ]
-        // If that doesn't work, we try this:
-        // [
-        //     { "a":   3, "b": { "x": 19, "y": -4 }   },
-        //     { "a": 147, "b": { "y": 111, "z": -99 } }
-        // ]
         if (!template.TryToFit(availableSpace) || template.Type == TableColumnType.Mixed)
             return false;
 
-        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
-
-        // Take note of the position of the last actual element, for comma decisions.  The last element
-        // might not be the last item.
-        var lastElementIndex = IndexOfLastElement(item.Children);
-        for (var i=0; i<item.Children.Count; ++i)
+        var afterEndIndex = Math.Min(item.Children.Count, startChildIndex + numChildren);
+        for (var i=startChildIndex; i<afterEndIndex; ++i)
         {
             if (i > 0)
-                StartLine(depthAfterColon + 1);
+                StartLine(depth + 1);
+
             var rowItem = item.Children[i];
             if (rowItem.Type is JsonItemType.BlankLine)
             {
@@ -520,7 +509,7 @@ public class Formatter
             }
             else if (rowItem.Type is JsonItemType.LineComment or JsonItemType.BlockComment)
             {
-                FormatStandaloneComment(rowItem, depthAfterColon+1);
+                FormatStandaloneComment(rowItem, depth+1);
             }
             else
             {
@@ -530,10 +519,6 @@ public class Formatter
             if (i < item.Children.Count - 1)
                 _buffer.EndLine(_pads.EOL);
         }
-
-        _currentLineLen = LinePrefixWidth(depthAfterColon + 1) + template.TotalLength + _pads.CommaLen;
-        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
-        StandardFormatEnd(item, includeTrailingComma);
 
         return true;
     }
@@ -1211,4 +1196,58 @@ public class Formatter
 
         return false;
     }
+
+    // ---- Partitioning
+    private IEnumerable<ContainerRun> Partition(JsonItem item, int depth)
+    {
+        if (depth < Options.AlwaysExpandDepth)
+        {
+            yield return new ContainerRun(0, item.Children.Count, false);
+            yield break;
+        }
+        if (!Options.AllowPartialContainerTables)
+        {
+            yield return new ContainerRun(0, item.Children.Count, true);
+            yield break;
+        }
+
+        var availableSpace = AvailableLineSpace(depth);
+
+        var runStartIndex = -1;
+        var runCanBeTable = false;
+        for (var i = 0; i < item.Children.Count; ++i)
+        {
+            var child = item.Children[i];
+
+            var canBeTable = child.Type switch
+            {
+                JsonItemType.BlankLine => !Options.SegmentTablesAtBlankLines,
+                JsonItemType.BlockComment or JsonItemType.LineComment => !Options.SegmentTablesAtComments,
+                _ => !child.RequiresMultipleLines,
+            };
+            canBeTable &= child.Complexity <= Options.MaxTableRowComplexity
+                          && child.MinimumTotalLength <= availableSpace;
+
+            if (runStartIndex < 0)
+            {
+                runStartIndex = i;
+                runCanBeTable = canBeTable;
+            }
+            else if (canBeTable != runCanBeTable)
+            {
+                yield return new ContainerRun(runStartIndex, i - runStartIndex, runCanBeTable);
+                runStartIndex = i;
+                runCanBeTable = canBeTable;
+            }
+        }
+        if (runStartIndex >= 0)
+            yield return new ContainerRun(runStartIndex, item.Children.Count - runStartIndex, runCanBeTable);
+    }
+}
+
+internal record ContainerRun(int StartIndex, int Length, bool CantBeTable)
+{
+    public int StartIndex { get; } = StartIndex;
+    public int Length { get; } = Length;
+    public bool CantBeTable { get; } = CantBeTable;
 }

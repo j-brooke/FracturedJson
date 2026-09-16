@@ -104,12 +104,12 @@ internal class TableTemplate
     /// object properties, the values may or may not span multiple lines, but the property names and the start of
     /// their values will be on separate lines, lined up.</para>
     /// </summary>
-    public void MeasureTableRoot(JsonItem tableRoot, bool recursive)
+    public void MeasureTableRoot(JsonItem tableRoot, bool recursive, int startIndex, int runCount)
     {
         // For each row of the potential table, measure it and its children, making room for everything.
         // (Or, if there are incompatible types at any level, set CanBeUsedInTable to false.)
-        foreach(var child in tableRoot.Children)
-            MeasureRowSegment(child, recursive);
+        for (var i=0; i<runCount; ++i)
+            MeasureRowSegment(tableRoot.Children[i+startIndex], recursive);
 
         // Get rid of incomplete junk and determine our final size.
         PruneAndRecompute(int.MaxValue);

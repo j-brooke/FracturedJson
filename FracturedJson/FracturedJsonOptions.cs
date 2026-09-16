@@ -66,6 +66,26 @@ public record FracturedJsonOptions
     public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePaddingExceptNumbers;
 
     /// <summary>
+    /// If true, sections of items in a container can be formatted as tables instead of requiring all items to be a
+    /// single table.  If some children need to be expanded, their siblings can still be table-formatted.
+    /// </summary>
+    public bool AllowPartialContainerTables { get; set; } = false;
+
+    /// <summary>
+    /// If true, blank lines force the sections above and below to be formatted as separate tables, if at all.
+    /// Requires <see cref="AllowPartialContainerTables"/> and <see cref="PreserveBlankLines"/> to be true.
+    /// </summary>
+    public bool SegmentTablesAtBlankLines { get; set; } = false;
+
+    /// <summary>
+    /// If true, standalone comments force the sections above and below to be formatted as separate tables, if at all.
+    /// This refers to comments on lines of their own, not ones that are considered attached to elements.
+    /// Requires <see cref="AllowPartialContainerTables"/> to be true and <see cref="CommentPolicy"/> to be
+    /// <see cref="CommentPolicy.Preserve"/>.
+    /// </summary>
+    public bool SegmentTablesAtComments {  get; set; } = false;
+
+    /// <summary>
     /// Minimum items per row to format an array with multiple items per line across multiple lines.  This is a
     /// guideline, not a strict rule.
     /// </summary>
