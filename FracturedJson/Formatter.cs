@@ -335,7 +335,7 @@ public class Formatter
 
         foreach (var run in Partition(item, depth + 1))
         {
-            var wroteAsTable = run.CantBeTable && WriteTableContainerSection(item, depthAfterColon, run.StartIndex,
+            var wroteAsTable = run.CanBeTable && WriteTableContainerSection(item, depthAfterColon, run.StartIndex,
                 run.Length, lastElementIndex);
             if (!wroteAsTable)
                 WriteExpandedContainerSection(item, depthAfterColon, templateToPass, run.StartIndex, run.Length,
@@ -478,9 +478,6 @@ public class Formatter
     private bool WriteTableContainerSection(JsonItem item, int depth, int startChildIndex, int numChildren,
         int lastElementIndex)
     {
-        if (item.Complexity > Options.MaxTableRowComplexity + 1)
-            return false;
-
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
         template.MeasureTableRoot(item, true, startChildIndex, numChildren);
 
@@ -1205,28 +1202,21 @@ public class Formatter
             yield return new ContainerRun(0, item.Children.Count, false);
             yield break;
         }
-        if (!Options.AllowPartialContainerTables)
-        {
-            yield return new ContainerRun(0, item.Children.Count, true);
-            yield break;
-        }
 
         var availableSpace = AvailableLineSpace(depth);
+        if (!Options.AllowPartialContainerTables)
+        {
+            var canBeTable = item.Children.All(ji => CanBeTableRow(ji, availableSpace));
+            yield return new ContainerRun(0, item.Children.Count, canBeTable);
+            yield break;
+        }
 
         var runStartIndex = -1;
         var runCanBeTable = false;
         for (var i = 0; i < item.Children.Count; ++i)
         {
             var child = item.Children[i];
-
-            var canBeTable = child.Type switch
-            {
-                JsonItemType.BlankLine => !Options.SegmentTablesAtBlankLines,
-                JsonItemType.BlockComment or JsonItemType.LineComment => !Options.SegmentTablesAtComments,
-                _ => !child.RequiresMultipleLines,
-            };
-            canBeTable &= child.Complexity <= Options.MaxTableRowComplexity
-                          && child.MinimumTotalLength <= availableSpace;
+            var canBeTable = CanBeTableRow(child, availableSpace);
 
             if (runStartIndex < 0)
             {
@@ -1243,11 +1233,24 @@ public class Formatter
         if (runStartIndex >= 0)
             yield return new ContainerRun(runStartIndex, item.Children.Count - runStartIndex, runCanBeTable);
     }
+
+    private bool CanBeTableRow(JsonItem item, int availableSpace)
+    {
+        var canBeTable = item.Type switch
+        {
+            JsonItemType.BlankLine => !Options.SegmentTablesAtBlankLines,
+            JsonItemType.BlockComment or JsonItemType.LineComment => !Options.SegmentTablesAtComments,
+            _ => !item.RequiresMultipleLines,
+        };
+        canBeTable &= item.Complexity <= Options.MaxTableRowComplexity
+                      && item.MinimumTotalLength <= availableSpace;
+        return canBeTable;
+    }
 }
 
-internal record ContainerRun(int StartIndex, int Length, bool CantBeTable)
+internal record ContainerRun(int StartIndex, int Length, bool CanBeTable)
 {
     public int StartIndex { get; } = StartIndex;
     public int Length { get; } = Length;
-    public bool CantBeTable { get; } = CantBeTable;
+    public bool CanBeTable { get; } = CanBeTable;
 }
