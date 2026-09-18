@@ -69,21 +69,21 @@ public record FracturedJsonOptions
     /// If true, sections of items in a container can be formatted as tables instead of requiring all items to be a
     /// single table.  If some children need to be expanded, their siblings can still be table-formatted.
     /// </summary>
-    public bool AllowPartialContainerTables { get; set; } = false;
+    public bool AllowTableSegments { get; set; } = false;
 
     /// <summary>
     /// If true, blank lines force the sections above and below to be formatted as separate tables, if at all.
-    /// Requires <see cref="AllowPartialContainerTables"/> and <see cref="PreserveBlankLines"/> to be true.
+    /// Has no effect unless <see cref="AllowTableSegments"/> and <see cref="PreserveBlankLines"/> are true.
     /// </summary>
-    public bool SegmentTablesAtBlankLines { get; set; } = false;
+    public bool SplitTableSegmentsAtBlankLines { get; set; } = false;
 
     /// <summary>
     /// If true, standalone comments force the sections above and below to be formatted as separate tables, if at all.
     /// This refers to comments on lines of their own, not ones that are considered attached to elements.
-    /// Requires <see cref="AllowPartialContainerTables"/> to be true and <see cref="CommentPolicy"/> to be
+    /// Has no effect unless <see cref="AllowTableSegments"/> is true and <see cref="CommentPolicy"/> is
     /// <see cref="CommentPolicy.Preserve"/>.
     /// </summary>
-    public bool SegmentTablesAtComments {  get; set; } = false;
+    public bool SplitTableSegmentsAtComments {  get; set; } = false;
 
     /// <summary>
     /// Minimum items per row to format an array with multiple items per line across multiple lines.  This is a
