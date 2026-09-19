@@ -499,4 +499,129 @@ public class TableFormattingTests
         Assert.AreEqual(7, outputLines.Length);
         TestHelpers.TestInstancesLineUp(outputLines, ".");
     }
+
+    [TestMethod]
+    public void NoSegmentStillDoesInnerTable()
+    {
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 140,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+            AllowTableSegments = false,
+        };
+        var output = formatter.Reformat(_segmentData, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // Given enough line length, children of the inner Subs should all be table-aligned together.
+        TestHelpers.TestInstancesLineUp(outputLines, "act_tackle1", "act_neck_grab");
+
+        // The outer Subs children are not table-aligned, since AllowTableSegments=false and one of their siblings
+        // is too long for the table, thus disqualifying them all.
+        Assert.AreEqual(2, TestHelpers.CountDistinctColumns(outputLines, "act_bite", "act_headbutt"));
+    }
+
+    [TestMethod]
+    public void AllowSegmentsTablesBoth()
+    {
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 140,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+            AllowTableSegments = true,
+        };
+        var output = formatter.Reformat(_segmentData, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // With AllowTableSegments=true but no splitting on blank lines or comments, both blocks should be
+        // table-formatted, given enough room.  In both cases it's treating all the single line objects as members
+        // of the same table
+        TestHelpers.TestInstancesLineUp(outputLines, "act_tackle1", "act_neck_grab");
+        TestHelpers.TestInstancesLineUp(outputLines, "act_bite", "act_headbutt");
+    }
+
+    [TestMethod]
+    public void SplitBlankMakesSmallEnoughSegments()
+    {
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 120,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+            AllowTableSegments = true,
+            SplitTableSegmentsAtBlankLines = true,
+            SplitTableSegmentsAtComments = false,
+        };
+        var output = formatter.Reformat(_segmentData, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // At a width of 120, there isn't room to fit a table with all the outer items, if taken all together.
+        // But with SplitTableSegmentsAtBlankLines = true, the button elements can be tabled without the others.
+        TestHelpers.TestInstancesLineUp(outputLines, "act_bite", "act_headbutt");
+
+        // The inner items still don't qualify, since they're separated by comments, not blank lines.
+        Assert.AreEqual(2, TestHelpers.CountDistinctColumns(outputLines, "act_tackle1", "act_neck_grab"));
+    }
+
+    [TestMethod]
+    public void SplitCommentsMakesSmallEnoughSegments()
+    {
+        var formatter = new Formatter();
+        formatter.Options = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 120,
+            CommentPolicy = CommentPolicy.Preserve,
+            PreserveBlankLines = true,
+            AllowTableSegments = true,
+            SplitTableSegmentsAtBlankLines = false,
+            SplitTableSegmentsAtComments = true,
+        };
+        var output = formatter.Reformat(_segmentData, 0);
+        var outputLines = output.TrimEnd().Split('\n');
+
+        // At a width of 120, there isn't room to fit a table with all the inner items, if taken all together.
+        // But with SplitTableSegmentsAtComments = true, the button elements can be tabled without the others.
+        TestHelpers.TestInstancesLineUp(outputLines, "act_tackle1", "act_neck_grab");
+
+        // The outer items still don't qualify, since they're separated by comments, not blank lines.
+        Assert.AreEqual(2, TestHelpers.CountDistinctColumns(outputLines, "act_bite", "act_headbutt"));
+    }
+
+    private const string _segmentData =
+        """
+        {
+            "Type": "Panel",
+            "Pos" : [0, 0],
+            "Dim" : [100, 100],
+            "Subs": [
+                { "Type": "Text", "Pos": [0, 0], "Text": "Combat actions" },
+                
+                { "Type": "Btn", "Pos": [0, 5], "Label": "Kick", "Action": "act_kick" },
+                { "Type": "Btn", "Pos": [25, 5], "Label": "Punch", "Action": "act_punch" },
+                { "Type": "Btn", "Pos": [50, 5], "Label": "Bite", "Action": "act_bite" },
+                { "Type": "Btn", "Pos": [75, 5], "Label": "Headbutt", "Action": "act_headbutt" },
+                
+                { "Type": "Img", "Pos": [0, 0], "ImgID": 8323 },
+                { "Type": "Img", "Pos": [0, 50], "ImgID": 141 },
+                {
+                    "Type": "Panel",
+                    "Pos" : [0, 20],
+                    "Dim" : [100, 80],
+                    "Subs": [
+                        { "Type": "Text", "Pos": [0, 0], "Text": "Grapple" },
+                        //--
+                        { "Type": "Btn", "Pos": [0, 5], "Label": "Tackle", "Action": "act_tackle1" },
+                        { "Type": "Btn", "Pos": [25, 15], "Label": "Choke", "Action": "act_neck_grab" },
+                        //--
+                        { "Type": "Img", "Pos": [0, 0], "ImgID": 38212 },
+                        { "Type": "Img", "Pos": [0, 30], "ImgID": 12 }
+                    ]
+                }
+            ]
+        }
+        """;
 }
