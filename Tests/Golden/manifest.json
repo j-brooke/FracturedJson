@@ -1,0 +1,198 @@
+{
+  "suiteVersion": 1,
+  "familyVersion": "5.0",
+  "generatedFrom": "FracturedJson 5.0.1",
+  "defaultsProfile": "v5-constructor",
+  "defaultsFile": "defaults-v5-constructor.json",
+  "forced": {
+    "JsonEolStyle": "Lf"
+  },
+  "cases": [
+    {
+      "id": "compact-array.default",
+      "input": "compact-array/input.json",
+      "expected": "compact-array/default.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 48
+      }
+    },
+    {
+      "id": "compact-array.expanded",
+      "input": "compact-array/input.json",
+      "expected": "compact-array/expanded.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 48,
+        "MaxInlineComplexity": -1,
+        "MaxCompactArrayComplexity": -1,
+        "MaxTableRowComplexity": -1
+      }
+    },
+    {
+      "id": "nested-table.default",
+      "input": "nested-table/input.json",
+      "expected": "nested-table/default.txt",
+      "operation": "reformat"
+    },
+    {
+      "id": "nested-table.short-line",
+      "input": "nested-table/input.json",
+      "expected": "nested-table/short-line.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 77
+      }
+    },
+    {
+      "id": "nested-table.commas-after-padding",
+      "input": "nested-table/input.json",
+      "expected": "nested-table/commas-after-padding.txt",
+      "operation": "reformat",
+      "options": {
+        "TableCommaPlacement": "AfterPadding"
+      }
+    },
+    {
+      "id": "always-expand.default",
+      "input": "always-expand/input.json",
+      "expected": "always-expand/default.txt",
+      "operation": "reformat"
+    },
+    {
+      "id": "always-expand.depth-0",
+      "input": "always-expand/input.json",
+      "expected": "always-expand/depth-0.txt",
+      "operation": "reformat",
+      "options": {
+        "AlwaysExpandDepth": 0
+      }
+    },
+    {
+      "id": "table-with-comments.commas-before-padding",
+      "input": "table-with-comments/input.jsonc",
+      "expected": "table-with-comments/commas-before-padding.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve",
+        "MaxTotalLineLength": 40,
+        "TableCommaPlacement": "BeforePadding"
+      }
+    },
+    {
+      "id": "table-with-comments.commas-after-padding",
+      "input": "table-with-comments/input.jsonc",
+      "expected": "table-with-comments/commas-after-padding.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve",
+        "MaxTotalLineLength": 40,
+        "TableCommaPlacement": "AfterPadding"
+      }
+    },
+    {
+      "id": "table-with-comments.minify",
+      "input": "table-with-comments/input.jsonc",
+      "expected": "table-with-comments/minify.txt",
+      "operation": "minify",
+      "options": {
+        "CommentPolicy": "Preserve"
+      }
+    },
+    {
+      "id": "postfix-line-comments.expanded",
+      "input": "postfix-line-comments/input.jsonc",
+      "expected": "postfix-line-comments/expanded.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve",
+        "MaxInlineComplexity": 0,
+        "MaxCompactArrayComplexity": 0,
+        "MaxTableRowComplexity": 0
+      }
+    },
+    {
+      "id": "eol-comment-column.default",
+      "input": "eol-comment-column/input.jsonc",
+      "expected": "eol-comment-column/default.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve"
+      }
+    },
+    {
+      "id": "aligned-props.default",
+      "input": "aligned-props/input.json",
+      "expected": "aligned-props/default.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxPropNamePadding": 15,
+        "MaxInlineComplexity": -1,
+        "MaxCompactArrayComplexity": -1,
+        "MaxTableRowComplexity": -1
+      }
+    },
+    {
+      "id": "aligned-props.colon-hugs-name",
+      "input": "aligned-props/input.json",
+      "expected": "aligned-props/colon-hugs-name.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxPropNamePadding": 15,
+        "ColonBeforePropNamePadding": true,
+        "MaxInlineComplexity": -1,
+        "MaxCompactArrayComplexity": -1,
+        "MaxTableRowComplexity": -1
+      }
+    },
+    {
+      "id": "expanded-trailing-comments.default",
+      "input": "expanded-trailing-comments/input.jsonc",
+      "expected": "expanded-trailing-comments/default.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve"
+      }
+    },
+    {
+      "id": "ragged-object-table.default",
+      "input": "ragged-object-table/input.json",
+      "expected": "ragged-object-table/default.txt",
+      "operation": "reformat"
+    },
+    {
+      "id": "numbers-and-nulls.default",
+      "input": "numbers-and-nulls/input.json",
+      "expected": "numbers-and-nulls/default.txt",
+      "operation": "reformat"
+    },
+    {
+      "id": "numbers-and-nulls.normalize",
+      "input": "numbers-and-nulls/input.json",
+      "expected": "numbers-and-nulls/normalize.txt",
+      "operation": "reformat",
+      "options": {
+        "NumberListAlignment": "Normalize"
+      }
+    },
+    {
+      "id": "multiline-middle-comment.default",
+      "input": "multiline-middle-comment/input.jsonc",
+      "expected": "multiline-middle-comment/default.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve"
+      }
+    },
+    {
+      "id": "table-with-blanks.default",
+      "input": "table-with-blanks/input.jsonc",
+      "expected": "table-with-blanks/default.txt",
+      "operation": "reformat",
+      "options": {
+        "CommentPolicy": "Preserve",
+        "PreserveBlankLines": true
+      }
+    }
+  ]
+}

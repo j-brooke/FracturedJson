@@ -1,19 +1,22 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using FracturedJson;
 
 namespace Tests;
 
 /// <summary>
-/// Exact-output snapshots of representative Formatter cases.  Existing unit tests check validity, commas, and
-/// alignment; these lock the full character grid so a Formatter cleanup cannot drift silently.
+/// Exact-output snapshots of representative Formatter cases, driven by the language-neutral files under
+/// <c>Golden/</c> (see that folder's README). Existing unit tests check validity, commas, and alignment; these
+/// lock the full character grid so a Formatter cleanup cannot drift silently.
 /// <para>
-/// Each case is a folder under <c>Golden/</c> with an input file and one <c>.txt</c> expected file per variant.
 /// All cases force LF line endings so the files are stable across machines.
 /// </para>
 /// <para>
 /// If a refactor changes output intentionally, regenerate with
 /// <c>FRACTUREDJSON_UPDATE_GOLDENS=1</c> and inspect the diffs.  If the change was not intentional, do not
-/// update the files — fix the code.
+/// update the files — fix the code. Regeneration writes expected <c>.txt</c> files only, not the manifest.
 /// </para>
 /// </summary>
 [TestClass]
@@ -24,27 +27,30 @@ public class GoldenFormattingTests
     [DynamicData(nameof(CaseIds), DynamicDataSourceType.Method)]
     public void OutputMatchesGolden(string caseId)
     {
-        var golden = AllCases().First(c => c.Id == caseId);
-        var options = golden.Options with { JsonEolStyle = EolStyle.Lf };
+        var suite = _suite.Value;
+        var golden = suite.Manifest.Cases.First(c => c.Id == caseId);
+        var options = BuildOptions(suite, golden);
 
-        var inputPath = Path.Combine(OutputGoldenRoot(), golden.Folder, golden.InputFile);
+        var inputPath = Path.Combine(OutputGoldenRoot(), golden.Input);
         Assert.IsTrue(File.Exists(inputPath), $"Missing golden input: {inputPath}");
         var input = File.ReadAllText(inputPath);
 
         var formatter = new Formatter { Options = options };
-        var actual = golden.Minify ? formatter.Minify(input) : formatter.Reformat(input, 0);
+        var startingDepth = golden.StartingDepth ?? 0;
+        var actual = IsMinify(golden)
+            ? formatter.Minify(input)
+            : formatter.Reformat(input, startingDepth);
 
-        var expectedFileName = golden.Variant + ".txt";
-        var outputExpectedPath = Path.Combine(OutputGoldenRoot(), golden.Folder, expectedFileName);
+        var outputExpectedPath = Path.Combine(OutputGoldenRoot(), golden.Expected);
         var update = Environment.GetEnvironmentVariable("FRACTUREDJSON_UPDATE_GOLDENS") == "1";
 
         if (update)
         {
-            var sourceDir = Path.Combine(FindSourceGoldenRoot(), golden.Folder);
-            Directory.CreateDirectory(sourceDir);
-            File.WriteAllText(Path.Combine(sourceDir, expectedFileName), actual, Utf8NoBom);
+            var sourcePath = Path.Combine(FindSourceGoldenRoot(), golden.Expected);
+            Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+            File.WriteAllText(sourcePath, actual, _utf8NoBom);
             Directory.CreateDirectory(Path.GetDirectoryName(outputExpectedPath)!);
-            File.WriteAllText(outputExpectedPath, actual, Utf8NoBom);
+            File.WriteAllText(outputExpectedPath, actual, _utf8NoBom);
         }
 
         if (!File.Exists(outputExpectedPath))
@@ -58,127 +64,156 @@ public class GoldenFormattingTests
         if (expected == actual)
             return;
 
-        var actualDumpPath = Path.Combine(AppContext.BaseDirectory, "GoldenActual", golden.Folder, expectedFileName);
+        var actualDumpPath = Path.Combine(AppContext.BaseDirectory, "GoldenActual", golden.Expected);
         Directory.CreateDirectory(Path.GetDirectoryName(actualDumpPath)!);
-        File.WriteAllText(actualDumpPath, actual, Utf8NoBom);
+        File.WriteAllText(actualDumpPath, actual, _utf8NoBom);
 
         Assert.Fail(DescribeMismatch(caseId, expected, actual, actualDumpPath));
     }
 
+    [TestMethod]
+    public void DefaultsFileMatchesConstructor()
+    {
+        var json = File.ReadAllText(Path.Combine(OutputGoldenRoot(), "defaults-v5-constructor.json"));
+        using var doc = JsonDocument.Parse(json);
+        var skip = _cSharpOnlyOptionNames;
+
+        foreach (var name in skip)
+        {
+            Assert.IsFalse(doc.RootElement.TryGetProperty(name, out _),
+                $"{name} is C#-only / unreleased in 5.0 and should not be in the v1 defaults file");
+        }
+
+        foreach (var prop in typeof(FracturedJsonOptions).GetProperties())
+        {
+            if (skip.Contains(prop.Name) || !prop.CanWrite)
+                continue;
+            Assert.IsTrue(doc.RootElement.TryGetProperty(prop.Name, out _),
+                $"defaults-v5-constructor.json is missing {prop.Name}");
+        }
+
+        var ctor = new FracturedJsonOptions { JsonEolStyle = EolStyle.Lf };
+        var fromFile = JsonSerializer.Deserialize<FracturedJsonOptions>(json, _optionsJson)!;
+        foreach (var prop in typeof(FracturedJsonOptions).GetProperties())
+        {
+            if (skip.Contains(prop.Name) || !prop.CanWrite)
+                continue;
+            Assert.AreEqual(prop.GetValue(ctor), prop.GetValue(fromFile), prop.Name);
+        }
+    }
+
     public static IEnumerable<object[]> CaseIds()
     {
-        foreach (var golden in AllCases())
+        foreach (var golden in _suite.Value.Manifest.Cases)
             yield return [golden.Id];
     }
 
+
+    private static readonly Encoding _utf8NoBom = new UTF8Encoding(false);
+    private static readonly Lazy<LoadedSuite> _suite = new(LoadSuite);
+
     /// <summary>
-    /// Named snapshots covering Formatter paths that are easy to perturb: compact arrays, nested tables,
-    /// table comma placement, postfix // comments, property alignment, dummy commas for missing keys,
-    /// null/short-array columns, multiline middle comments, blank lines, and minify.
+    /// Options present on C# main that are not part of the published 5.0 JS option set. They default to off and
+    /// must not appear in the v1 defaults file.
     /// </summary>
-    private static IEnumerable<GoldenCase> AllCases()
+    private static readonly HashSet<string> _cSharpOnlyOptionNames =
+    [
+        nameof(FracturedJsonOptions.AllowTableSegments),
+        nameof(FracturedJsonOptions.SplitTableSegmentsAtBlankLines),
+        nameof(FracturedJsonOptions.SplitTableSegmentsAtComments),
+        nameof(FracturedJsonOptions.CollapseOpeningBrackets),
+        nameof(FracturedJsonOptions.CollapseClosingBrackets),
+    ];
+
+    private static readonly JsonSerializerOptions _manifestJson = new()
     {
-        yield return new("compact-array.default", "compact-array", "input.json", "default",
-            new FracturedJsonOptions { MaxTotalLineLength = 48 });
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = false,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+    };
 
-        yield return new("compact-array.expanded", "compact-array", "input.json", "expanded",
-            new FracturedJsonOptions
-            {
-                MaxTotalLineLength = 48,
-                MaxInlineComplexity = -1,
-                MaxCompactArrayComplexity = -1,
-                MaxTableRowComplexity = -1,
-            });
+    private static readonly JsonSerializerOptions _optionsJson = new()
+    {
+        PropertyNameCaseInsensitive = false,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
-        yield return new("nested-table.default", "nested-table", "input.json", "default",
-            new FracturedJsonOptions());
+    private static LoadedSuite LoadSuite()
+    {
+        var root = OutputGoldenRoot();
+        var manifestPath = Path.Combine(root, "manifest.json");
+        Assert.IsTrue(File.Exists(manifestPath), $"Missing golden manifest: {manifestPath}");
 
-        yield return new("nested-table.short-line", "nested-table", "input.json", "short-line",
-            new FracturedJsonOptions { MaxTotalLineLength = 77 });
+        var manifest = JsonSerializer.Deserialize<ManifestFile>(File.ReadAllText(manifestPath), _manifestJson)
+                       ?? throw new InvalidOperationException("Golden manifest deserialized to null");
 
-        yield return new("nested-table.commas-after-padding", "nested-table", "input.json", "commas-after-padding",
-            new FracturedJsonOptions { TableCommaPlacement = TableCommaPlacement.AfterPadding });
+        Assert.AreEqual(1, manifest.SuiteVersion, "Unsupported golden suiteVersion");
+        Assert.IsFalse(string.IsNullOrEmpty(manifest.DefaultsFile), "manifest defaultsFile is required");
 
-        yield return new("always-expand.default", "always-expand", "input.json", "default",
-            new FracturedJsonOptions());
+        var defaultsPath = Path.Combine(root, manifest.DefaultsFile);
+        Assert.IsTrue(File.Exists(defaultsPath), $"Missing defaults file: {defaultsPath}");
+        var defaults = JsonNode.Parse(File.ReadAllText(defaultsPath)) as JsonObject
+                       ?? throw new InvalidOperationException("Defaults file must be a JSON object");
 
-        yield return new("always-expand.depth-0", "always-expand", "input.json", "depth-0",
-            new FracturedJsonOptions { AlwaysExpandDepth = 0 });
+        Assert.IsTrue(manifest.Cases.Count > 0, "Golden manifest has no cases");
+        var duplicateIds = manifest.Cases.GroupBy(c => c.Id).Where(g => g.Count() > 1).Select(g => g.Key).ToArray();
+        Assert.IsFalse(duplicateIds.Length > 0, "Duplicate golden case ids: " + string.Join(", ", duplicateIds));
 
-        yield return new("table-with-comments.commas-before-padding", "table-with-comments", "input.jsonc",
-            "commas-before-padding",
-            Jsonc() with
-            {
-                MaxTotalLineLength = 40,
-                NumberListAlignment = NumberListAlignment.Decimal,
-                TableCommaPlacement = TableCommaPlacement.BeforePadding,
-            });
+        foreach (var golden in manifest.Cases)
+        {
+            Assert.IsFalse(string.IsNullOrEmpty(golden.Id), "Golden case is missing id");
+            Assert.IsFalse(string.IsNullOrEmpty(golden.Input), $"{golden.Id}: missing input");
+            Assert.IsFalse(string.IsNullOrEmpty(golden.Expected), $"{golden.Id}: missing expected");
+            var op = golden.Operation ?? "reformat";
+            Assert.IsTrue(op is "reformat" or "minify", $"{golden.Id}: operation must be reformat or minify");
+        }
 
-        yield return new("table-with-comments.commas-after-padding", "table-with-comments", "input.jsonc",
-            "commas-after-padding",
-            Jsonc() with
-            {
-                MaxTotalLineLength = 40,
-                NumberListAlignment = NumberListAlignment.Decimal,
-                TableCommaPlacement = TableCommaPlacement.AfterPadding,
-            });
-
-        yield return new("table-with-comments.minify", "table-with-comments", "input.jsonc", "minify",
-            Jsonc(), Minify: true);
-
-        yield return new("postfix-line-comments.expanded", "postfix-line-comments", "input.jsonc", "expanded",
-            Jsonc() with
-            {
-                MaxInlineComplexity = 0,
-                MaxCompactArrayComplexity = 0,
-                MaxTableRowComplexity = 0,
-            });
-
-        yield return new("eol-comment-column.default", "eol-comment-column", "input.jsonc", "default",
-            Jsonc());
-
-        yield return new("aligned-props.default", "aligned-props", "input.json", "default",
-            new FracturedJsonOptions
-            {
-                MaxPropNamePadding = 15,
-                MaxInlineComplexity = -1,
-                MaxCompactArrayComplexity = -1,
-                MaxTableRowComplexity = -1,
-            });
-
-        yield return new("aligned-props.colon-hugs-name", "aligned-props", "input.json", "colon-hugs-name",
-            new FracturedJsonOptions
-            {
-                MaxPropNamePadding = 15,
-                ColonBeforePropNamePadding = true,
-                MaxInlineComplexity = -1,
-                MaxCompactArrayComplexity = -1,
-                MaxTableRowComplexity = -1,
-            });
-
-        yield return new("expanded-trailing-comments.default", "expanded-trailing-comments", "input.jsonc", "default",
-            Jsonc());
-
-        yield return new("ragged-object-table.default", "ragged-object-table", "input.json", "default",
-            new FracturedJsonOptions());
-
-        yield return new("numbers-and-nulls.default", "numbers-and-nulls", "input.json", "default",
-            new FracturedJsonOptions { NumberListAlignment = NumberListAlignment.Decimal });
-
-        yield return new("numbers-and-nulls.normalize", "numbers-and-nulls", "input.json", "normalize",
-            new FracturedJsonOptions { NumberListAlignment = NumberListAlignment.Normalize });
-
-        yield return new("multiline-middle-comment.default", "multiline-middle-comment", "input.jsonc", "default",
-            Jsonc());
-
-        yield return new("table-with-blanks.default", "table-with-blanks", "input.jsonc", "default",
-            Jsonc() with { PreserveBlankLines = true });
+        return new LoadedSuite(manifest, defaults);
     }
 
-    private static FracturedJsonOptions Jsonc() => new()
+    private static FracturedJsonOptions BuildOptions(LoadedSuite suite, ManifestCase golden)
     {
-        CommentPolicy = CommentPolicy.Preserve,
-    };
+        var merged = (JsonObject)suite.Defaults.DeepClone();
+        ApplyPatch(merged, golden.Options, golden.Id);
+        ApplyPatch(merged, suite.Manifest.Forced, golden.Id);
+
+        try
+        {
+            return merged.Deserialize<FracturedJsonOptions>(_optionsJson)
+                   ?? throw new InvalidOperationException($"{golden.Id}: options deserialized to null");
+        }
+        catch (JsonException ex)
+        {
+            Assert.Fail($"{golden.Id}: invalid options ({ex.Message})");
+            return null!;
+        }
+    }
+
+    private static void ApplyPatch(JsonObject target, JsonObject? patch, string caseId)
+    {
+        if (patch == null)
+            return;
+
+        foreach (var kv in patch)
+        {
+            try
+            {
+                target[kv.Key] = kv.Value?.DeepClone();
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail($"{caseId}: failed to apply option '{kv.Key}' ({ex.Message})");
+            }
+        }
+    }
+
+    private static bool IsMinify(ManifestCase golden) =>
+        string.Equals(golden.Operation, "minify", StringComparison.Ordinal);
 
     private static string OutputGoldenRoot() => Path.Combine(AppContext.BaseDirectory, "Golden");
 
@@ -228,10 +263,7 @@ public class GoldenFormattingTests
         return sb.ToString();
     }
 
-    private static string[] SplitKeepEmpty(string text)
-    {
-        return text.Split('\n');
-    }
+    private static string[] SplitKeepEmpty(string text) => text.Split('\n');
 
     private static string ShowLine(int index, string[] lines)
     {
@@ -240,13 +272,26 @@ public class GoldenFormattingTests
         return lines[index].Replace(' ', '·');
     }
 
-    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+    private sealed record LoadedSuite(ManifestFile Manifest, JsonObject Defaults);
 
-    private sealed record GoldenCase(
-        string Id,
-        string Folder,
-        string InputFile,
-        string Variant,
-        FracturedJsonOptions Options,
-        bool Minify = false);
+    private sealed class ManifestFile
+    {
+        public int SuiteVersion { get; set; }
+        public string FamilyVersion { get; set; } = "";
+        public string? GeneratedFrom { get; set; }
+        public string? DefaultsProfile { get; set; }
+        public string DefaultsFile { get; set; } = "";
+        public JsonObject? Forced { get; set; }
+        public List<ManifestCase> Cases { get; set; } = [];
+    }
+
+    private sealed class ManifestCase
+    {
+        public string Id { get; set; } = "";
+        public string Input { get; set; } = "";
+        public string Expected { get; set; } = "";
+        public string? Operation { get; set; }
+        public int? StartingDepth { get; set; }
+        public JsonObject? Options { get; set; }
+    }
 }
