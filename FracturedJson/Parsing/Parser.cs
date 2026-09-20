@@ -54,10 +54,7 @@ public class Parser
             }
             else if (isComment)
             {
-                FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
-                    "Comments not allowed with current options",
-                    item.InputPosition);
-                if (Options.CommentPolicy == CommentPolicy.Preserve)
+                if (ShouldPreserveComment(item.InputPosition))
                     yield return item;
             }
             else
@@ -76,32 +73,26 @@ public class Parser
     /// </summary>
     private JsonItem ParseSimple(JsonToken token)
     {
-        JsonItemType itemType;
-        switch (token.Type)
+        var itemType = token.Type switch
         {
-            case TokenType.False: itemType =  JsonItemType.False; break;
-            case TokenType.True: itemType =  JsonItemType.True; break;
-            case TokenType.Null: itemType =  JsonItemType.Null; break;
-            case TokenType.Number: itemType =  JsonItemType.Number; break;
-            case TokenType.String: itemType =  JsonItemType.String; break;
-            case TokenType.BlankLine: itemType =  JsonItemType.BlankLine; break;
-            case TokenType.BlockComment: itemType =  JsonItemType.BlockComment; break;
-            case TokenType.LineComment: itemType =  JsonItemType.LineComment; break;
-            default:
-                itemType = JsonItemType.Null;
-                FracturedJsonException.Throw("Unexpected token", token.InputPosition);
-                break;
-        }
+            TokenType.False => JsonItemType.False,
+            TokenType.True => JsonItemType.True,
+            TokenType.Null => JsonItemType.Null,
+            TokenType.Number => JsonItemType.Number,
+            TokenType.String => JsonItemType.String,
+            TokenType.BlankLine => JsonItemType.BlankLine,
+            TokenType.BlockComment => JsonItemType.BlockComment,
+            TokenType.LineComment => JsonItemType.LineComment,
+            _ => throw FracturedJsonException.Create("Unexpected token", token.InputPosition),
+        };
 
-        var item = new JsonItem
+        return new JsonItem
         {
             Type = itemType,
             Value = token.Text,
             InputPosition = token.InputPosition,
             Complexity = 0,
         };
-
-        return item;
     }
 
     /// <summary>
@@ -183,13 +174,15 @@ public class Parser
                     break;
 
                 case TokenType.BlockComment:
-                    if (Options.CommentPolicy == CommentPolicy.Remove)
+                    if (!ShouldPreserveComment(token.InputPosition))
                         break;
-                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
-                        "Comments not allowed with current options", token.InputPosition);
                     if (unplacedComment != null)
                     {
                         // There was a block comment before this one.  Add it as a standalone comment to make room.
+                        // TODO(v6): If elemNeedingPostComment is set, attach the displaced comment as its postfix
+                        //   instead.  Today `[1, /*a*/ /*b*/ 2]` leaves /*a*/ standalone; objects treat the matching
+                        //   `{ "w":1, /*a*/ /*b*/ "x":2 }` as postfix-of-w / prefix-of-x.  Changing this is a behavior
+                        //   break, so wait for the next major version.  See also the LineComment branch below.
                         childList.Add(unplacedComment);
                         unplacedComment = null;
                     }
@@ -218,14 +211,14 @@ public class Parser
                     break;
 
                 case TokenType.LineComment:
-                    if (Options.CommentPolicy == CommentPolicy.Remove)
+                    if (!ShouldPreserveComment(token.InputPosition))
                         break;
-                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
-                        "Comments not allowed with current options", token.InputPosition);
 
                     if (unplacedComment != null)
                     {
-                        // A previous comment followed by a line-ending comment?  Add them both as standalone comments
+                        // A previous comment followed by a line-ending comment?  Add them both as standalone comments.
+                        // TODO(v6): Same as the BlockComment case above — if a previous element can take a postfix,
+                        //   attach the displaced comment there instead of emitting it standalone.
                         childList.Add(unplacedComment);
                         childList.Add(ParseSimple(token));
                         unplacedComment = null;
@@ -299,63 +292,64 @@ public class Parser
             "Parser logic error", enumerator.Current.InputPosition);
 
         var startingInputPosition = enumerator.Current.InputPosition;
-
         var childList = new List<JsonItem>();
 
-        // Variables to collect the pieces as we go.  We'll put them all together and add them to the child list 
-        // when conditions are appropriate.
+        // Name and mid-comments exist only between the property name and its value.  Once the value is parsed, the
+        // property is added to childList immediately.  afterPropComment then holds a potential postfix until we know
+        // whether it belongs to this property or the next.
         JsonToken? propertyName = null;
-        JsonItem? propertyValue = null;
-        var linePropValueEnds = -1;
         var beforePropComments = new List<JsonItem>();
         var midPropComments = new List<JsonToken>();
+        JsonItem? committedProp = null;
+        var committedPropEndRow = -1;
         JsonItem? afterPropComment = null;
         var afterPropCommentWasAfterComma = false;
-        
+
         var phase = ObjectPhase.BeforePropName;
         var thisObjComplexity = 0;
         var endOfObject = false;
+
+        void FlushAfterComment(bool holdForNextProperty)
+        {
+            if (committedProp == null)
+                return;
+
+            if (holdForNextProperty)
+            {
+                if (afterPropComment != null)
+                    beforePropComments.Add(afterPropComment);
+            }
+            else
+            {
+                AttachObjectPostfix(childList, committedProp, committedPropEndRow, afterPropComment);
+            }
+
+            afterPropComment = null;
+            committedProp = null;
+        }
+
         while (!endOfObject)
         {
             var token = GetNextTokenOrThrown(enumerator, startingInputPosition);
 
-            // We may have collected a bunch of stuff that should be combined into a single JsonItem.  If we have a
-            // property name and value, then we're just waiting for potential postfix comments.  But it might be time
-            // to bundle it all up and add it to childList before going on.
-            var isNewLine = (linePropValueEnds != token.InputPosition.Row);
-            var isEndOfObject = (token.Type == TokenType.EndObject);
-            var startingNextPropName = (token.Type == TokenType.String && phase == ObjectPhase.AfterComma);
-            var isExcessPostComment = (afterPropComment != null &&
-                                       (token.Type == TokenType.BlockComment || token.Type == TokenType.LineComment));
-            var needToFlush = (isNewLine || isEndOfObject || startingNextPropName || isExcessPostComment);
-            if (needToFlush && propertyName != null && propertyValue != null )
+            // A committed property stays open for a possible postfix comment until something proves the window is
+            // over: a new line, '}', the next property name, or a second comment (the first then becomes postfix).
+            var isNewLine = committedPropEndRow != token.InputPosition.Row;
+            var startingNextPropName = token.Type == TokenType.String && phase == ObjectPhase.AfterComma;
+            var isExcessPostComment = afterPropComment != null &&
+                                      (token.Type == TokenType.BlockComment || token.Type == TokenType.LineComment);
+            var postfixWindowClosed = committedProp != null &&
+                                      (isNewLine || token.Type == TokenType.EndObject ||
+                                       startingNextPropName || isExcessPostComment);
+            if (postfixWindowClosed)
             {
-                JsonItem? commentToHoldForNextElement = null;
-                if (startingNextPropName && afterPropCommentWasAfterComma && !isNewLine)
-                {
-                    // We've got an afterPropComment that showed up after the comma, and we're about to process
-                    // another element on this same line.  The comment should go with the next one, to honor the
-                    // comma placement.
-                    commentToHoldForNextElement = afterPropComment;
-                    afterPropComment = null;
-                }
-
-                AttachObjectValuePieces(childList, propertyName.Value, propertyValue, linePropValueEnds,
-                    beforePropComments, midPropComments, afterPropComment);
-                thisObjComplexity = Math.Max(thisObjComplexity, propertyValue.Complexity + 1);
-                propertyName = null;
-                propertyValue = null;
-                beforePropComments.Clear();
-                midPropComments.Clear();
-                afterPropComment = null;
-
-                if (commentToHoldForNextElement != null)
-                    beforePropComments.Add(commentToHoldForNextElement);
+                // A comment after the comma on the same line as the next property belongs with that next property.
+                var holdForNext = startingNextPropName && afterPropCommentWasAfterComma && !isNewLine;
+                FlushAfterComment(holdForNext);
             }
-            else if (isEndOfObject)
+
+            if (token.Type == TokenType.EndObject)
             {
-                // If we were hanging on to comments to maybe be prefix comments, add them as standalone before
-                // adding a blank line item.
                 childList.AddRange(beforePropComments);
                 beforePropComments.Clear();
             }
@@ -365,59 +359,46 @@ public class Parser
                 case TokenType.BlankLine:
                     if (!Options.PreserveBlankLines)
                         break;
-                    if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
+                    if (phase is ObjectPhase.AfterPropName or ObjectPhase.AfterColon)
                         break;
 
-                    // If we were hanging on to comments to maybe be prefix comments, add them as standalone before
-                    // adding a blank line item.
                     childList.AddRange(beforePropComments);
-                    beforePropComments.Clear();                        
+                    beforePropComments.Clear();
                     childList.Add(ParseSimple(token));
                     break;
+
                 case TokenType.BlockComment:
                 case TokenType.LineComment:
-                    if (Options.CommentPolicy==CommentPolicy.Remove)
+                    if (!ShouldPreserveComment(token.InputPosition))
                         break;
-                    FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
-                        "Comments not allowed with current options", token.InputPosition);
-                    if (phase == ObjectPhase.BeforePropName || propertyName==null)
-                    {
-                        beforePropComments.Add(ParseSimple(token));
-                    }
-                    else if (phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon)
+                    if (phase is ObjectPhase.AfterPropName or ObjectPhase.AfterColon)
                     {
                         midPropComments.Add(token);
                     }
-                    else
+                    else if (committedProp != null)
                     {
                         afterPropComment = ParseSimple(token);
-                        afterPropCommentWasAfterComma = (phase == ObjectPhase.AfterComma);
+                        afterPropCommentWasAfterComma = phase == ObjectPhase.AfterComma;
+                    }
+                    else
+                    {
+                        beforePropComments.Add(ParseSimple(token));
                     }
                     break;
+
                 case TokenType.EndObject:
                     FracturedJsonException.ThrowIf(
-                        phase == ObjectPhase.AfterPropName || phase == ObjectPhase.AfterColon,
+                        phase is ObjectPhase.AfterPropName or ObjectPhase.AfterColon,
                         "Unexpected end of object", token.InputPosition);
                     endOfObject = true;
                     break;
-                case TokenType.String:
-                    if (phase == ObjectPhase.BeforePropName || phase == ObjectPhase.AfterComma)
-                    {
-                        propertyName = token;
-                        phase = ObjectPhase.AfterPropName;
-                    }
-                    else if (phase == ObjectPhase.AfterColon)
-                    {
-                        propertyValue = ParseItem(enumerator);
-                        linePropValueEnds = enumerator.Current.InputPosition.Row;
-                        phase = ObjectPhase.AfterPropValue;
-                    }
-                    else
-                    {
-                        FracturedJsonException.Throw("Unexpected string found while processing object",
-                            token.InputPosition);
-                    }
+
+                case TokenType.String when phase is ObjectPhase.BeforePropName or ObjectPhase.AfterComma:
+                    propertyName = token;
+                    phase = ObjectPhase.AfterPropName;
                     break;
+
+                case TokenType.String:
                 case TokenType.False:
                 case TokenType.True:
                 case TokenType.Null:
@@ -425,21 +406,34 @@ public class Parser
                 case TokenType.BeginArray:
                 case TokenType.BeginObject:
                     FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterColon,
-                        "Unexpected element while processing object", token.InputPosition);
-                    propertyValue = ParseItem(enumerator);
-                    linePropValueEnds = enumerator.Current.InputPosition.Row;
+                        token.Type == TokenType.String
+                            ? "Unexpected string found while processing object"
+                            : "Unexpected element while processing object",
+                        token.InputPosition);
+                    var propertyValue = ParseItem(enumerator);
+                    AttachObjectNamePrefixAndMiddle(childList, propertyName!.Value, propertyValue,
+                        beforePropComments, midPropComments);
+                    thisObjComplexity = Math.Max(thisObjComplexity, propertyValue.Complexity + 1);
+                    committedProp = propertyValue;
+                    committedPropEndRow = enumerator.Current.InputPosition.Row;
+                    propertyName = null;
+                    beforePropComments.Clear();
+                    midPropComments.Clear();
                     phase = ObjectPhase.AfterPropValue;
                     break;
+
                 case TokenType.Colon:
                     FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterPropName,
                         "Unexpected colon while processing object", token.InputPosition);
                     phase = ObjectPhase.AfterColon;
                     break;
+
                 case TokenType.Comma:
                     FracturedJsonException.ThrowIf(phase != ObjectPhase.AfterPropValue,
                         "Unexpected comma while processing object", token.InputPosition);
                     phase = ObjectPhase.AfterComma;
                     break;
+
                 default:
                     FracturedJsonException.Throw("Unexpected token while processing object",
                         token.InputPosition);
@@ -450,14 +444,13 @@ public class Parser
         FracturedJsonException.ThrowIf(!Options.AllowTrailingCommas && phase == ObjectPhase.AfterComma,
             "Object may not end with comma with current options", enumerator.Current.InputPosition);
 
-        var objItem = new JsonItem()
+        return new JsonItem()
         {
             Type = JsonItemType.Object,
             InputPosition = startingInputPosition,
             Complexity = thisObjComplexity,
             Children = childList,
         };
-        return objItem;
     }
 
     /// <summary>
@@ -478,6 +471,18 @@ public class Parser
         return item.Type == JsonItemType.BlockComment && item.Value.Contains('\n');
     }
 
+    /// <summary>
+    /// False if comments should be dropped.  Throws if the current options forbid comments entirely.
+    /// </summary>
+    private bool ShouldPreserveComment(InputPosition position)
+    {
+        if (Options.CommentPolicy == CommentPolicy.Remove)
+            return false;
+        FracturedJsonException.ThrowIf(Options.CommentPolicy == CommentPolicy.TreatAsError,
+            "Comments not allowed with current options", position);
+        return true;
+    }
+
     private static JsonToken GetNextTokenOrThrown(IEnumerator<JsonToken> enumerator, InputPosition startPosition)
     {
         FracturedJsonException.ThrowIf(!enumerator.MoveNext(),
@@ -486,16 +491,15 @@ public class Parser
     }
 
     /// <summary>
-    /// Given a loose collection of comments, a prop name, and a prop value, bundle them all up into a single JsonItem
-    /// if possible and add it to the list.  (It's possible that some comments will need to be added as standalone items
-    /// too.)
+    /// Attach a property name plus any prefix/middle comments to a value and add it to the object.  Some leading
+    /// comments may be added as standalone children instead of as a prefix.
     /// </summary>
-    private static void AttachObjectValuePieces(List<JsonItem> objItemList, JsonToken name, JsonItem element,
-        int valueEndingLine, List<JsonItem> beforeComments, List<JsonToken> midComments, JsonItem? afterComment)
+    private static void AttachObjectNamePrefixAndMiddle(List<JsonItem> objItemList, JsonToken name, JsonItem element,
+        List<JsonItem> beforeComments, List<JsonToken> midComments)
     {
         element.Name = name.Text;
 
-        // Deal with any comments between the property name and its element.  If there's more than one, squish them 
+        // Deal with any comments between the property name and its element.  If there's more than one, squish them
         // together.  If it's a line comment, make sure it ends in a \n (which isn't how it's handled elsewhere, alas.)
         if (midComments.Count > 0)
         {
@@ -510,15 +514,15 @@ public class Parser
             element.MiddleComment = combined;
             element.MiddleCommentHasNewline = combined.Contains('\n');
         }
-        
-        
+
         // Figure out if the last of the comments before the prop name should be attached to this element.
         // Any others should be added as unattached comment items.
         if (beforeComments.Count > 0)
         {
-            var lastOfBefore = beforeComments[beforeComments.Count-1];
-            if (lastOfBefore.Type == JsonItemType.BlockComment && 
-                lastOfBefore.InputPosition.Row == element.InputPosition.Row)
+            var lastOfBefore = beforeComments[beforeComments.Count - 1];
+            var attachAsPrefix = lastOfBefore.Type == JsonItemType.BlockComment &&
+                                 lastOfBefore.InputPosition.Row == element.InputPosition.Row;
+            if (attachAsPrefix)
             {
                 element.PrefixComment = lastOfBefore.Value;
                 objItemList.AddRange(beforeComments.Take(beforeComments.Count - 1));
@@ -530,20 +534,25 @@ public class Parser
         }
 
         objItemList.Add(element);
+    }
 
-        // Figure out if the first of the comments after the element should be attached to the element, and add 
-        // the others as unattached comment items.
-        if (afterComment != null)
+    /// <summary>
+    /// Attach a trailing comment to a property if it belongs on the same line; otherwise add it as a standalone child.
+    /// </summary>
+    private static void AttachObjectPostfix(List<JsonItem> objItemList, JsonItem element, int valueEndingLine,
+        JsonItem? afterComment)
+    {
+        if (afterComment == null)
+            return;
+
+        if (!IsMultilineComment(afterComment) && afterComment.InputPosition.Row == valueEndingLine)
         {
-            if (!IsMultilineComment(afterComment) && afterComment.InputPosition.Row == valueEndingLine)
-            {
-                element.PostfixComment = afterComment.Value;
-                element.IsPostCommentLineStyle = (afterComment.Type == JsonItemType.LineComment);
-            }
-            else
-            {
-                objItemList.Add(afterComment);
-            }
+            element.PostfixComment = afterComment.Value;
+            element.IsPostCommentLineStyle = afterComment.Type == JsonItemType.LineComment;
+        }
+        else
+        {
+            objItemList.Add(afterComment);
         }
     }
 

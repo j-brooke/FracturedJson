@@ -581,6 +581,29 @@ public class ParserTests
         Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
     }
 
+    // TODO(v6): Enable this once ParseArray attaches a displaced unplacedComment as a postfix when a previous
+    //   element can take one, matching ObjectWithInlineBlockComments3.  Today /*a*/ is a standalone child.
+    [TestMethod]
+    [Ignore("Breaking comment-attachment change deferred to next major version")]
+    public void ArrayTwoCommentsAfterCommaMatchObject()
+    {
+        const string input = "[ 1, /*a*/ /*b*/ 2 ]";
+
+        var options = new FracturedJsonOptions()
+        {
+            CommentPolicy = CommentPolicy.Preserve,
+            AllowTrailingCommas = true,
+            PreserveBlankLines = true,
+        };
+        var parser = new Parser() { Options = options };
+        var docModel = parser.ParseTopLevel(input, false).ToArray();
+
+        Assert.AreEqual(1, docModel.Length);
+        Assert.AreEqual(2, docModel[0].Children.Count);
+        Assert.AreEqual("/*a*/", docModel[0].Children[0].PostfixComment);
+        Assert.AreEqual("/*b*/", docModel[0].Children[1].PrefixComment);
+    }
+
     [TestMethod]
     public void ArrayCommentsForMultilineElement()
     {
