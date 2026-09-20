@@ -27,12 +27,19 @@
             <div class="section-label">Padding</div>
             <div><input type="checkbox" @bind="State.Options.NestedBracketPadding">Nested Bracket Padding</div>
             <div><input type="checkbox" @bind="State.Options.SimpleBracketPadding">Simple Bracket Padding</div>
+            <div><input type="checkbox" @bind="State.Options.CollapseOpeningBrackets">Collapse Opening Brackets</div>
+            <div><input type="checkbox" @bind="State.Options.CollapseClosingBrackets">Collapse Closing Brackets</div>
             <div><input type="checkbox" @bind="State.Options.ColonPadding">Colon Padding</div>
             <div><input type="checkbox" @bind="State.Options.CommaPadding">Comma Padding</div>
             <div><input type="checkbox" @bind="State.Options.CommentPadding">Comment Padding</div>
             <div><input type="checkbox" @bind="State.Options.UseTabToIndent">Use Tab To Indent</div>
             <div><input type="number" class="number" @bind="State.Options.IndentSpaces" min="0">Indent Spaces</div>
             <div><input type="number" class="number" @bind="State.Options.MaxPropNamePadding">Max Property Name Padding</div>
+
+            <div class="section-label">Tables</div>
+            <div><input type="checkbox" @bind="State.Options.AllowTableSegments">Allow Table Segments</div>
+            <div><input type="checkbox" @bind="State.Options.SplitTableSegmentsAtBlankLines">Split at Blank Lines</div>
+            <div><input type="checkbox" @bind="State.Options.SplitTableSegmentsAtComments">Split at Comments</div>
 
             <div class="section-label">Miscellaneous</div>
             <div>

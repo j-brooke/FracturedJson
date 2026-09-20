@@ -119,6 +119,13 @@ public class Formatter
     private IBuffer _buffer = new NullBuffer();
     private PaddedFormattingTokens _pads = new (new FracturedJsonOptions(), StringLengthByCharCount);
 
+    /// <summary>
+    /// Display width of the line currently being written, in StringLengthFunc units.  Assigned at a few
+    /// checkpoints (inline FormatItem, compact/table close, collapsed/un-collapsed close bracket) rather than
+    /// on every buffer write.  Used to decide whether a closing bracket can share the last child's line.
+    /// </summary>
+    private int _currentLineLen;
+
     // ---- Entry
     // Pretty-print starts here: measure every item, then send each top-level item through FormatItem.
 
@@ -126,6 +133,7 @@ public class Formatter
     {
         _buffer = buffer;
         _pads = new PaddedFormattingTokens(Options, StringLengthFunc);
+        _currentLineLen = 0;
 
         foreach(var item in docModel)
         {
@@ -216,12 +224,17 @@ public class Formatter
             default:
                 if (item.RequiresMultipleLines)
                 {
-                    StandardFormatStart(item, depth, parentTemplate);
+                    var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
                     _buffer.Add(item.Value);
                     StandardFormatEnd(item, includeTrailingComma);
+                    SetLineWidthAfterPossiblySplitItem(item, depth, depthAfterColon, includeTrailingComma,
+                        parentTemplate);
                 }
                 else
+                {
                     InlineElement(item, includeTrailingComma, parentTemplate);
+                    SetLineLengthAfterInlineItem(item, depth, includeTrailingComma, parentTemplate);
+                }
                 break;
         }
     }
@@ -242,25 +255,15 @@ public class Formatter
         }
 
         // Create a helper object to measure how much space we'll need.  If there's a chance that we'll be able to
-        // format this container as a table or compact array, we need to measure recursively.  Otherwise, we still
-        // might need top level measurements for aligning properties and such.
-        var recursiveTemplate = item.Complexity <= Options.MaxCompactArrayComplexity ||
-                                item.Complexity <= Options.MaxTableRowComplexity + 1;
+        // format this container as a compact array, we need to measure recursively.  Otherwise, we still might need
+        // top level measurements for aligning properties and such.
+        var recursiveTemplate = item.Complexity <= Options.MaxCompactArrayComplexity && item.Type == JsonItemType.Array;
         var template = new TableTemplate(_pads, Options.NumberListAlignment);
-        template.MeasureTableRoot(item, recursiveTemplate);
+        template.MeasureTableRoot(item, recursiveTemplate, 0, item.Children.Count);
 
         if (depth > Options.AlwaysExpandDepth)
         {
             if (FormatContainerCompactMultiline(item, depth, includeTrailingComma, template, parentTemplate))
-                return;
-        }
-
-        // Allow table formatting at the specified depth, too.  So if this is a root level array and
-        // AlwaysExpandDepth=0, we can table format it.  But if AlwaysExpandDepth=1, we can't format the root
-        // as a table, since a table's children are always inlined (and thus not expanded).
-        if (depth >= Options.AlwaysExpandDepth)
-        {
-            if (FormatContainerTable(item, depth, includeTrailingComma, template, parentTemplate))
                 return;
         }
 
@@ -288,11 +291,12 @@ public class Formatter
     }
 
     // ---- Expanded
-    // The recursive default: one child per line, each child goes back through FormatItem.
+    // The recursive default: one child per line.  Depending on settings, some sequences of children might be formatted
+    // together as a table.
 
     /// <summary>
-    /// Adds the representation for an array or object to the buffer, broken out on separate lines.  This is the most
-    /// general case that always works.
+    /// Adds the representation for an array or object to the buffer, broken out on separate lines.  Spans of children
+    /// might be table-formatted together, depending on settings.
     /// </summary>
     /// <param name="item">The container we need to write</param>
     /// <param name="depth">Indentation level</param>
@@ -304,7 +308,7 @@ public class Formatter
         TableTemplate template, TableTemplate? parentTemplate)
     {
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
+        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
 
         // Decide whether to align this container's property values.  If so, pass this container's template along
         // to its children so they know how to align their property values.
@@ -313,20 +317,90 @@ public class Formatter
                          && !template.AnyMiddleCommentHasNewline
                          && AvailableLineSpace(depth + 1) >= template.AtomicItemSize();
         var templateToPass = (alignProps) ? template : null;
+        templateToPass?.Children.Clear();
 
         // Take note of the position of the last actual element, for comma decisions.  The last element
         // might not be the last item.
         var lastElementIndex = IndexOfLastElement(item.Children);
-        for (var i=0; i<item.Children.Count; ++i)
+
+        foreach (var run in DivideContainerIntoSegments(item, depth + 1))
         {
-            StartLine(depthAfterColon+1);
-            FormatItem(item.Children[i], depthAfterColon + 1, (i < lastElementIndex), templateToPass);
-            _buffer.EndLine(_pads.EOL);
+            var wroteAsTable = run.CanBeTable && WriteTableContainerSection(item, depthAfterColon, run.StartIndex,
+                run.Length, lastElementIndex);
+            if (!wroteAsTable)
+                WriteExpandedContainerSection(item, depthAfterColon, templateToPass, run.StartIndex, run.Length,
+                    lastElementIndex);
         }
 
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Write a sequence of children from <paramref name="item"/>, each starting on a new line.
+    /// </summary>
+    private void WriteExpandedContainerSection(JsonItem item, int depth, TableTemplate? propTemplate,
+        int startChildIndex, int numChildren, int lastElementIndex)
+    {
+        var afterEndIndex = Math.Min(item.Children.Count, startChildIndex + numChildren);
+        for (var i = startChildIndex; i < afterEndIndex; ++i)
+        {
+            if (i > 0)
+                StartLine(depth + 1);
+
+            FormatItem(item.Children[i], depth + 1, (i < lastElementIndex), propTemplate);
+
+            if (i < item.Children.Count - 1)
+                _buffer.EndLine(_pads.EOL);
+        }
+    }
+
+    /// <summary>
+    /// Write a sequence of children from <paramref name="item"/> as a table, if possible.  Returns true if written.
+    /// </summary>
+    private bool WriteTableContainerSection(JsonItem item, int depth, int startChildIndex, int numChildren,
+        int lastElementIndex)
+    {
+        var template = new TableTemplate(_pads, Options.NumberListAlignment);
+        template.MeasureTableRoot(item, true, startChildIndex, numChildren);
+
+        // If any particular row would require multiple lines, we can't table format this as a table.
+        if (template.RequiresMultipleLines || template.Type == TableColumnType.Mixed)
+            return false;
+
+        // Figure out the space available to each row, not counting ending commas.  Note that if there's a middle
+        // comment with a newline, we'll be indenting more than normal.
+        var availableSpaceDepth = (item.MiddleCommentHasNewline) ? depth + 2 : depth + 1;
+        var availableSpace = AvailableLineSpace(availableSpaceDepth) - _pads.CommaLen;
+
+        if (!template.TryToFit(availableSpace))
+            return false;
+
+        var afterEndIndex = Math.Min(item.Children.Count, startChildIndex + numChildren);
+        for (var i = startChildIndex; i < afterEndIndex; ++i)
+        {
+            if (i > 0)
+                StartLine(depth + 1);
+
+            var rowItem = item.Children[i];
+            if (rowItem.Type is JsonItemType.BlankLine)
+            {
+                // Do nothing - we will write an EOL at the end of the loop.
+            }
+            else if (rowItem.Type is JsonItemType.LineComment or JsonItemType.BlockComment)
+            {
+                FormatStandaloneComment(rowItem, depth + 1);
+            }
+            else
+            {
+                InlineTableRowSegment(template, rowItem, (i < lastElementIndex), true);
+            }
+
+            if (i < item.Children.Count - 1)
+                _buffer.EndLine(_pads.EOL);
+        }
+
+        return true;
     }
 
     // ---- Other container strategies
@@ -371,6 +445,7 @@ public class Formatter
             return false;
 
         InlineElement(item, includeTrailingComma, parentTemplate);
+        SetLineLengthAfterInlineItem(item, depth, includeTrailingComma, parentTemplate);
 
         return true;
     }
@@ -380,7 +455,8 @@ public class Formatter
     /// lines but with each child written inline and several of them per line.
     /// </summary>
     /// <returns>True if the content was added</returns>
-    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
+    private bool FormatContainerCompactMultiline(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate template, TableTemplate? parentTemplate)
     {
         if (item.Type != JsonItemType.Array)
             return false;
@@ -404,7 +480,7 @@ public class Formatter
             return false;
 
         var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+        WriteNonInlineOpeningBracket(item, depthAfterColon + 1, parentTemplate);
 
         var availableLineSpace = AvailableLineSpace(depthAfterColon+1);
         var remainingLineSpace = -1;
@@ -418,8 +494,12 @@ public class Formatter
 
             if (remainingLineSpace < spaceNeededForNext)
             {
-                _buffer.EndLine(_pads.EOL);
-                StartLine(depthAfterColon+1);
+                if (i > 0)
+                {
+                    _buffer.EndLine(_pads.EOL);
+                    StartLine(depthAfterColon + 1);
+                }
+
                 remainingLineSpace = availableLineSpace;
             }
 
@@ -431,89 +511,9 @@ public class Formatter
             remainingLineSpace -= spaceNeededForNext;
         }
 
-        // The previous line won't have ended yet, so do a line feed and indent before the closing bracket.
-        _buffer.EndLine(_pads.EOL);
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
-
+        _currentLineLen = Options.MaxTotalLineLength - remainingLineSpace;
+        WriteNonInlineCloseBracket(item, depthAfterColon, includeTrailingComma);
         StandardFormatEnd(item, includeTrailingComma);
-        return true;
-    }
-
-    /// <summary>
-    /// Tries to format this array/object as a table.  That is, each of this JsonItem's children are each written
-    /// as a single line, with their pieces formatted to line up.  This only works if the structures and types
-    /// are consistent for all rows.
-    /// </summary>
-    /// <returns>True if the content was added</returns>
-    private bool FormatContainerTable(JsonItem item, int depth, bool includeTrailingComma, TableTemplate template, TableTemplate? parentTemplate)
-    {
-        // If this element's children are too complex to be written inline, don't bother.
-        if (item.Complexity > Options.MaxTableRowComplexity + 1)
-            return false;
-
-        // If any particular row would require multiple lines, we can't table format this as a table.
-        if (template.RequiresMultipleLines)
-            return false;
-
-        // Figure out the space available to each row, not counting ending commas.  Note that if there's a middle
-        // comment with a newline, we'll be indenting more than normal.
-        var availableSpaceDepth = (item.MiddleCommentHasNewline) ? depth + 2 : depth + 1;
-        var availableSpace = AvailableLineSpace(availableSpaceDepth) - _pads.CommaLen;
-
-        // If any child element is too long even without formatting, don't bother.
-        var isChildTooLong = item.Children
-            .Where(IsElement)
-            .Any(ch => ch.MinimumTotalLength > availableSpace);
-        if (isChildTooLong)
-            return false;
-
-        // If the rows don't fit with everything (including descendants) tabular, try dropping the columns for
-        // the deepest nested items, repeatedly, until it either fits or we give up.
-        //
-        // For instance, here's an example of what fully tabular would look like:
-        // [
-        //     { "a":   3, "b": { "x": 19, "y":  -4           } },
-        //     { "a": 147, "b": {          "y": 111, "z": -99 } }
-        // ]
-        // If that doesn't work, we try this:
-        // [
-        //     { "a":   3, "b": { "x": 19, "y": -4 }   },
-        //     { "a": 147, "b": { "y": 111, "z": -99 } }
-        // ]
-        if (!template.TryToFit(availableSpace) || template.Type == TableColumnType.Mixed)
-            return false;
-
-        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
-        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
-
-        // Take note of the position of the last actual element, for comma decisions.  The last element
-        // might not be the last item.
-        var lastElementIndex = IndexOfLastElement(item.Children);
-        for (var i=0; i<item.Children.Count; ++i)
-        {
-            StartLine(depthAfterColon+1);
-            var rowItem = item.Children[i];
-            if (rowItem.Type is JsonItemType.BlankLine)
-            {
-                // Do nothing - we will write an EOL at the end of the loop.
-            }
-            else if (rowItem.Type is JsonItemType.LineComment or JsonItemType.BlockComment)
-            {
-                FormatStandaloneComment(rowItem, depthAfterColon+1);
-            }
-            else
-            {
-                InlineTableRowSegment(template, rowItem, (i<lastElementIndex), true);
-            }
-
-            _buffer.EndLine(_pads.EOL);
-        }
-
-        StartLine(depthAfterColon);
-        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
-        StandardFormatEnd(item, includeTrailingComma);
-
         return true;
     }
 
@@ -839,6 +839,80 @@ public class Formatter
             _buffer.Add(value).Spaces(padWidth).Add(separator);
     }
 
+    /// <summary>
+    /// Checks whether it's okay to write a closing bracket on the same line.
+    /// </summary>
+    private bool CanCollapseContainerClose(JsonItem container, BracketPaddingType padType, bool includeTrailingComma)
+    {
+        if (!Options.CollapseClosingBrackets)
+            return false;
+
+        if (container.Children.Count == 0)
+            return false;
+
+        var lastItemInContainer = container.Children[container.Children.Count - 1];
+        var lastItemDisqualifies = lastItemInContainer.PostfixCommentLength > 0 || !IsElement(lastItemInContainer);
+        if (lastItemDisqualifies)
+            return false;
+
+        var lineLengthIfCollapsed = _currentLineLen
+                                    + _pads.EndLen(container.Type, padType)
+                                    + ((includeTrailingComma) ? _pads.CommaLen : 0);
+        return lineLengthIfCollapsed <= Options.MaxTotalLineLength;
+    }
+
+    /// <summary>
+    /// Write a closing bracket - either on the same line or a new one.
+    /// </summary>
+    private void WriteNonInlineCloseBracket(JsonItem item, int depth, bool includeTrailingComma)
+    {
+        var padTypeIfInline = GetPaddingType(item);
+        if (!CanCollapseContainerClose(item, padTypeIfInline, includeTrailingComma))
+        {
+            _buffer.EndLine(_pads.EOL);
+            StartLine(depth);
+            _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+            _currentLineLen = LinePrefixWidth(depth) + _pads.EndLen(item.Type, BracketPaddingType.Empty);
+            return;
+        }
+
+        _buffer.Add(_pads.End(item.Type, padTypeIfInline));
+        _currentLineLen += _pads.EndLen(item.Type, padTypeIfInline);
+    }
+
+    /// <summary>
+    /// Write an opening bracket and either a newline, PrefixString, and indentation, or spaces to pad to the next
+    /// indentation level.
+    /// </summary>
+    private void WriteNonInlineOpeningBracket(JsonItem item, int depth, TableTemplate? template)
+    {
+        // We need to decide whether this container's first child can be written on the same line as the container's
+        // open bracket.  The general rule is: yes, if it can be written at the same character position as it would
+        // have been on the next line.  To figure that out we need to measure the container's prefix comment, prop
+        // name, etc. (which have already been written).
+        //
+        // Tabs also prevent collapsing, since the first item would need spaces for alignment with items below
+        // that use a tab.  We also don't try if the first item is a standalone comment or blank line.
+        var padType = GetPaddingType(item);
+        var padLen = Options.IndentSpaces
+                     - PrefixNameMiddleLength(item, template) - _pads.StartLen(item.Type, padType);
+        var canCollapse = Options.CollapseOpeningBrackets
+                          && !Options.UseTabToIndent
+                          && IsElement(item.Children[0])
+                          && padLen >= 0;
+
+        if (canCollapse)
+        {
+            _buffer.Add(_pads.Start(item.Type, padType));
+            _buffer.Spaces(padLen);
+            return;
+        }
+
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
+        _buffer.EndLine(_pads.EOL);
+        StartLine(depth);
+    }
+
     // ---- Plumbing
 
     /// <summary>
@@ -855,9 +929,96 @@ public class Formatter
     /// </summary>
     private int AvailableLineSpace(int depth)
     {
-        return Options.MaxTotalLineLength - _pads.PrefixStringLen - Options.IndentSpaces * depth;
+        return Options.MaxTotalLineLength - LinePrefixWidth(depth);
     }
 
+    /// <summary>
+    /// Prefix string plus indentation, in the same units as <see cref="AvailableLineSpace"/>.  Matches the
+    /// planner (IndentSpaces per level) rather than the actual indent characters, so tab indents still
+    /// reserve IndentSpaces of budget.
+    /// </summary>
+    private int LinePrefixWidth(int depth)
+    {
+        return _pads.PrefixStringLen + Options.IndentSpaces * depth;
+    }
+
+    /// <summary>
+    /// Display width of an inlined item as actually written by <see cref="InlineElement"/>, not including
+    /// the line's prefix/indent.
+    /// </summary>
+    private int InlineElementLength(JsonItem item, bool includeTrailingComma, TableTemplate? parentTemplate)
+    {
+        return PrefixNameMiddleLength(item, parentTemplate)
+               + item.ValueLength
+               + TrailingCommaAndPostfixLength(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Length of the item's prefix and middle comments and prop name.
+    /// </summary>
+    private int PrefixNameMiddleLength(JsonItem item, TableTemplate? template)
+    {
+        if (template != null)
+        {
+            var width = 0;
+            if (template.PrefixCommentLength > 0)
+                width += template.PrefixCommentLength + _pads.CommentLen;
+            if (template.NameLength > 0)
+                width += template.NameLength + _pads.ColonLen;
+            if (template.MiddleCommentLength > 0)
+                width += template.MiddleCommentLength + _pads.CommentLen;
+            return width;
+        }
+
+        var itemWidth = 0;
+        if (item.PrefixCommentLength > 0)
+            itemWidth += item.PrefixCommentLength + _pads.CommentLen;
+        if (item.NameLength > 0)
+            itemWidth += item.NameLength + _pads.ColonLen;
+        if (item.MiddleCommentLength > 0)
+            itemWidth += item.MiddleCommentLength + _pads.CommentLen;
+        return itemWidth;
+    }
+
+    private int TrailingCommaAndPostfixLength(JsonItem item, bool includeTrailingComma)
+    {
+        var width = 0;
+        if (item.PostfixCommentLength > 0)
+            width += _pads.CommentLen + item.PostfixCommentLength;
+        if (includeTrailingComma)
+            width += _pads.CommaLen;
+        return width;
+    }
+
+    /// <summary>
+    /// Takes note of the current line position for the inline case.
+    /// </summary>
+    private void SetLineLengthAfterInlineItem(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate? parentTemplate)
+    {
+        _currentLineLen = LinePrefixWidth(depth) + InlineElementLength(item, includeTrailingComma, parentTemplate);
+    }
+
+    /// <summary>
+    /// After a primitive that may have pushed its value onto a new line (multiline middle comment),
+    /// record the width of whatever line the value ended on.
+    /// </summary>
+    private void SetLineWidthAfterPossiblySplitItem(JsonItem item, int originalDepth, int depthAfterColon,
+        bool includeTrailingComma, TableTemplate? parentTemplate)
+    {
+        if (depthAfterColon == originalDepth)
+        {
+            SetLineLengthAfterInlineItem(item, originalDepth, includeTrailingComma, parentTemplate);
+            return;
+        }
+
+        _currentLineLen = LinePrefixWidth(depthAfterColon) + item.ValueLength
+                     + TrailingCommaAndPostfixLength(item, includeTrailingComma);
+    }
+
+    /// <summary>
+    /// Determines whether the given array/object is simple or complex for padding purposes.
+    /// </summary>
     private BracketPaddingType GetPaddingType(JsonItem arrOrObj)
     {
         if (arrOrObj.Children.Count == 0)
@@ -1029,4 +1190,73 @@ public class Formatter
 
         return false;
     }
+
+    // ---- Table Segments
+
+    /// <summary>
+    /// Divide the children of this item up into groups, some of which might make good tables.
+    /// </summary>
+    private IEnumerable<ContainerRun> DivideContainerIntoSegments(JsonItem item, int depth)
+    {
+        if (depth < Options.AlwaysExpandDepth)
+        {
+            yield return new ContainerRun(0, item.Children.Count, false);
+            yield break;
+        }
+
+        var availableSpace = AvailableLineSpace(depth);
+        if (!Options.AllowTableSegments)
+        {
+            var canBeTable = item.Children.All(ji => CanBeTableRow(ji, availableSpace));
+            yield return new ContainerRun(0, item.Children.Count, canBeTable);
+            yield break;
+        }
+
+        var runStartIndex = -1;
+        var runCanBeTable = false;
+        for (var i = 0; i < item.Children.Count; ++i)
+        {
+            var child = item.Children[i];
+            var canBeTable = CanBeTableRow(child, availableSpace);
+
+            if (runStartIndex < 0)
+            {
+                runStartIndex = i;
+                runCanBeTable = canBeTable;
+            }
+
+            // Only divide the run if we switch between table eligible or not.
+            if (canBeTable != runCanBeTable)
+            {
+                yield return new ContainerRun(runStartIndex, i - runStartIndex, runCanBeTable);
+                runStartIndex = i;
+                runCanBeTable = canBeTable;
+            }
+        }
+        if (runStartIndex >= 0)
+            yield return new ContainerRun(runStartIndex, item.Children.Count - runStartIndex, runCanBeTable);
+    }
+
+    /// <summary>
+    /// Decides whether the given item can be a row in a table under the current settings.
+    /// </summary>
+    private bool CanBeTableRow(JsonItem item, int availableSpace)
+    {
+        var canBeTable = item.Type switch
+        {
+            JsonItemType.BlankLine => !Options.SplitTableSegmentsAtBlankLines,
+            JsonItemType.BlockComment or JsonItemType.LineComment => !Options.SplitTableSegmentsAtComments,
+            _ => !item.RequiresMultipleLines,
+        };
+        canBeTable &= item.Complexity <= Options.MaxTableRowComplexity
+                      && item.MinimumTotalLength <= availableSpace;
+        return canBeTable;
+    }
+}
+
+internal record ContainerRun(int StartIndex, int Length, bool CanBeTable)
+{
+    public int StartIndex { get; } = StartIndex;
+    public int Length { get; } = Length;
+    public bool CanBeTable { get; } = CanBeTable;
 }

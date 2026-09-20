@@ -91,7 +91,7 @@ public class LineWriterBuffer : IBuffer
 
         if (_lineBuff.Length > _lineCopyArray.Length)
         {
-            // If the line is really long, go ahead an allocate a new string temporarily.  It spikes memory a little,
+            // If the line is really long, go ahead and allocate a new string temporarily.  It spikes memory a little,
             // briefly, but it's faster than chunking the line data.  This should be a pretty uncommon case.
             _writer.Write(_lineBuff.ToString());
         }

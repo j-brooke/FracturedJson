@@ -66,6 +66,26 @@ public record FracturedJsonOptions
     public TableCommaPlacement TableCommaPlacement { get; set; } = TableCommaPlacement.BeforePaddingExceptNumbers;
 
     /// <summary>
+    /// If true, sections of items in a container can be formatted as tables instead of requiring all items to be a
+    /// single table.  If some children need to be expanded, their siblings can still be table-formatted.
+    /// </summary>
+    public bool AllowTableSegments { get; set; } = false;
+
+    /// <summary>
+    /// If true, blank lines force the sections above and below to be formatted as separate tables, if at all.
+    /// Has no effect unless <see cref="AllowTableSegments"/> and <see cref="PreserveBlankLines"/> are true.
+    /// </summary>
+    public bool SplitTableSegmentsAtBlankLines { get; set; } = false;
+
+    /// <summary>
+    /// If true, standalone comments force the sections above and below to be formatted as separate tables, if at all.
+    /// This refers to comments on lines of their own, not ones that are considered attached to elements.
+    /// Has no effect unless <see cref="AllowTableSegments"/> is true and <see cref="CommentPolicy"/> is
+    /// <see cref="CommentPolicy.Preserve"/>.
+    /// </summary>
+    public bool SplitTableSegmentsAtComments {  get; set; } = false;
+
+    /// <summary>
     /// Minimum items per row to format an array with multiple items per line across multiple lines.  This is a
     /// guideline, not a strict rule.
     /// </summary>
@@ -100,6 +120,19 @@ public record FracturedJsonOptions
     /// false: [ [1, 2, 3], [4] ] <br/>
     /// </remarks>
     public bool SimpleBracketPadding { get; set; } = false;
+
+    /// <summary>
+    /// If true, the first element of a non-inline array or object is written on the same line as its opening brace,
+    /// as long as it can be placed at the expected indentation.  Ignored if <see cref="UseTabToIndent"/> is true.
+    /// </summary>
+    public bool CollapseOpeningBrackets { get; set; } = false;
+
+    /// <summary>
+    /// If true, a container's closing bracket is written on the same line as its last child when that child
+    /// is a real JSON value with no postfix comment, and the combined line still fits in.
+    /// <see cref="MaxTotalLineLength"/>.
+    /// </summary>
+    public bool CollapseClosingBrackets { get; set; } = false;
 
     /// <summary>
     /// If true, includes a space after property colons.

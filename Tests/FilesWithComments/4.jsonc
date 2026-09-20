@@ -1,0 +1,30 @@
+{
+    "Type": "Panel",
+    "Pos" : [0, 0],
+    "Dim" : [100, 100],
+    "Subs": [
+        { "Type": "Text", "Pos": [0, 0], "Text": "Combat actions" },
+
+        { "Type": "Btn", "Pos": [0, 5], "Label": "Kick", "Action": "act_kick" },
+        { "Type": "Btn", "Pos": [25, 5], "Label": "Punch", "Action": "act_punch" },
+        { "Type": "Btn", "Pos": [50, 5], "Label": "Bite", "Action": "act_bite" },
+        { "Type": "Btn", "Pos": [75, 5], "Label": "Headbutt", "Action": "act_headbutt" },
+
+        { "Type": "Img", "Pos": [0, 0], "ImgID": 8323 },
+        { "Type": "Img", "Pos": [0, 50], "ImgID": 141 },
+        {
+            "Type": "Panel",
+            "Pos" : [0, 20],
+            "Dim" : [100, 80],
+            "Subs": [
+                { "Type": "Text", "Pos": [0, 0], "Text": "Grapple" },
+                //--
+                { "Type": "Btn", "Pos": [0, 5], "Label": "Tackle", "Action": "act_tackle1" },
+                { "Type": "Btn", "Pos": [25, 15], "Label": "Choke", "Action": "act_neck_grab" },
+                //--
+                { "Type": "Img", "Pos": [0, 0], "ImgID": 38212 },
+                { "Type": "Img", "Pos": [0, 30], "ImgID": 12 }
+            ]
+        }
+    ]
+}
