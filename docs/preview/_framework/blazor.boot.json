@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "WebFormatter2",
   "resources": {
-    "hash": "sha256-5pMLEVBV3H77LJFt2hFSwtaW2ZoSDRcxR3AHgcz43F8=",
+    "hash": "sha256-ETX+sZrTTeGEUuByULY2baiqFinkQLj6HrLYRqIYkuQ=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-YDHEHpc+/PUWFYa9BMCN3EcVlpemjKD024swcpPfMIQ="
     },
@@ -14,7 +14,7 @@
     "coreAssembly": {},
     "assembly": {
       "Blazored.LocalStorage.wasm": "sha256-OaMAAd5n7ORfyur5e3QIyEVKJ76MKIvwbg7/icnnYcU=",
-      "FracturedJson.wasm": "sha256-W4Qm17brxOZUSxJWKsTn0FMZLUMEQIpS4bWtmJcP+HU=",
+      "FracturedJson.wasm": "sha256-6PWeMv0B2NpEpgJ/7VLgUvUaoYyqMkUaRE0XN52wBFY=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-mZ9eJW/z6CBl3U2r2hPYPdKr1dy/NeyGcnUtUNfwHco=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-OQ8zzv5LDfGJSh7eCAMWUXNUYDJv0AeSsQg9QnEEjAw=",
       "Microsoft.AspNetCore.Components.WebAssembly.wasm": "sha256-xNoo6Wo4FfXjd1NlU7aUSoF2P23CIHYjW3eC+OaEQf0=",
@@ -57,7 +57,7 @@
       "System.Threading.wasm": "sha256-aJtQayisvQfhKKEamaGCIfcVV2A168nyg3ams82Hb+U=",
       "System.wasm": "sha256-dH8gTwfC8agr9n3W9LFMY/2xjJQVN+9jyVvplI7C1jY=",
       "Wcwidth.wasm": "sha256-H4ctB/qApSJh0yjpHkfvVd4kJIhrGNiYR9YXtinB8/Y=",
-      "WebFormatter2.wasm": "sha256-joA/MbpZLSUI6W/s0UVYiMPHkbF7sBU5fJmbfHn4r40=",
+      "WebFormatter2.wasm": "sha256-Dy2UJfd7WC6Phe7quXe+iieNOtG3O8HiBzfReD40VNU=",
       "netstandard.wasm": "sha256-EMSbmRYpupZjTH4MZP0BHYvPUe0nwCAWXav9+13FLtc="
     }
   },
