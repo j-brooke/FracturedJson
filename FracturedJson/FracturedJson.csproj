@@ -4,7 +4,8 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <Nullable>enable</Nullable>
         <Title>FracturedJson</Title>
-        <Description>A library for formatting JSON, producing human-readable but compact output.</Description>
+        <Description>JSON/JSONC formatter that produces compact, readable output — inline when simple, table-aligned when similar, wrapped when long.</Description>
+        <PackageTags>json jsonc formatter pretty-print prettyprint beautify beautifier json-formatter compact readable table alignment comments dotnet</PackageTags>
         <Copyright>2026 Jesse Brooke</Copyright>
         <PackageProjectUrl>https://j-brooke.github.io/FracturedJson/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
@@ -12,7 +13,6 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
         <AssemblyVersion>5.0.1</AssemblyVersion>
-        <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
         <PackageVersion>5.0.1</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>

@@ -1,6 +1,6 @@
 # fracjson CLI
 
-**fracjson** is a command line tool for formatting JSON data so that it's fairly compact but highly readable.  It uses the [FracturedJson](https://github.com/j-brooke/FracturedJson) .NET library.  It's available as a **dotnet global tool** for people who use the .NET ecosystem, and as a **standalone executable** for major platforms for people who don't want to install .NET.
+**fracjson** is the command-line tool for FracturedJson. It formats JSON/JSONC to stay compact but readable — inline when simple, table-aligned when similar.
 
 ## Installing
 

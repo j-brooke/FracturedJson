@@ -5,7 +5,7 @@ humans to read, but fairly compact.  Arrays and objects are written on single li
 neither too long nor too complex.  When several such lines are similar in structure, they're written with
 fields aligned like a table.  Long arrays are written with multiple items per line across multiple lines.
 
-The .NET library version for .NET Standard 2.0, so it's compatible with all forms of .NET except very old ones.
+The .NET library targets .NET Standard 2.0, so it works with modern .NET, .NET Framework, and Mono.
 
 Here's a sample of output using nearly default settings. (`MaxTotalLineLength=100`)
 ```json

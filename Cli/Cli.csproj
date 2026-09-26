@@ -8,10 +8,10 @@
         <Version>1.0.2</Version>
         <Authors>FracturedJson</Authors>
         <AssemblyName>fracjson</AssemblyName>
-        <PackageTags>JSON JSONC formatter pretty printer beautifier stringify compact comments</PackageTags>
         <PackageId>fracjson</PackageId>
-        <Description>JSON formatter that produces compact, highly readable output</Description>
         <Copyright>2026 Jesse Brooke</Copyright>
+        <Description>fracjson is the FracturedJson CLI: compact, table-aligned JSON/JSONC formatting from a file or stdin. Install as a .NET global tool or a standalone executable.</Description>
+        <PackageTags>json jsonc formatter pretty-print prettyprint beautify json-formatter compact readable table alignment comments cli command-line</PackageTags>
         <PackageIcon>packageIcon.png</PackageIcon>
         <RepositoryUrl>https://github.com/j-brooke/FracturedJson</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
