@@ -193,6 +193,66 @@
         "CommentPolicy": "Preserve",
         "PreserveBlankLines": true
       }
+    },
+    {
+      "id": "collapsed-brackets.default",
+      "input": "collapsed-brackets/input.json",
+      "expected": "collapsed-brackets/default.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 24,
+        "NestedBracketPadding": false
+      }
+    },
+    {
+      "id": "collapsed-brackets.both",
+      "input": "collapsed-brackets/input.json",
+      "expected": "collapsed-brackets/both.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 24,
+        "NestedBracketPadding": false,
+        "CollapseClosingBrackets": true,
+        "CollapseOpeningBrackets": true
+      }
+    },
+    {
+      "id": "table-segments.default",
+      "input": "table-segments/input.json",
+      "expected": "table-segments/default.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 80,
+        "MaxTableRowComplexity": 3,
+        "MaxInlineComplexity": 3
+      }
+    },
+    {
+      "id": "table-segments.allowed",
+      "input": "table-segments/input.json",
+      "expected": "table-segments/allowed.txt",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 80,
+        "MaxTableRowComplexity": 3,
+        "MaxInlineComplexity": 3,
+        "PreserveBlankLines": true,
+        "AllowTableSegments": true
+      }
+    },
+    {
+      "id": "table-segments.split-at-blank",
+      "input": "table-segments/input.json",
+      "expected": "table-segments/split-at-blank",
+      "operation": "reformat",
+      "options": {
+        "MaxTotalLineLength": 80,
+        "MaxTableRowComplexity": 3,
+        "MaxInlineComplexity": 3,
+        "PreserveBlankLines": true,
+        "AllowTableSegments": true,
+        "SplitTableSegmentsAtBlankLines": true
+      }
     }
   ]
 }
