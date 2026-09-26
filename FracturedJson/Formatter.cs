@@ -267,7 +267,10 @@ public class Formatter
                 return;
         }
 
-        FormatContainerExpanded(item, depth, includeTrailingComma, template, parentTemplate);
+        if (item.Children.Count == 0)
+            FormatEmptyContainerExpanded(item, depth, includeTrailingComma, parentTemplate);
+        else
+            FormatContainerExpanded(item, depth, includeTrailingComma, template, parentTemplate);
     }
 
     /// <summary>
@@ -337,6 +340,24 @@ public class Formatter
     }
 
     /// <summary>
+    /// Adds the representation for an empty array or object to the buffer with the brackets on separate lines.
+    /// </summary>
+    /// <param name="item">The container we need to write</param>
+    /// <param name="depth">Indentation level</param>
+    /// <param name="includeTrailingComma">True if this container should have a comma after it.</param>
+    /// <param name="parentTemplate">Measurements for lining up this item's prop name/value with its siblings.</param>
+    private void FormatEmptyContainerExpanded(JsonItem item, int depth, bool includeTrailingComma,
+        TableTemplate? parentTemplate)
+    {
+        var depthAfterColon = StandardFormatStart(item, depth, parentTemplate);
+        _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty)).EndLine(_pads.EOL);
+        StartLine(depthAfterColon);
+        _buffer.Add(_pads.End(item.Type, BracketPaddingType.Empty));
+        _currentLineLen = LinePrefixWidth(depthAfterColon) + _pads.EndLen(item.Type, BracketPaddingType.Empty);
+        StandardFormatEnd(item, includeTrailingComma);
+    }
+
+    /// <summary>
     /// Write a sequence of children from <paramref name="item"/>, each starting on a new line.
     /// </summary>
     private void WriteExpandedContainerSection(JsonItem item, int depth, TableTemplate? propTemplate,
@@ -398,6 +419,8 @@ public class Formatter
 
             if (i < item.Children.Count - 1)
                 _buffer.EndLine(_pads.EOL);
+            else
+                _currentLineLen = LinePrefixWidth(depth + 1) + template.TotalLength + _pads.CommaLen;
         }
 
         return true;
@@ -910,6 +933,7 @@ public class Formatter
 
         _buffer.Add(_pads.Start(item.Type, BracketPaddingType.Empty));
         _buffer.EndLine(_pads.EOL);
+
         StartLine(depth);
     }
 

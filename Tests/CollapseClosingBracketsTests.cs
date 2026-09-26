@@ -151,6 +151,65 @@ public class CollapseClosingBracketsTests
     }
 
     [TestMethod]
+    public void DoesNotCollapseWhenTableWouldExceedMaxIncludingComment()
+    {
+        const string input = "[[1, 22] /*x*/,[333, 4]]";
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 22,
+            MaxTableRowComplexity = 1,
+            CollapseClosingBrackets = true,
+            CommentPolicy = CommentPolicy.Preserve,
+            JsonEolStyle = EolStyle.Lf,
+        };
+        var output = Reformat(input, opts);
+
+        const string expected = """
+                                [
+                                    [  1, 22] /*x*/,
+                                    [333,  4]
+                                ]
+                                """;
+        Assert.AreEqual(expected, output.TrimEnd());
+        Assert.IsTrue(Lines(output).All(line => line.Length <= opts.MaxTotalLineLength));
+    }
+
+    [TestMethod]
+    public void DoesNotCollapseWhenTableWouldExceedMax()
+    {
+        const string input = "[[[3932,2399,444,222,1,9009]]]";
+        var opts = new FracturedJsonOptions()
+        {
+            MaxTotalLineLength = 19,
+            MaxTableRowComplexity = 1,
+            MaxCompactArrayComplexity = -1,
+            CollapseClosingBrackets = true,
+            SimpleBracketPadding = false,
+            NestedBracketPadding = false,
+            JsonEolStyle = EolStyle.Lf,
+        };
+        var output = Reformat(input, opts);
+
+        // There's enough space to fit the innermost ] on the same line as 9009, but no more.  The next
+        // ] starts on a new line, indented to match its opening.  But then there's plenty of room for
+        // the final one next to it.
+        const string expected = """
+                                [
+                                    [
+                                        [
+                                            3932,
+                                            2399,
+                                             444,
+                                             222,
+                                               1,
+                                            9009  ]
+                                    ]]
+                                """;
+        Assert.AreEqual(expected, output.TrimEnd());
+        Assert.IsTrue(Lines(output).All(line => line.Length <= opts.MaxTotalLineLength));
+    }
+
+    [TestMethod]
     public void CollapsedLinesStayWithinMaxTotalLineLength()
     {
         const string input = "[[[1,2],[3,4]],[[5,6],[7,8]]]";
@@ -180,7 +239,6 @@ public class CollapseClosingBracketsTests
             MaxTotalLineLength = 80,
         };
         var output = Reformat(input, opts);
-        var lines = Lines(output);
 
         const string expected = """
             {

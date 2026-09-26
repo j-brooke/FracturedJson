@@ -59,4 +59,17 @@ public class AlwaysExpandFormattingTests
         TestHelpers.TestInstancesLineUp(outputLines, ",");
         TestHelpers.TestInstancesLineUp(outputLines, "9");
     }
+
+    [TestMethod]
+    public void NoBlankLinesWhenEmptyContainerExpands()
+    {
+        const string input = "{}";
+        const string expected = "{\n}";
+
+        var opts = new FracturedJsonOptions() { AlwaysExpandDepth = 0 };
+        var formatter = new Formatter() { Options = opts };
+        var output = formatter.Reformat(input, 0);
+
+        Assert.AreEqual(expected, output.TrimEnd());
+    }
 }

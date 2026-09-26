@@ -43,6 +43,15 @@ public class CollapseOpeningBracketsTests
     }
 
     [TestMethod]
+    public void EmptyContainersDontThrow()
+    {
+        const string input = "[]";
+        var formatter = new Formatter() { Options = new() { AlwaysExpandDepth = 0, CollapseOpeningBrackets = true } };
+        var output = formatter.Reformat(input);
+        // No need for an assert.  Not crashing is enough.
+    }
+
+    [TestMethod]
     public void TabsPreventCollapse()
     {
         var options = CommonOptions with { UseTabToIndent = true };
