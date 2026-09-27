@@ -1,5 +1,5 @@
 /*
- * Sample config file for FracturedJsonCli.  Uncomment any properties you need.
+ * Sample config file for fracjson CLI.  Uncomment any properties you need.
  * Properties not listed will have the defaults from the FracturedJsonOptions 
  * constructor.
  *
@@ -8,7 +8,7 @@
  *   .fracturedjson, .fracturedjson.jsonc, .fracturedjson.json
  * + The app will search for such a file in the appropriate directory and its 
  *   ancestors until one is found.  It starts in the input file's directory 
- *   if -f|--file is used, or the current directory otherwise.
+ *   if a file is used, or the current directory otherwise.
  *
  * See https://github.com/j-brooke/FracturedJson/wiki/Options for more info.
  */
@@ -69,7 +69,28 @@
      * "Decimal", "Normalize". */
     //"NumberListAlignment": "Decimal",
 
-    
+    /* If true, the first element of a non-inline array or object is written on the same line as its opening brace,
+       as long as it can be placed at the expected indentation.  Ignored if <see cref="UseTabToIndent"/> is true. */
+    //"CollapseOpeningBrackets": false,
+
+    /* If true, a container's closing bracket is written on the same line as its last child when that child
+       is a real JSON value with no postfix comment, and the combined line still fits in. */
+    //"CollapseClosingBrackets": false,
+
+    /* If true, sections of items in a container can be formatted as tables instead of requiring all items to be a
+       single table.  If some children need to be expanded, their siblings can still be table-formatted. */
+    //"AllowTableSegments": false,
+
+    /* If true, blank lines force the sections above and below to be formatted as separate tables, if at all.
+       Has no effect unless AllowTableSegments and PreserveBlankLines are true. */
+    //"SplitTableSegmentsAtBlankLines": false,
+
+    /* If true, standalone comments force the sections above and below to be formatted as separate tables, if at all.
+       This refers to comments on lines of their own, not ones that are considered attached to elements.
+       Has no effect unless AllowTableSegments is true and CommentPolicy is CommentPolicy.Preserve. */
+    //"SplitTableSegmentsAtComments": false,
+
+
     /* ### Padding settings ### */
 
     /* True puts a space between an array/object's brackets and its contents

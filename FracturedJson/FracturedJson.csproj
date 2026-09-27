@@ -12,8 +12,8 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
-        <AssemblyVersion>5.0.1</AssemblyVersion>
-        <PackageVersion>5.0.1</PackageVersion>
+        <AssemblyVersion>5.1.0</AssemblyVersion>
+        <PackageVersion>5.1.0</PackageVersion>
         <PackageIcon>packageIcon.png</PackageIcon>
         <LangVersion>10</LangVersion>
     </PropertyGroup>

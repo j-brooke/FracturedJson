@@ -200,8 +200,9 @@ public record FracturedJsonOptions
     /// </summary>
     public static FracturedJsonOptions Recommended()
     {
-        // At the beginning of version 5, the defaults are the recommended settings.  This may change in future
-        // minor versions.
-        return new FracturedJsonOptions();
+        return new FracturedJsonOptions()
+        {
+            AllowTableSegments = true,
+        };
     }
 }

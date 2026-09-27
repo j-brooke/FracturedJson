@@ -1,5 +1,15 @@
 # FracturedJson Change Log
 
+## 5.1.0
+
+### Features
+
+Table formatting can now apply to just parts of a container instead of all of its children if `AllowTableSegments` is set to `true`.  If one item is too long for inlining, for instance, the items above it and below it can still be table-formatted separately.  If `SplitTableSegmentsAtBlankLines` or `SplitTableSegmentsAtComments` are also set, blank lines or comments force the sections above and below to be treated as separate tables (if at all).
+
+Brackets for expanded arrays/objects don't require their own lines if `CollapseOpeningBrackets` or `CollapseClosingBrackets` are set to `true`.  Opening brackets will only be collapsed if there's enough room for them to start at their expected indent levels, and only when not using tabs to indent.  Closing brackets require that the end of the container isn't a comment.  They respect `MaxTotalLineLength`.
+
+All five settings default to false.  However, `AllowTableSegments` is `true` in `FracturedJsonOptions.Recommended()`.
+
 ## 5.0.1
 
 ### Bug Fix

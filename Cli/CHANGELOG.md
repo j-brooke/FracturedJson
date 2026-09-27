@@ -1,5 +1,9 @@
 # fracjson CLI Change Log
 
+## 1.1.0
+
+Updated to use FracturedJson library version 5.1.0.
+
 ## 1.0.2
 
 Updated to use FracturedJson library version 5.0.1.

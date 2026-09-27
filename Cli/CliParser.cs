@@ -157,11 +157,20 @@ public static class CliParser
             parseResult.GetValue(_colonBeforePropNamePaddingOpt) ?? fjOpts.ColonBeforePropNamePadding;
         fjOpts.TableCommaPlacement = (TableCommaPlacement?)parseResult.GetValue(_tableCommaPlacementOpt) ??
                                      fjOpts.TableCommaPlacement;
+        fjOpts.AllowTableSegments = parseResult.GetValue(_allowTableSegments) ?? fjOpts.AllowTableSegments;
+        fjOpts.SplitTableSegmentsAtBlankLines = parseResult.GetValue(_splitTableSegmentsAtBlankLines) ??
+                                                fjOpts.SplitTableSegmentsAtBlankLines;
+        fjOpts.SplitTableSegmentsAtComments = parseResult.GetValue(_splitTableSegmentsAtComments) ??
+                                              fjOpts.SplitTableSegmentsAtComments;
         fjOpts.MinCompactArrayRowItems =
             parseResult.GetValue(_minCompactArrayRowItemsOpt) ?? fjOpts.MinCompactArrayRowItems;
         fjOpts.AlwaysExpandDepth = parseResult.GetValue(_alwaysExpandDepthOpt) ?? fjOpts.AlwaysExpandDepth;
         fjOpts.NestedBracketPadding = parseResult.GetValue(_nestedBracketPaddingOpt) ?? fjOpts.NestedBracketPadding;
         fjOpts.SimpleBracketPadding = parseResult.GetValue(_simpleBracketPaddingOpt) ?? fjOpts.SimpleBracketPadding;
+        fjOpts.CollapseOpeningBrackets =
+            parseResult.GetValue(_collapseOpeningBrackets) ?? fjOpts.CollapseOpeningBrackets;
+        fjOpts.CollapseClosingBrackets =
+            parseResult.GetValue(_collapseClosingBrackets) ?? fjOpts.CollapseClosingBrackets;
         fjOpts.ColonPadding = parseResult.GetValue(_colonPaddingOpt) ?? fjOpts.ColonPadding;
         fjOpts.CommaPadding = parseResult.GetValue(_commaPaddingOpt) ?? fjOpts.CommaPadding;
         fjOpts.CommentPadding = parseResult.GetValue(_commentPaddingOpt) ?? fjOpts.CommentPadding;
@@ -253,6 +262,17 @@ public static class CliParser
             "--table-comma", "--TableCommaPlacement")
         { Description = "Comma position in table rows", };
 
+    private static readonly Option<bool?> _allowTableSegments = new("--table-segments", "--AllowTableSegments")
+        { Description = "Sections of containers can be table-formatted independently" };
+
+    private static readonly Option<bool?> _splitTableSegmentsAtBlankLines = new("--split-blank",
+            "--SplitTableSegmentsAtBlankLines")
+        { Description = "Blank lines force separate table formatting" };
+
+    private static readonly Option<bool?> _splitTableSegmentsAtComments = new("--split-comment",
+            "--SplitTableSegmentsAtComments")
+        { Description = "Standalone comments force separate table formatting" };
+
     private static readonly Option<int?> _minCompactArrayRowItemsOpt =
         new("--min-array-items", "--MinCompactArrayRowItems")
             { Description = "Minimum items per row for compact arrays", };
@@ -265,6 +285,12 @@ public static class CliParser
 
     private static readonly Option<bool?> _simpleBracketPaddingOpt = new("--simple-pad", "--SimpleBracketPadding")
         { Description = "Space inside []/{} for simple (primitive-only) containers", };
+
+    private static readonly Option<bool?> _collapseOpeningBrackets = new("--collapse-open", "--CollapseOpeningBrackets")
+        { Description = "Opening brackets don't require their own lines" };
+
+    private static readonly Option<bool?> _collapseClosingBrackets = new("--collapse-close", "--CollapseClosingBrackets")
+        { Description = "Closing brackets don't require their own lines" };
 
     private static readonly Option<bool?> _colonPaddingOpt = new("--colon-pad", "--ColonPadding")
         { Description = "Space after colon", };
@@ -316,10 +342,15 @@ public static class CliParser
             _maxPropNamePaddingOpt,
             _colonBeforePropNamePaddingOpt,
             _tableCommaPlacementOpt,
+            _allowTableSegments,
+            _splitTableSegmentsAtBlankLines,
+            _splitTableSegmentsAtComments,
             _minCompactArrayRowItemsOpt,
             _alwaysExpandDepthOpt,
             _nestedBracketPaddingOpt,
             _simpleBracketPaddingOpt,
+            _collapseOpeningBrackets,
+            _collapseClosingBrackets,
             _colonPaddingOpt,
             _commaPaddingOpt,
             _commentPaddingOpt,
